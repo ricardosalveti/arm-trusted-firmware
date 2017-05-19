@@ -104,7 +104,7 @@ enum pm_node_id {
 	NODE_RPU,
 	NODE_RPU_0,
 	NODE_RPU_1,
-	NODE_PL,
+	NODE_PLD,
 	NODE_FPD,
 	NODE_OCM_BANK_0,
 	NODE_OCM_BANK_1,
@@ -164,6 +164,7 @@ enum pm_node_id {
 	NODE_IPI_PL_1,
 	NODE_IPI_PL_2,
 	NODE_IPI_PL_3,
+	NODE_PL,
 	NODE_MAX
 };
 

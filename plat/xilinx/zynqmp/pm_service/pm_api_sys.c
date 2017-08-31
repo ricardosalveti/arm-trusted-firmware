@@ -636,3 +636,30 @@ void pm_get_callbackdata(uint32_t *data, size_t count)
 	pm_ipi_buff_read_callb(data, count);
 	pm_ipi_irq_clear();
 }
+
+enum pm_ret_status pm_sha_hash(uint32_t address_high,
+				    uint32_t address_low,
+				    uint32_t size,
+				    uint32_t flags)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD5(payload, PM_SECURE_SHA, address_high, address_low,
+				 size, flags);
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+
+}
+
+enum pm_ret_status pm_rsa_core(uint32_t address_high,
+				    uint32_t address_low,
+				    uint32_t size,
+				    uint32_t flags)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD5(payload, PM_SECURE_RSA, address_high, address_low,
+				 size, flags);
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+}

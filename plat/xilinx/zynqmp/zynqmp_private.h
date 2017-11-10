@@ -32,6 +32,7 @@
 #define __ZYNQMP_PRIVATE_H__
 
 #include <interrupt_mgmt.h>
+#include <bl_common.h>
 
 void zynqmp_config_setup(void);
 

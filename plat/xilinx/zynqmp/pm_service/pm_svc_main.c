@@ -162,9 +162,6 @@ int pm_setup(void)
 {
 	int status;
 
-	if (!zynqmp_is_pmu_up())
-		return -ENODEV;
-
 #if !ZYNQMP_WARM_RESTART
 	status = pm_ipi_init();
 #else

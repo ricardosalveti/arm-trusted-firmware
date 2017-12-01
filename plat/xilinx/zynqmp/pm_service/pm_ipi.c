@@ -349,3 +349,8 @@ void pm_ipi_irq_clear(void)
 {
 	mmio_write_32(IPI_APU_ISR, IPI_APU_IXR_PMU_0_MASK);
 }
+
+uint32_t pm_ipi_irq_status(void)
+{
+	return mmio_read_32(IPI_APU_ISR);
+}

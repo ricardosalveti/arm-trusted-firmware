@@ -382,7 +382,7 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 
 	case PM_GET_CALLBACK_DATA:
 	{
-		uint32_t result[4];
+		uint32_t result[4] = {0};
 
 		pm_get_callbackdata(result, sizeof(result));
 		SMC_RET2(handle,

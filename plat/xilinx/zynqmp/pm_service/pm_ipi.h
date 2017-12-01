@@ -37,10 +37,10 @@
 int pm_ipi_init(void);
 #else
 int pm_ipi_init(uint32_t (*fiq_handler)(void));
-
-#define IPI_APU_IXR_PMU_0_MASK		(1 << 16)
 #define IPI_APU_IXR_PMU_1_MASK		(1 << 17)
 #endif
+
+#define IPI_APU_IXR_PMU_0_MASK		(1 << 16)
 
 enum pm_ret_status pm_ipi_send(const struct pm_proc *proc,
 			       uint32_t payload[PAYLOAD_ARG_CNT]);

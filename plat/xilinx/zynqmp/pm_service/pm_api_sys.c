@@ -632,6 +632,9 @@ enum pm_ret_status pm_secure_rsaaes(uint32_t address_low,
  */
 void pm_get_callbackdata(uint32_t *data, size_t count)
 {
+	/* Return if interrupt is not from PMU */
+	if (!(pm_ipi_irq_status() & IPI_APU_IXR_PMU_0_MASK))
+		return;
 
 	pm_ipi_buff_read_callb(data, count);
 	pm_ipi_irq_clear();

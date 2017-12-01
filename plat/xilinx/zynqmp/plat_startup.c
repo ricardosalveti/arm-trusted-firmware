@@ -33,6 +33,7 @@
 #include <debug.h>
 #include <mmio.h>
 #include "zynqmp_def.h"
+#include "zynqmp_private.h"
 
 /*
  * ATFHandoffParams
@@ -171,8 +172,11 @@ static int get_fsbl_estate(const struct xfsbl_partition *partition)
  *
  * Process the handoff paramters from the FSBL and populate the BL32 and BL33
  * image info structures accordingly.
+ *
+ * Return: Return the status of the handoff. The value will be from the
+ *         fsbl_handoff enum.
  */
-void fsbl_atf_handover(entry_point_info_t *bl32, entry_point_info_t *bl33)
+enum fsbl_handoff fsbl_atf_handover(entry_point_info_t *bl32, entry_point_info_t *bl33)
 {
 	uint64_t atf_handoff_addr;
 	const struct xfsbl_atf_handoff_params *ATFHandoffParams;
@@ -182,7 +186,7 @@ void fsbl_atf_handover(entry_point_info_t *bl32, entry_point_info_t *bl33)
 	       (atf_handoff_addr > (uint64_t)&__BL31_END__));
 	if (!atf_handoff_addr) {
 		ERROR("BL31: No ATF handoff structure passed\n");
-		panic();
+		return FSBL_HANDOFF_NO_STRUCT;
 	}
 
 	ATFHandoffParams = (struct xfsbl_atf_handoff_params *)atf_handoff_addr;
@@ -192,7 +196,7 @@ void fsbl_atf_handover(entry_point_info_t *bl32, entry_point_info_t *bl33)
 	    (ATFHandoffParams->magic[3] != 'X')) {
 		ERROR("BL31: invalid ATF handoff structure at %lx\n",
 		      atf_handoff_addr);
-		panic();
+		return FSBL_HANDOFF_INVAL_STRUCT;
 	}
 
 	VERBOSE("BL31: ATF handoff params at:0x%lx, entries:%u\n",
@@ -200,7 +204,7 @@ void fsbl_atf_handover(entry_point_info_t *bl32, entry_point_info_t *bl33)
 	if (ATFHandoffParams->num_entries > FSBL_MAX_PARTITIONS) {
 		ERROR("BL31: ATF handoff params: too many partitions (%u/%u)\n",
 		      ATFHandoffParams->num_entries, FSBL_MAX_PARTITIONS);
-		panic();
+		return FSBL_HANDOFF_TOO_MANY_PARTS;
 	}
 
 	/*
@@ -285,4 +289,6 @@ void fsbl_atf_handover(entry_point_info_t *bl32, entry_point_info_t *bl33)
 		else
 			EP_SET_EE(image->h.attr, EP_EE_LITTLE);
 	}
+
+	return FSBL_HANDOFF_SUCCESS;
 }

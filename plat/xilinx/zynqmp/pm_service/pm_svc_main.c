@@ -52,8 +52,8 @@
 #define PM_GET_CALLBACK_DATA	0xa01
 #define PM_SET_SUSPEND_MODE	0xa02
 
-/* 0 - UP, !0 - DOWN */
-static int32_t pm_down = !0;
+/* !0 - UP, 0 - DOWN */
+static int32_t pm_up = 0;
 #if ZYNQMP_WARM_RESTART
 static spinlock_t inc_lock;
 static int active_cores = 0;
@@ -186,7 +186,7 @@ err:
 	else
 		INFO("BL31: PM Service Init Failed, Error Code %d!\n", status);
 
-	pm_down = status;
+	pm_up = !status;
 
 	return status;
 }
@@ -215,7 +215,7 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 	uint32_t pm_arg[4];
 
 	/* Handle case where PM wasn't initialized properly */
-	if (pm_down)
+	if (!pm_up)
 		SMC_RET1(handle, SMC_UNK);
 
 	pm_arg[0] = (uint32_t)x1;

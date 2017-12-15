@@ -116,6 +116,37 @@ static uint32_t ipi_fiq_handler(void)
 }
 
 /**
+ * trigger_warm_restart() - Trigger warm restart event to APU cores
+ *
+ * This function triggers SGI for all active APU CPUs. SGI handler then
+ * power down CPU and call system reset.
+ */
+static void trigger_warm_restart(void)
+{
+	uint32_t core_count = 0;
+	uint32_t core_status[3];
+	uint32_t target_cpu_list = 0;
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		pm_get_node_status(NODE_APU_0 + i, core_status);
+		if (core_status[0] == 1) {
+			core_count++;
+			target_cpu_list |= (1 << i);
+		}
+	}
+
+	spin_lock(&inc_lock);
+	active_cores = core_count;
+	spin_unlock(&inc_lock);
+
+	INFO("Active Cores: %d\n", active_cores);
+
+	/* trigger SGI to active cores */
+	plat_ic_trigger_sgi(ARM_IRQ_SEC_SGI_7, target_cpu_list);
+}
+
+/**
  * ttc_fiq_handler() - TTC Handler for timer event
  * @id		number of the highest priority pending interrupt of the type
  *		that this handler was registered for
@@ -145,6 +176,8 @@ static uint64_t ttc_fiq_handler(uint32_t id, uint32_t flags, void *handle,
 
 	/* Disable the timer interrupts */
 	mmio_write_32(TTC3_INTR_ENABLE_1, 0);
+
+	trigger_warm_restart();
 
 	return 0;
 }

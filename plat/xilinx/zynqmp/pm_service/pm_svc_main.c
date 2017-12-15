@@ -115,6 +115,21 @@ static uint32_t ipi_fiq_handler(void)
 	return handled;
 }
 
+/**
+ * zynqmp_sgi7_irq() - Handler for SGI7 IRQ
+ * @id		number of the highest priority pending interrupt of the type
+ *		that this handler was registered for
+ * @flags	security state, bit[0]
+ * @handler	pointer to 'cpu_context' structure of the current CPU for the
+ *		security state specified in the 'flags' parameter
+ * @cookie	unused
+ *
+ * Function registered as INTR_TYPE_EL3 interrupt handler
+ *
+ * On receiving WDT event from PMU, ATF generates SGI7 to all running CPUs.
+ * In response to SGI7 interrupt, each CPUs do clean up if required and last
+ * running CPU calls system restart.
+ */
 static uint64_t __unused __dead2 zynqmp_sgi7_irq(uint32_t id, uint32_t flags,
 						 void *handle, void *cookie)
 {

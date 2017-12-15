@@ -125,6 +125,7 @@
 #else
 #define PLAT_ARM_G1S_IRQS	ARM_IRQ_SEC_PHY_TIMER,	\
 				IRQ_SEC_IPI_APU,	\
+				IRQ_TTC3_1,		\
 				ARM_IRQ_SEC_SGI_0,	\
 				ARM_IRQ_SEC_SGI_1,	\
 				ARM_IRQ_SEC_SGI_2,	\

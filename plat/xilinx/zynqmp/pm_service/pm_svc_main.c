@@ -116,6 +116,39 @@ static uint32_t ipi_fiq_handler(void)
 }
 
 /**
+ * ttc_fiq_handler() - TTC Handler for timer event
+ * @id		number of the highest priority pending interrupt of the type
+ *		that this handler was registered for
+ * @flags	security state, bit[0]
+ * @handler	pointer to 'cpu_context' structure of the current CPU for the
+ *		security state specified in the 'flags' parameter
+ * @cookie	unused
+ *
+ * Function registered as INTR_TYPE_EL3 interrupt handler
+ *
+ * When WDT event is received in PMU, PMU needs to notify master to do cleanup
+ * if required. PMU sets up timer and starts timer to overflow in zero time upon
+ * WDT event. ATF handles this timer event and takes necessary action required
+ * for warm restart.
+ *
+ * In presence of non-secure software layers (EL1/2) sets the interrupt
+ * at registered entrance in GIC and informs that PMU responsed or demands
+ * action.
+ */
+static uint64_t ttc_fiq_handler(uint32_t id, uint32_t flags, void *handle,
+				void *cookie)
+{
+	INFO("BL31: Got TTC FIQ\n");
+
+	/* Clear TTC interrupt by reading interrupt register */
+	mmio_read_32(TTC3_INTR_REGISTER_1);
+
+	/* Disable the timer interrupts */
+	mmio_write_32(TTC3_INTR_ENABLE_1, 0);
+
+	return 0;
+}
+/**
  * zynqmp_sgi7_irq() - Handler for SGI7 IRQ
  * @id		number of the highest priority pending interrupt of the type
  *		that this handler was registered for
@@ -162,8 +195,8 @@ static uint64_t __unused __dead2 zynqmp_sgi7_irq(uint32_t id, uint32_t flags,
 /**
  * pm_warm_restart_setup() - Setup warm restart interrupts
  *
- * This function setups handler for SGI7 interrupt used for
- * warm restart.
+ * This function sets up handler for SGI7 and TTC interrupts
+ * used for warm restart.
  */
 static int pm_warm_restart_setup(void)
 {
@@ -171,9 +204,16 @@ static int pm_warm_restart_setup(void)
 
 	/* register IRQ handler for SGI7 */
 	ret = request_intr_type_el3(ARM_IRQ_SEC_SGI_7, zynqmp_sgi7_irq);
-	if (ret)
+	if (ret) {
 		WARN("BL31: registering SGI7 interrupt failed\n");
+		goto err;
+	}
 
+	ret = request_intr_type_el3(IRQ_TTC3_1, ttc_fiq_handler);
+	if (ret)
+		WARN("BL31: registering TTC3 interrupt failed\n");
+
+err:
 	return ret;
 }
 #endif

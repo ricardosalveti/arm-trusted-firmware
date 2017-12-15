@@ -34,6 +34,7 @@
  */
 
 #include <errno.h>
+#include <gicv2.h>
 #include <runtime_svc.h>
 #include "pm_api_sys.h"
 #include "pm_client.h"
@@ -125,7 +126,8 @@ static uint64_t __unused __dead2 zynqmp_sgi7_irq(uint32_t id, uint32_t flags,
 	active_cores--;
 
 	for (i = 0; i < 4; i++) {
-		mmio_write_32(0xF9010000 + 0xF10 + 4 * i, 0xffffffff); // ICENABLE
+		mmio_write_32(BASE_GICD_BASE + GICD_CPENDSGIR + 4 * i,
+				0xffffffff);
 	}
 
 	dsb();

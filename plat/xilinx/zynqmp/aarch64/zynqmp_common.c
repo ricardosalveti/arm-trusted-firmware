@@ -225,7 +225,8 @@ static unsigned int zynqmp_get_silicon_id2(void)
 {
 	uint32_t id;
 
-	id = mmio_read_32(EFUSE_BASEADDR + EFUSE_IPDISABLE_OFFSET);
+	pm_mmio_read((EFUSE_BASEADDR + EFUSE_IPDISABLE_OFFSET), &id);
+
 	id &= EFUSE_IPDISABLE_VERSION;
 
 	return id;

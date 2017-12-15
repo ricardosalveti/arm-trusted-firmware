@@ -158,6 +158,24 @@ static uint64_t __unused __dead2 zynqmp_sgi7_irq(uint32_t id, uint32_t flags,
 	while (1)
 		wfi();
 }
+
+/**
+ * pm_warm_restart_setup() - Setup warm restart interrupts
+ *
+ * This function setups handler for SGI7 interrupt used for
+ * warm restart.
+ */
+static int pm_warm_restart_setup(void)
+{
+	int ret;
+
+	/* register IRQ handler for SGI7 */
+	ret = request_intr_type_el3(ARM_IRQ_SEC_SGI_7, zynqmp_sgi7_irq);
+	if (ret)
+		WARN("BL31: registering SGI7 interrupt failed\n");
+
+	return ret;
+}
 #endif
 
 /**
@@ -184,10 +202,11 @@ int pm_setup(void)
 	if (status)
 		goto err;
 
-	/* register IRQ handler for SGI7 */
-	status = request_intr_type_el3(ARM_IRQ_SEC_SGI_7, zynqmp_sgi7_irq);
-	if (status)
-		WARN("BL31: registering SGI7 interrupt failed\n");
+	status = pm_warm_restart_setup();
+	if (status) {
+		WARN("BL31: warm-restart setup failed\n");
+		goto err;
+	}
 
 err:
 #endif

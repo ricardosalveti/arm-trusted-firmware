@@ -70,52 +70,6 @@ static struct {
 
 #if ZYNQMP_WARM_RESTART
 /**
- * ipi_fiq_handler() - IPI Handler for PM-API callbacks
- * @buf:	Pointer to a structure holding the IPI data
- *
- * Function registered as INTR_TYPE_EL3 interrupt handler
- *
- * PMU sends IPI interrupts for PM-API callbacks.
- * This handler reads data from payload buffers and
- * based on read data decodes type of callback and call proper function.
- *
- * In presence of non-secure software layers (EL1/2) sets the interrupt
- * at registered entrance in GIC and informs that PMU responsed or demands
- * action
- */
-static uint32_t ipi_fiq_handler(void)
-{
-	uint32_t handled = 0;
-	uint32_t core_count = 0;
-	uint32_t core_status[3];
-	uint32_t target_cpu_list = 0;
-	int i;
-
-	for(i=0; i< 4; i++)
-	{
-		pm_get_node_status(NODE_APU_0 + i, core_status);
-		if (core_status[0] == 1)
-		{
-			core_count ++;
-			target_cpu_list |= (1 << i);
-		}
-	}
-
-	spin_lock(&inc_lock);
-	active_cores = core_count;
-	spin_unlock(&inc_lock);
-
-	INFO("Active Cores: %d\n", active_cores);
-
-	/* trigger SGI to active cores */
-	plat_ic_trigger_sgi(ARM_IRQ_SEC_SGI_7, target_cpu_list);
-
-	handled |= IPI_APU_IXR_PMU_1_MASK;
-
-	return handled;
-}
-
-/**
  * trigger_warm_restart() - Trigger warm restart event to APU cores
  *
  * This function triggers SGI for all active APU CPUs. SGI handler then
@@ -268,22 +222,21 @@ int pm_setup(void)
 {
 	int status;
 
-#if !ZYNQMP_WARM_RESTART
 	status = pm_ipi_init();
-#else
-	status = pm_ipi_init(ipi_fiq_handler);
-	if (status)
+	if (status) {
+		WARN("BL31: pm_ipi_init() failed\n");
 		goto err;
+	}
 
+#if ZYNQMP_WARM_RESTART
 	status = pm_warm_restart_setup();
 	if (status) {
 		WARN("BL31: warm-restart setup failed\n");
 		goto err;
 	}
 
-err:
 #endif
-
+err:
 	if (status == 0)
 		INFO("BL31: PM Service Init Complete: API v%d.%d\n",
 		     PM_VERSION_MAJOR, PM_VERSION_MINOR);

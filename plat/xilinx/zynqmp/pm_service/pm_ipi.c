@@ -68,9 +68,6 @@
 #define IPI_APU_ISR		(IPI_BASEADDR + 0X00000010)
 #define IPI_APU_IER		(IPI_BASEADDR + 0X00000018)
 #define IPI_APU_IDR		(IPI_BASEADDR + 0X0000001C)
-#if !ZYNQMP_WARM_RESTART
-#define IPI_APU_IXR_PMU_0_MASK         (1 << 16)
-#endif
 
 #define IPI_TRIG_OFFSET		0
 #define IPI_OBS_OFFSET		4
@@ -86,47 +83,12 @@
 #define IPI_APU_MASK		1U
 
 DEFINE_BAKERY_LOCK(pm_secure_lock);
-#if ZYNQMP_WARM_RESTART
-static uint32_t (*usr_fiq_handler)(void);
-#endif
 
 const struct pm_ipi apu_ipi = {
 	.mask = IPI_APU_MASK,
 	.base = IPI_BASEADDR,
 	.buffer_base = IPI_BUFFER_APU_BASE,
 };
-
-#if ZYNQMP_WARM_RESTART
-/**
- * ipi_fiq_handler() - IPI Handler for PM-API callbacks
- * @id - 	number of the highest priority pending interrupt of the type
- *		that this handler was registered for
- * @flags - 	security state, bit[0]
- * @handler - 	pointer to 'cpu_context' structure of the current CPU for the
- * 	      	security state specified in the 'flags' parameter
- * @cookie  - 	unused
- *
- * Function registered as INTR_TYPE_EL3 interrupt handler
- *
- * PMU sends IPI interrupts for PM-API callbacks. If a handler is registered,
- * the handler is called with a pointer to the payload as argument.
- *
- * In presence of non-secure software layers (EL1/2) sets the interrupt
- * at registered entrance in GIC and informs that PMU responsed or demands
- * action
- */
-static uint64_t ipi_fiq_handler(uint32_t id, uint32_t flags, void *handle,
-			 void *cookie)
-{
-	INFO("BL31: Got FIQ\n");
-	uint32_t handled = usr_fiq_handler();
-
-	/* Clear IPI_APU_ISR bit */
-	mmio_write_32(IPI_APU_ISR, handled);
-
-	return 0;
-}
-#endif
 
 /**
  * pm_ipi_init() - Initialize IPI peripheral for communication with PMU
@@ -137,7 +99,6 @@ static uint64_t ipi_fiq_handler(uint32_t id, uint32_t flags, void *handle,
  *
  * Called from pm_setup initialization function
  */
-#if !ZYNQMP_WARM_RESTART
 int pm_ipi_init(void)
 {
 	bakery_lock_init(&pm_secure_lock);
@@ -148,30 +109,7 @@ int pm_ipi_init(void)
 
 	return 0;
 }
-#else
-int pm_ipi_init(uint32_t (*fiq_handler)(void))
-{
-	int ret;
-	bakery_lock_init(&pm_secure_lock);
 
-	/* IPI Interrupts Clear & Disable */
-	mmio_write_32(IPI_APU_ISR, 0xffffffff);
-	mmio_write_32(IPI_APU_IDR, 0xffffffff);
-
-	/* Register IPI interrupt as INTR_TYPE_EL3 */
-	if (fiq_handler) {
-		usr_fiq_handler = fiq_handler;
-		ret = request_intr_type_el3(IRQ_SEC_IPI_APU, ipi_fiq_handler);
-		if (ret)
-			return ret;
-	}
-	/* enable IRQ from PMU 1 */
-	mmio_write_32(IPI_APU_IER, IPI_APU_IXR_PMU_1_MASK);
-	INFO("BL31: enabled warm reset FIQ\n");
-
-	return 0;
-}
-#endif
 /**
  * pm_ipi_wait() - wait for pmu to handle request
  * @proc	proc which is waiting for PMU to handle request

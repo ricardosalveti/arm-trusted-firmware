@@ -35,10 +35,10 @@
 
 #include <arch_helpers.h>
 #include <platform.h>
-#include "pm_client.h"
-#include "pm_ipi.h"
-#include "pm_common.h"
 #include "pm_api_sys.h"
+#include "pm_client.h"
+#include "pm_common.h"
+#include "pm_ipi.h"
 
 /* default shutdown/reboot scope is system(2) */
 static unsigned int pm_shutdown_scope = PMF_SHUTDOWN_SUBTYPE_SYSTEM;

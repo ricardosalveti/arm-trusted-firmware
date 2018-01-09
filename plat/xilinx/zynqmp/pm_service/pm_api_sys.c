@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -633,11 +633,11 @@ enum pm_ret_status pm_secure_rsaaes(uint32_t address_low,
 void pm_get_callbackdata(uint32_t *data, size_t count)
 {
 	/* Return if interrupt is not from PMU */
-	if (!(pm_ipi_irq_status() & IPI_APU_IXR_PMU_0_MASK))
+	if (!pm_ipi_irq_status(primary_proc))
 		return;
 
 	pm_ipi_buff_read_callb(data, count);
-	pm_ipi_irq_clear();
+	pm_ipi_irq_clear(primary_proc);
 }
 
 enum pm_ret_status pm_sha_hash(uint32_t address_high,

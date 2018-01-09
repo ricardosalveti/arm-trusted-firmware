@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -222,7 +222,7 @@ int pm_setup(void)
 {
 	int status;
 
-	status = pm_ipi_init();
+	status = pm_ipi_init(primary_proc);
 	if (status) {
 		WARN("BL31: pm_ipi_init() failed\n");
 		goto err;
@@ -351,7 +351,7 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 		 * Even if we were wrong, it would not enable the IRQ in
 		 * the GIC.
 		 */
-		pm_ipi_irq_enable();
+		pm_ipi_irq_enable(primary_proc);
 		SMC_RET1(handle, (uint64_t)ret |
 			 ((uint64_t)pm_ctx.api_version << 32));
 

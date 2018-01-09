@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -45,13 +45,13 @@
 
 /**
  * pm_ipi - struct for capturing IPI-channel specific info
- * @mask	mask for enabling/disabling and triggering the IPI
- * @base	base address for IPI
+ * @apu_ipi_id	APU IPI agent ID
+ * @pmu_ipi_id	PMU Agent ID
  * @buffer_base	base address for payload buffer
  */
 struct pm_ipi {
-	const unsigned int mask;
-	const uintptr_t base;
+	const uint32_t apu_ipi_id;
+	const uint32_t pmu_ipi_id;
 	const uintptr_t buffer_base;
 };
 

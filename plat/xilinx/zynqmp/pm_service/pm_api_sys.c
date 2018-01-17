@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -665,4 +665,94 @@ enum pm_ret_status pm_rsa_core(uint32_t address_high,
 	PM_PACK_PAYLOAD5(payload, PM_SECURE_RSA, address_high, address_low,
 				 size, flags);
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+}
+
+/**
+ * pm_pinctrl_request() - Request Pin from firmware
+ * @pin		Pin number to request
+ *
+ * This function requests pin from firmware.
+ *
+ * @return	Returns status, either success or error+reason.
+ */
+enum pm_ret_status pm_pinctrl_request(unsigned int pin)
+{
+	return PM_RET_SUCCESS;
+}
+
+/**
+ * pm_pinctrl_release() - Release Pin from firmware
+ * @pin		Pin number to release
+ *
+ * This function releases pin from firmware.
+ *
+ * @return	Returns status, either success or error+reason.
+ */
+enum pm_ret_status pm_pinctrl_release(unsigned int pin)
+{
+	return PM_RET_SUCCESS;
+}
+
+/**
+ * pm_pinctrl_get_function() - Read function id set for the given pin
+ * @pin		Pin number
+ * @nid		Node ID of function currently set for given pin
+ *
+ * This function provides the function currently set for the given pin.
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_pinctrl_get_function(unsigned int pin,
+					   enum pm_node_id *nid)
+{
+	return PM_RET_SUCCESS;
+}
+
+/**
+ * pm_pinctrl_set_function() - Set function id set for the given pin
+ * @pin		Pin number
+ * @nid		Node ID of function to set for given pin
+ *
+ * This function provides the function currently set for the given pin.
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_pinctrl_set_function(unsigned int pin,
+					   enum pm_node_id nid)
+{
+	return PM_RET_SUCCESS;
+}
+
+/**
+ * pm_pinctrl_get_config() - Read value of requested config param for given pin
+ * @pin		Pin number
+ * @param	Parameter values to be read
+ * @value	Buffer for configuration Parameter value
+ *
+ * This function provides the configuration parameter value for the given pin.
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_pinctrl_get_config(unsigned int pin,
+					 unsigned int param,
+					 unsigned int *value)
+{
+	return PM_RET_SUCCESS;
+}
+
+/**
+ * pm_pinctrl_set_config() - Read value of requested config param for given pin
+ * @pin		Pin number
+ * @param	Parameter to set
+ * @value	Parameter value to set
+ *
+ * This function provides the configuration parameter value for the given pin.
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_pinctrl_set_config(unsigned int pin,
+					 unsigned int param,
+					 unsigned int value)
+{
+	return PM_RET_SUCCESS;
 }

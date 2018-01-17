@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -133,5 +133,17 @@ enum pm_ret_status pm_rsa_core(uint32_t address_high,
 				    uint32_t address_low,
 				    uint32_t size,
 				    uint32_t flags);
+enum pm_ret_status pm_pinctrl_request(unsigned int pin);
+enum pm_ret_status pm_pinctrl_release(unsigned int pin);
+enum pm_ret_status pm_pinctrl_get_function(unsigned int pin,
+					   unsigned int *value);
+enum pm_ret_status pm_pinctrl_set_function(unsigned int pin,
+					   unsigned int value);
+enum pm_ret_status pm_pinctrl_get_config(unsigned int pin,
+					 unsigned int param,
+					 unsigned int *value);
+enum pm_ret_status pm_pinctrl_set_config(unsigned int pin,
+					 unsigned int param,
+					 unsigned int value);
 
 #endif /* _PM_API_SYS_H_ */

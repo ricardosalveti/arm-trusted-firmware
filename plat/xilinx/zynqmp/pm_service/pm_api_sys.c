@@ -738,7 +738,7 @@ enum pm_ret_status pm_pinctrl_get_config(unsigned int pin,
 					 unsigned int param,
 					 unsigned int *value)
 {
-	return PM_RET_SUCCESS;
+	return pm_api_pinctrl_get_config(pin, param, value);
 }
 
 /**
@@ -755,5 +755,5 @@ enum pm_ret_status pm_pinctrl_set_config(unsigned int pin,
 					 unsigned int param,
 					 unsigned int value)
 {
-	return PM_RET_SUCCESS;
+	return pm_api_pinctrl_set_config(pin, param, value);
 }

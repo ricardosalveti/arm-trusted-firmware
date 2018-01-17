@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -211,5 +211,7 @@
 /* Access control register defines */
 #define ACTLR_EL3_L2ACTLR_BIT	(1 << 6)
 #define ACTLR_EL3_CPUACTLR_BIT	(1 << 0)
+
+#define IOU_SLCR_BASEADDR		0xFF180000
 
 #endif /* __ZYNQMP_DEF_H__ */

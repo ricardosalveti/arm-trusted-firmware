@@ -1,40 +1,17 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch.h>
 #include <arch_helpers.h>
 #include <assert.h>
 #include <bl_common.h>
-#include <debug.h>
 #include <context_mgmt.h>
+#include <debug.h>
 #include <platform.h>
+#include <pubsub_events.h>
 #include <stddef.h>
 #include "psci_private.h"
 
@@ -88,7 +65,20 @@ int psci_cpu_on_start(u_register_t target_cpu,
 	/*
 	 * Generic management: Ensure that the cpu is off to be
 	 * turned on.
+	 * Perform cache maintanence ahead of reading the target CPU state to
+	 * ensure that the data is not stale.
+	 * There is a theoretical edge case where the cache may contain stale
+	 * data for the target CPU data - this can occur under the following
+	 * conditions:
+	 * - the target CPU is in another cluster from the current
+	 * - the target CPU was the last CPU to shutdown on its cluster
+	 * - the cluster was removed from coherency as part of the CPU shutdown
+	 *
+	 * In this case the cache maintenace that was performed as part of the
+	 * target CPUs shutdown was not seen by the current CPU's cluster. And
+	 * so the cache may contain stale data for the target CPU.
 	 */
+	flush_cpu_data_by_index(target_idx, psci_svc_cpu_data.aff_info_state);
 	rc = cpu_on_validate_state(psci_get_aff_info_state_by_idx(target_idx));
 	if (rc != PSCI_E_SUCCESS)
 		goto exit;
@@ -165,10 +155,12 @@ void psci_cpu_on_finish(unsigned int cpu_idx,
 	 */
 	psci_plat_pm_ops->pwr_domain_on_finish(state_info);
 
+#if !(HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
 	/*
 	 * Arch. management: Enable data cache and manage stack memory
 	 */
 	psci_do_pwrup_cache_maintenance();
+#endif
 
 	/*
 	 * All the platform specific actions for turning this cpu
@@ -196,6 +188,8 @@ void psci_cpu_on_finish(unsigned int cpu_idx,
 	 */
 	if (psci_spd_pm && psci_spd_pm->svc_on_finish)
 		psci_spd_pm->svc_on_finish(0);
+
+	PUBLISH_EVENT(psci_cpu_on_finish);
 
 	/* Populate the mpidr field within the cpu node array */
 	/* This needs to be done only once */

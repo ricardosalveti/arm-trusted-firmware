@@ -1,31 +1,7 @@
 /*
- * Copyright (c) 2015-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch_helpers.h>
@@ -35,21 +11,15 @@
 #include <console.h>
 #include <debug.h>
 #include <desc_image_load.h>
+#include <generic_delay_timer.h>
+#ifdef SPD_opteed
+#include <optee_utils.h>
+#endif
 #include <plat_arm.h>
+#include <platform.h>
 #include <platform_def.h>
 #include <string.h>
-
-#if USE_COHERENT_MEM
-/*
- * The next 2 constants identify the extents of the coherent memory region.
- * These addresses are used by the MMU setup code and therefore they must be
- * page-aligned.  It is the responsibility of the linker script to ensure that
- * __COHERENT_RAM_START__ and __COHERENT_RAM_END__ linker symbols refer to
- * page-aligned addresses.
- */
-#define BL2_COHERENT_RAM_BASE (unsigned long)(&__COHERENT_RAM_START__)
-#define BL2_COHERENT_RAM_LIMIT (unsigned long)(&__COHERENT_RAM_END__)
-#endif
+#include <utils.h>
 
 /* Data structure which holds the extents of the trusted SRAM for BL2 */
 static meminfo_t bl2_tzram_layout __aligned(CACHE_WRITEBACK_GRANULE);
@@ -135,7 +105,7 @@ bl31_params_t *bl2_plat_get_bl31_params(void)
 	 * Initialise the memory for all the arguments that needs to
 	 * be passed to BL31
 	 */
-	memset(&bl31_params_mem, 0, sizeof(bl2_to_bl31_params_mem_t));
+	zeromem(&bl31_params_mem, sizeof(bl2_to_bl31_params_mem_t));
 
 	/* Assign memory for TF related information */
 	bl2_to_bl31_params = &bl31_params_mem.bl31_params;
@@ -213,6 +183,7 @@ void arm_bl2_early_platform_setup(meminfo_t *mem_layout)
 void bl2_early_platform_setup(meminfo_t *mem_layout)
 {
 	arm_bl2_early_platform_setup(mem_layout);
+	generic_delay_timer_init();
 }
 
 /*
@@ -222,6 +193,10 @@ void arm_bl2_platform_setup(void)
 {
 	/* Initialize the secure environment */
 	plat_arm_security_setup();
+
+#if defined(PLAT_ARM_MEM_PROT_ADDR)
+	arm_nor_psci_do_mem_protect();
+#endif
 }
 
 void bl2_platform_setup(void)
@@ -238,12 +213,12 @@ void arm_bl2_plat_arch_setup(void)
 	arm_setup_page_tables(bl2_tzram_layout.total_base,
 			      bl2_tzram_layout.total_size,
 			      BL_CODE_BASE,
-			      BL_CODE_LIMIT,
+			      BL_CODE_END,
 			      BL_RO_DATA_BASE,
-			      BL_RO_DATA_LIMIT
+			      BL_RO_DATA_END
 #if USE_COHERENT_MEM
-			      , BL2_COHERENT_RAM_BASE,
-			      BL2_COHERENT_RAM_LIMIT
+			      , BL_COHERENT_RAM_BASE,
+			      BL_COHERENT_RAM_END
 #endif
 			      );
 
@@ -260,19 +235,33 @@ void bl2_plat_arch_setup(void)
 }
 
 #if LOAD_IMAGE_V2
-/*******************************************************************************
- * This function can be used by the platforms to update/use image
- * information for given `image_id`.
- ******************************************************************************/
-int bl2_plat_handle_post_image_load(unsigned int image_id)
+int arm_bl2_handle_post_image_load(unsigned int image_id)
 {
 	int err = 0;
 	bl_mem_params_node_t *bl_mem_params = get_bl_mem_params_node(image_id);
+#ifdef SPD_opteed
+	bl_mem_params_node_t *pager_mem_params = NULL;
+	bl_mem_params_node_t *paged_mem_params = NULL;
+#endif
 	assert(bl_mem_params);
 
 	switch (image_id) {
 #ifdef AARCH64
 	case BL32_IMAGE_ID:
+#ifdef SPD_opteed
+		pager_mem_params = get_bl_mem_params_node(BL32_EXTRA1_IMAGE_ID);
+		assert(pager_mem_params);
+
+		paged_mem_params = get_bl_mem_params_node(BL32_EXTRA2_IMAGE_ID);
+		assert(paged_mem_params);
+
+		err = parse_optee_header(&bl_mem_params->ep_info,
+				&pager_mem_params->image_info,
+				&paged_mem_params->image_info);
+		if (err != 0) {
+			WARN("OPTEE header parse error.\n");
+		}
+#endif
 		bl_mem_params->ep_info.spsr = arm_get_spsr_for_bl32_entry();
 		break;
 #endif
@@ -295,6 +284,15 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 	}
 
 	return err;
+}
+
+/*******************************************************************************
+ * This function can be used by the platforms to update/use image
+ * information for given `image_id`.
+ ******************************************************************************/
+int bl2_plat_handle_post_image_load(unsigned int image_id)
+{
+	return arm_bl2_handle_post_image_load(image_id);
 }
 
 #else /* LOAD_IMAGE_V2 */

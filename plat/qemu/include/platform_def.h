@@ -1,31 +1,7 @@
 /*
  * Copyright (c) 2015-2016, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef __PLATFORM_DEF_H__
@@ -97,6 +73,10 @@
 #define SEC_DRAM_BASE			0x0e100000
 #define SEC_DRAM_SIZE			0x00f00000
 
+/* Load pageable part of OP-TEE 2MB above secure DRAM base */
+#define QEMU_OPTEE_PAGEABLE_LOAD_BASE	(SEC_DRAM_BASE + 0x00200000)
+#define QEMU_OPTEE_PAGEABLE_LOAD_SIZE	0x00400000
+
 /*
  * ARM-TF lives in SRAM, partition it here
  */
@@ -109,7 +89,8 @@
 #define PLAT_QEMU_HOLD_BASE		(PLAT_QEMU_TRUSTED_MAILBOX_BASE + 8)
 #define PLAT_QEMU_HOLD_SIZE		(PLATFORM_CORE_COUNT * \
 					 PLAT_QEMU_HOLD_ENTRY_SIZE)
-#define PLAT_QEMU_HOLD_ENTRY_SIZE	8
+#define PLAT_QEMU_HOLD_ENTRY_SHIFT	3
+#define PLAT_QEMU_HOLD_ENTRY_SIZE	(1 << PLAT_QEMU_HOLD_ENTRY_SHIFT)
 #define PLAT_QEMU_HOLD_STATE_WAIT	0
 #define PLAT_QEMU_HOLD_STATE_GO		1
 
@@ -175,11 +156,11 @@
 #else
 # error "Unsupported BL32_RAM_LOCATION_ID value"
 #endif
-#define BL32_SIZE			(BL32_LIMIT - BL32_BASE)
 
 #define NS_IMAGE_OFFSET			0x60000000
 
-#define ADDR_SPACE_SIZE			(1ull << 32)
+#define PLAT_PHY_ADDR_SPACE_SIZE	(1ull << 32)
+#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ull << 32)
 #define MAX_MMAP_REGIONS		8
 #define MAX_XLAT_TABLES			6
 #define MAX_IO_DEVICES			3

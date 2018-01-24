@@ -1,36 +1,14 @@
 /*
- * Copyright (c) 2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
+
+#include <arch_helpers.h>
 #include <assert.h>
 #include <console.h>
 #include <platform.h>
-#include <xlat_tables.h>
+#include <xlat_mmu_helpers.h>
 
 /*
  * The following platform setup functions are weakly defined. They
@@ -43,6 +21,11 @@
 #if !ERROR_DEPRECATED
 #pragma weak plat_get_syscnt_freq2
 #endif /* ERROR_DEPRECATED */
+
+#if SDEI_SUPPORT
+#pragma weak plat_sdei_handle_masked_trigger
+#pragma weak plat_sdei_validate_entry_point
+#endif
 
 void bl31_plat_enable_mmu(uint32_t flags)
 {
@@ -88,3 +71,22 @@ unsigned int plat_get_syscnt_freq2(void)
 	return (unsigned int)freq;
 }
 #endif /* ERROR_DEPRECATED */
+
+#if SDEI_SUPPORT
+/*
+ * Function that handles spurious SDEI interrupts while events are masked.
+ */
+void plat_sdei_handle_masked_trigger(uint64_t mpidr, unsigned int intr)
+{
+	WARN("Spurious SDEI interrupt %u on masked PE %lx\n", intr, mpidr);
+}
+
+/*
+ * Default Function to validate SDEI entry point, which returns success.
+ * Platforms may override this with their own validation mechanism.
+ */
+int plat_sdei_validate_entry_point(uintptr_t ep, unsigned int client_mode)
+{
+	return 0;
+}
+#endif

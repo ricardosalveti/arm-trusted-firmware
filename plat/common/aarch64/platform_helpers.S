@@ -1,31 +1,7 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch.h>
@@ -35,11 +11,14 @@
 	.weak	plat_report_exception
 	.weak	plat_crash_console_init
 	.weak	plat_crash_console_putc
+	.weak	plat_crash_console_flush
 	.weak	plat_reset_handler
 	.weak	plat_disable_acp
 	.weak	bl1_plat_prepare_exit
 	.weak	plat_error_handler
 	.weak	plat_panic_handler
+	.weak	bl2_plat_preload_setup
+	.weak	plat_try_next_boot_source
 
 #if !ENABLE_PLAT_COMPAT
 	.globl	platform_get_core_pos
@@ -98,6 +77,15 @@ endfunc plat_crash_console_putc
 
 	/* -----------------------------------------------------
 	 * Placeholder function which should be redefined by
+	 * each platform.
+	 * -----------------------------------------------------
+	 */
+func plat_crash_console_flush
+	ret
+endfunc plat_crash_console_flush
+
+	/* -----------------------------------------------------
+	 * Placeholder function which should be redefined by
 	 * each platform. This function should preserve x19 - x29.
 	 * -----------------------------------------------------
 	 */
@@ -143,3 +131,22 @@ func plat_panic_handler
 	wfi
 	b	plat_panic_handler
 endfunc plat_panic_handler
+
+	/* -----------------------------------------------------
+	 * Placeholder function which should be redefined by
+	 * each platfrom.
+	 * -----------------------------------------------------
+	 */
+func bl2_plat_preload_setup
+	ret
+endfunc bl2_plat_preload_setup
+
+	/* -----------------------------------------------------
+	 * Placeholder function which should be redefined by
+	 * each platfrom.
+	 * -----------------------------------------------------
+	 */
+func plat_try_next_boot_source
+	mov	x0, #0
+	ret
+endfunc plat_try_next_boot_source

@@ -1,31 +1,7 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch.h>
@@ -117,13 +93,7 @@ int psci_cpu_suspend(unsigned int power_state,
 		psci_set_cpu_local_state(cpu_pd_state);
 
 #if ENABLE_PSCI_STAT
-		/*
-		 * Capture time-stamp before CPU standby
-		 * No cache maintenance is needed as caches
-		 * are ON through out the CPU standby operation.
-		 */
-		PMF_CAPTURE_TIMESTAMP(psci_svc, PSCI_STAT_ID_ENTER_LOW_PWR,
-			PMF_NO_CACHE_MAINT);
+		plat_psci_stat_accounting_start(&state_info);
 #endif
 
 #if ENABLE_RUNTIME_INSTRUMENTATION
@@ -144,13 +114,10 @@ int psci_cpu_suspend(unsigned int power_state,
 #endif
 
 #if ENABLE_PSCI_STAT
-		/* Capture time-stamp after CPU standby */
-		PMF_CAPTURE_TIMESTAMP(psci_svc, PSCI_STAT_ID_EXIT_LOW_PWR,
-			PMF_NO_CACHE_MAINT);
+		plat_psci_stat_accounting_stop(&state_info);
 
 		/* Update PSCI stats */
-		psci_stats_update_pwr_up(PSCI_CPU_PWR_LVL, &state_info,
-			PMF_NO_CACHE_MAINT);
+		psci_stats_update_pwr_up(PSCI_CPU_PWR_LVL, &state_info);
 #endif
 
 		return PSCI_E_SUCCESS;
@@ -242,7 +209,7 @@ int psci_cpu_off(void)
 int psci_affinity_info(u_register_t target_affinity,
 		       unsigned int lowest_affinity_level)
 {
-	unsigned int target_idx;
+	int target_idx;
 
 	/* We dont support level higher than PSCI_CPU_PWR_LVL */
 	if (lowest_affinity_level > PSCI_CPU_PWR_LVL)
@@ -252,6 +219,23 @@ int psci_affinity_info(u_register_t target_affinity,
 	target_idx = plat_core_pos_by_mpidr(target_affinity);
 	if (target_idx == -1)
 		return PSCI_E_INVALID_PARAMS;
+
+	/*
+	 * Generic management:
+	 * Perform cache maintanence ahead of reading the target CPU state to
+	 * ensure that the data is not stale.
+	 * There is a theoretical edge case where the cache may contain stale
+	 * data for the target CPU data - this can occur under the following
+	 * conditions:
+	 * - the target CPU is in another cluster from the current
+	 * - the target CPU was the last CPU to shutdown on its cluster
+	 * - the cluster was removed from coherency as part of the CPU shutdown
+	 *
+	 * In this case the cache maintenace that was performed as part of the
+	 * target CPUs shutdown was not seen by the current CPU's cluster. And
+	 * so the cache may contain stale data for the target CPU.
+	 */
+	flush_cpu_data_by_index(target_idx, psci_svc_cpu_data.aff_info_state);
 
 	return psci_get_aff_info_state_by_idx(target_idx);
 }
@@ -441,6 +425,15 @@ u_register_t psci_smc_handler(uint32_t smc_fid,
 		case PSCI_STAT_COUNT_AARCH32:
 			return psci_stat_count(x1, x2);
 #endif
+		case PSCI_MEM_PROTECT:
+			return psci_mem_protect(x1);
+
+		case PSCI_MEM_CHK_RANGE_AARCH32:
+			return psci_mem_chk_range(x1, x2);
+
+		case PSCI_SYSTEM_RESET2_AARCH32:
+			/* We should never return from psci_system_reset2() */
+			return psci_system_reset2(x1, x2);
 
 		default:
 			break;
@@ -477,6 +470,13 @@ u_register_t psci_smc_handler(uint32_t smc_fid,
 		case PSCI_STAT_COUNT_AARCH64:
 			return psci_stat_count(x1, x2);
 #endif
+
+		case PSCI_MEM_CHK_RANGE_AARCH64:
+			return psci_mem_chk_range(x1, x2);
+
+		case PSCI_SYSTEM_RESET2_AARCH64:
+			/* We should never return from psci_system_reset2() */
+			return psci_system_reset2(x1, x2);
 
 		default:
 			break;

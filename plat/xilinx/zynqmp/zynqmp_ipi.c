@@ -129,7 +129,7 @@ const static struct zynqmp_ipi_config zynqmp_ipi_table[] = {
  * @local  - local IPI ID
  * @remote - remote IPI ID
  *
- * return - 1 within range, 0 if not
+ * return - 1 if within range, 0 if not
  */
 static inline int is_ipi_mb_within_range(uint32_t local, uint32_t remote)
 {

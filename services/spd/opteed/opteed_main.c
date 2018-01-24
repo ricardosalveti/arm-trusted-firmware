@@ -1,31 +1,7 @@
 /*
- * Copyright (c) 2013-2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 
@@ -40,8 +16,8 @@
  ******************************************************************************/
 #include <arch_helpers.h>
 #include <assert.h>
-#include <bl_common.h>
 #include <bl31.h>
+#include <bl_common.h>
 #include <context_mgmt.h>
 #include <debug.h>
 #include <errno.h>
@@ -50,8 +26,9 @@
 #include <stddef.h>
 #include <uuid.h>
 #include "opteed_private.h"
-#include "teesmc_opteed_macros.h"
 #include "teesmc_opteed.h"
+#include "teesmc_opteed_macros.h"
+
 
 /*******************************************************************************
  * Address of the entrypoint vector table in OPTEE. It is
@@ -64,8 +41,6 @@ optee_vectors_t *optee_vectors;
  ******************************************************************************/
 optee_context_t opteed_sp_context[OPTEED_CORE_COUNT];
 uint32_t opteed_rw;
-
-
 
 static int32_t opteed_init(void);
 
@@ -119,6 +94,9 @@ int32_t opteed_setup(void)
 {
 	entry_point_info_t *optee_ep_info;
 	uint32_t linear_id;
+	uint64_t opteed_pageable_part;
+	uint64_t opteed_mem_limit;
+	uint64_t dt_addr;
 
 	linear_id = plat_my_core_pos();
 
@@ -143,15 +121,17 @@ int32_t opteed_setup(void)
 	if (!optee_ep_info->pc)
 		return 1;
 
-	/*
-	 * We could inspect the SP image and determine it's execution
-	 * state i.e whether AArch32 or AArch64. Assuming it's AArch32
-	 * for the time being.
-	 */
-	opteed_rw = OPTEE_AARCH64;
+	opteed_rw = optee_ep_info->args.arg0;
+	opteed_pageable_part = optee_ep_info->args.arg1;
+	opteed_mem_limit = optee_ep_info->args.arg2;
+	dt_addr = optee_ep_info->args.arg3;
+
 	opteed_init_optee_ep_state(optee_ep_info,
 				opteed_rw,
 				optee_ep_info->pc,
+				opteed_pageable_part,
+				opteed_mem_limit,
+				dt_addr,
 				&opteed_sp_context[linear_id]);
 
 	/*
@@ -259,7 +239,7 @@ uint64_t opteed_smc_handler(uint32_t smc_fid,
 					&optee_vectors->fast_smc_entry);
 		} else {
 			cm_set_elr_el3(SECURE, (uint64_t)
-					&optee_vectors->std_smc_entry);
+					&optee_vectors->yield_smc_entry);
 		}
 
 		cm_el1_sysregs_context_restore(SECURE);
@@ -425,13 +405,13 @@ DECLARE_RT_SVC(
 	opteed_smc_handler
 );
 
-/* Define an OPTEED runtime service descriptor for standard SMC calls */
+/* Define an OPTEED runtime service descriptor for yielding SMC calls */
 DECLARE_RT_SVC(
 	opteed_std,
 
 	OEN_TOS_START,
 	OEN_TOS_END,
-	SMC_TYPE_STD,
+	SMC_TYPE_YIELD,
 	NULL,
 	opteed_smc_handler
 );

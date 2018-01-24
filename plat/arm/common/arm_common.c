@@ -1,40 +1,17 @@
 /*
- * Copyright (c) 2015-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 #include <arch.h>
 #include <arch_helpers.h>
+#include <arm_xlat_tables.h>
 #include <assert.h>
 #include <debug.h>
 #include <mmio.h>
 #include <plat_arm.h>
 #include <platform_def.h>
-#include <xlat_tables.h>
+#include <secure_partition.h>
 
 extern const mmap_region_t plat_arm_mmap[];
 
@@ -103,6 +80,14 @@ void arm_setup_page_tables(uintptr_t total_base,
 			MT_DEVICE | MT_RW | MT_SECURE);
 #endif
 
+#if ENABLE_SPM && defined(IMAGE_BL31)
+	/* The address of the following region is calculated by the linker. */
+	mmap_add_region(SP_IMAGE_XLAT_TABLES_START,
+			SP_IMAGE_XLAT_TABLES_START,
+			SP_IMAGE_XLAT_TABLES_SIZE,
+			MT_MEMORY | MT_RW | MT_SECURE);
+#endif
+
 	/* Now (re-)map the platform-specific memory regions */
 	mmap_add(plat_arm_get_mmap());
 
@@ -137,15 +122,11 @@ uint32_t arm_get_spsr_for_bl32_entry(void)
 #ifndef AARCH32
 uint32_t arm_get_spsr_for_bl33_entry(void)
 {
-	unsigned long el_status;
 	unsigned int mode;
 	uint32_t spsr;
 
 	/* Figure out what mode we enter the non-secure world in */
-	el_status = read_id_aa64pfr0_el1() >> ID_AA64PFR0_EL2_SHIFT;
-	el_status &= ID_AA64PFR0_ELX_MASK;
-
-	mode = (el_status) ? MODE_EL2 : MODE_EL1;
+	mode = EL_IMPLEMENTED(2) ? MODE_EL2 : MODE_EL1;
 
 	/*
 	 * TODO: Consider the possibility of specifying the SPSR in
@@ -223,3 +204,51 @@ unsigned int plat_get_syscnt_freq2(void)
 }
 
 #endif /* ARM_SYS_CNTCTL_BASE */
+
+#if SDEI_SUPPORT
+/*
+ * Translate SDEI entry point to PA, and perform standard ARM entry point
+ * validation on it.
+ */
+int plat_sdei_validate_entry_point(uintptr_t ep, unsigned int client_mode)
+{
+	uint64_t par, pa;
+	uint32_t scr_el3;
+
+	/* Doing Non-secure address translation requires SCR_EL3.NS set */
+	scr_el3 = read_scr_el3();
+	write_scr_el3(scr_el3 | SCR_NS_BIT);
+	isb();
+
+	assert((client_mode == MODE_EL2) || (client_mode == MODE_EL1));
+	if (client_mode == MODE_EL2) {
+		/*
+		 * Translate entry point to Physical Address using the EL2
+		 * translation regime.
+		 */
+		ats1e2r(ep);
+	} else {
+		/*
+		 * Translate entry point to Physical Address using the EL1&0
+		 * translation regime, including stage 2.
+		 */
+		ats12e1r(ep);
+	}
+	isb();
+	par = read_par_el1();
+
+	/* Restore original SCRL_EL3 */
+	write_scr_el3(scr_el3);
+	isb();
+
+	/* If the translation resulted in fault, return failure */
+	if ((par & PAR_F_MASK) != 0)
+		return -1;
+
+	/* Extract Physical Address from PAR */
+	pa = (par & (PAR_ADDR_MASK << PAR_ADDR_SHIFT));
+
+	/* Perform NS entry point validation on the physical address */
+	return arm_validate_ns_entrypoint(pa);
+}
+#endif

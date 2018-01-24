@@ -1,35 +1,14 @@
 /*
- * Copyright (c) 2014-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef __CPU_DATA_H__
 #define __CPU_DATA_H__
+
+#include <ehf.h>
+#include <platform_def.h>	/* CACHE_WRITEBACK_GRANULE required */
 
 #ifdef AARCH32
 
@@ -37,6 +16,7 @@
 #error "Crash reporting is not supported in AArch32"
 #endif
 #define CPU_DATA_CPU_OPS_PTR		0x0
+#define CPU_DATA_CRASH_BUF_OFFSET	0x4
 
 #else /* AARCH32 */
 
@@ -49,13 +29,17 @@
 #endif /* AARCH32 */
 
 #if CRASH_REPORTING
-#define CPU_DATA_LOG2SIZE		7
 #define CPU_DATA_CRASH_BUF_END		(CPU_DATA_CRASH_BUF_OFFSET + \
 						CPU_DATA_CRASH_BUF_SIZE)
 #else
-#define CPU_DATA_LOG2SIZE		6
 #define CPU_DATA_CRASH_BUF_END		CPU_DATA_CRASH_BUF_OFFSET
 #endif
+
+/* cpu_data size is the data size rounded up to the platform cache line size */
+#define CPU_DATA_SIZE			(((CPU_DATA_CRASH_BUF_END + \
+					CACHE_WRITEBACK_GRANULE - 1) / \
+						CACHE_WRITEBACK_GRANULE) * \
+							CACHE_WRITEBACK_GRANULE)
 
 #if ENABLE_RUNTIME_INSTRUMENTATION
 /* Temporary space to store PMF timestamps from assembly code */
@@ -113,6 +97,9 @@ typedef struct cpu_data {
 #if PLAT_PCPU_DATA_SIZE
 	uint8_t platform_cpu_data[PLAT_PCPU_DATA_SIZE];
 #endif
+#if defined(IMAGE_BL31) && EL3_EXCEPTION_HANDLING
+	pe_exc_data_t ehf_data;
+#endif
 } __aligned(CACHE_WRITEBACK_GRANULE) cpu_data_t;
 
 #if CRASH_REPORTING
@@ -122,8 +109,8 @@ CASSERT(CPU_DATA_CRASH_BUF_OFFSET == __builtin_offsetof
 	assert_cpu_data_crash_stack_offset_mismatch);
 #endif
 
-CASSERT((1 << CPU_DATA_LOG2SIZE) == sizeof(cpu_data_t),
-	assert_cpu_data_log2size_mismatch);
+CASSERT(CPU_DATA_SIZE == sizeof(cpu_data_t),
+		assert_cpu_data_size_mismatch);
 
 CASSERT(CPU_DATA_CPU_OPS_PTR == __builtin_offsetof
 		(cpu_data_t, cpu_ops_ptr),
@@ -158,17 +145,17 @@ void init_cpu_ops(void);
 #define set_cpu_data(_m, _v)		   _cpu_data()->_m = _v
 #define get_cpu_data_by_index(_ix, _m)	   _cpu_data_by_index(_ix)->_m
 #define set_cpu_data_by_index(_ix, _m, _v) _cpu_data_by_index(_ix)->_m = _v
-
+/* ((cpu_data_t *)0)->_m is a dummy to get the sizeof the struct member _m */
 #define flush_cpu_data(_m)	   flush_dcache_range((uintptr_t)	  \
-						      &(_cpu_data()->_m), \
-						      sizeof(_cpu_data()->_m))
+						&(_cpu_data()->_m), \
+						sizeof(((cpu_data_t *)0)->_m))
 #define inv_cpu_data(_m)	   inv_dcache_range((uintptr_t)	  	  \
-						      &(_cpu_data()->_m), \
-						      sizeof(_cpu_data()->_m))
+						&(_cpu_data()->_m), \
+						sizeof(((cpu_data_t *)0)->_m))
 #define flush_cpu_data_by_index(_ix, _m)	\
 				   flush_dcache_range((uintptr_t)	  \
 					 &(_cpu_data_by_index(_ix)->_m),  \
-					 sizeof(_cpu_data_by_index(_ix)->_m))
+						sizeof(((cpu_data_t *)0)->_m))
 
 
 #endif /* __ASSEMBLY__ */

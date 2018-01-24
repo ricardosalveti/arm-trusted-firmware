@@ -27,8 +27,6 @@
 #define PARENT_CLK_EXTERNAL	5
 #define PARENT_CLK_MIO0_MIO77	6
 
-#define BIT(nr)			(1U << (nr))
-
 #define CLK_SET_RATE_GATE	BIT(0) /* must be gated across rate change */
 #define CLK_SET_PARENT_GATE	BIT(1) /* must be gated across re-parent */
 #define CLK_SET_RATE_PARENT	BIT(2) /* propagate rate change up one level */

@@ -1,35 +1,12 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arm_sip_svc.h>
 #include <debug.h>
+#include <plat_arm.h>
 #include <pmf.h>
 #include <runtime_svc.h>
 #include <stdint.h>
@@ -60,6 +37,8 @@ static uintptr_t arm_sip_handler(unsigned int smc_fid,
 			void *handle,
 			u_register_t flags)
 {
+	int call_count = 0;
+
 	/*
 	 * Dispatch PMF calls to PMF SMC handler and return its return
 	 * value
@@ -70,12 +49,34 @@ static uintptr_t arm_sip_handler(unsigned int smc_fid,
 	}
 
 	switch (smc_fid) {
-	case ARM_SIP_SVC_CALL_COUNT:
+	case ARM_SIP_SVC_EXE_STATE_SWITCH: {
+		u_register_t pc;
+
+		/* Allow calls from non-secure only */
+		if (!is_caller_non_secure(flags))
+			SMC_RET1(handle, STATE_SW_E_DENIED);
+
+		/* Validate supplied entry point */
+		pc = (u_register_t) ((x1 << 32) | (uint32_t) x2);
+		if (arm_validate_ns_entrypoint(pc))
+			SMC_RET1(handle, STATE_SW_E_PARAM);
+
 		/*
-		 * Return the number of SiP Service Calls. PMF is the only
-		 * SiP service implemented; so return number of PMF calls
+		 * Pointers used in execution state switch are all 32 bits wide
 		 */
-		SMC_RET1(handle, PMF_NUM_SMC_CALLS);
+		return arm_execution_state_switch(smc_fid, (uint32_t) x1,
+				(uint32_t) x2, (uint32_t) x3, (uint32_t) x4,
+				handle);
+		}
+
+	case ARM_SIP_SVC_CALL_COUNT:
+		/* PMF calls */
+		call_count += PMF_NUM_SMC_CALLS;
+
+		/* State switch call */
+		call_count += 1;
+
+		SMC_RET1(handle, call_count);
 
 	case ARM_SIP_SVC_UID:
 		/* Return UID to the caller */

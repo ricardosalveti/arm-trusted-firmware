@@ -79,7 +79,7 @@
 			  (id) == CLK_IOPLL_INT ||	\
 			  (id) == CLK_RPLL_INT) ? 1 : 0)
 
-#define PLLCTRL_BP_MASK				BIT(3)
+#define PLLCTRL_BP_MASK				(1 << 3)
 #define PLLCTRL_RESET_MASK			1
 #define PLL_FRAC_OFFSET				8
 #define PLL_FRAC_MODE				1

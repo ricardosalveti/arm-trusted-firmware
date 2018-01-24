@@ -1,43 +1,25 @@
 /*
- * Copyright (c) 2015, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <auth_mod.h>
 #include <platform_def.h>
-#include <platform_oid.h>
 #include <stddef.h>
+
+#if USE_TBBR_DEFS
+#include <tbbr_oid.h>
+#else
+#include <platform_oid.h>
+#endif
+
 
 /*
  * Maximum key and hash sizes (in DER format)
  */
 #define PK_DER_LEN			294
-#define HASH_DER_LEN			51
+#define HASH_DER_LEN			83
 
 /*
  * The platform must allocate buffers to store the authentication parameters
@@ -48,6 +30,8 @@ static unsigned char tb_fw_hash_buf[HASH_DER_LEN];
 static unsigned char scp_fw_hash_buf[HASH_DER_LEN];
 static unsigned char soc_fw_hash_buf[HASH_DER_LEN];
 static unsigned char tos_fw_hash_buf[HASH_DER_LEN];
+static unsigned char tos_fw_extra1_hash_buf[HASH_DER_LEN];
+static unsigned char tos_fw_extra2_hash_buf[HASH_DER_LEN];
 static unsigned char nt_world_bl_hash_buf[HASH_DER_LEN];
 static unsigned char trusted_world_pk_buf[PK_DER_LEN];
 static unsigned char non_trusted_world_pk_buf[PK_DER_LEN];
@@ -92,6 +76,10 @@ static auth_param_type_desc_t soc_fw_hash = AUTH_PARAM_TYPE_DESC(
 		AUTH_PARAM_HASH, SOC_AP_FW_HASH_OID);
 static auth_param_type_desc_t tos_fw_hash = AUTH_PARAM_TYPE_DESC(
 		AUTH_PARAM_HASH, TRUSTED_OS_FW_HASH_OID);
+static auth_param_type_desc_t tos_fw_extra1_hash = AUTH_PARAM_TYPE_DESC(
+		AUTH_PARAM_HASH, TRUSTED_OS_FW_EXTRA1_HASH_OID);
+static auth_param_type_desc_t tos_fw_extra2_hash = AUTH_PARAM_TYPE_DESC(
+		AUTH_PARAM_HASH, TRUSTED_OS_FW_EXTRA2_HASH_OID);
 static auth_param_type_desc_t nt_world_bl_hash = AUTH_PARAM_TYPE_DESC(
 		AUTH_PARAM_HASH, NON_TRUSTED_WORLD_BOOTLOADER_HASH_OID);
 static auth_param_type_desc_t scp_bl2u_hash = AUTH_PARAM_TYPE_DESC(
@@ -422,6 +410,20 @@ static const auth_img_desc_t cot_desc[] = {
 					.ptr = (void *)tos_fw_hash_buf,
 					.len = (unsigned int)HASH_DER_LEN
 				}
+			},
+			[1] = {
+				.type_desc = &tos_fw_extra1_hash,
+				.data = {
+					.ptr = (void *)tos_fw_extra1_hash_buf,
+					.len = (unsigned int)HASH_DER_LEN
+				}
+			},
+			[2] = {
+				.type_desc = &tos_fw_extra2_hash,
+				.data = {
+					.ptr = (void *)tos_fw_extra2_hash_buf,
+					.len = (unsigned int)HASH_DER_LEN
+				}
 			}
 		}
 	},
@@ -435,6 +437,34 @@ static const auth_img_desc_t cot_desc[] = {
 				.param.hash = {
 					.data = &raw_data,
 					.hash = &tos_fw_hash,
+				}
+			}
+		}
+	},
+	[BL32_EXTRA1_IMAGE_ID] = {
+		.img_id = BL32_EXTRA1_IMAGE_ID,
+		.img_type = IMG_RAW,
+		.parent = &cot_desc[TRUSTED_OS_FW_CONTENT_CERT_ID],
+		.img_auth_methods = {
+			[0] = {
+				.type = AUTH_METHOD_HASH,
+				.param.hash = {
+					.data = &raw_data,
+					.hash = &tos_fw_extra1_hash,
+				}
+			}
+		}
+	},
+	[BL32_EXTRA2_IMAGE_ID] = {
+		.img_id = BL32_EXTRA2_IMAGE_ID,
+		.img_type = IMG_RAW,
+		.parent = &cot_desc[TRUSTED_OS_FW_CONTENT_CERT_ID],
+		.img_auth_methods = {
+			[0] = {
+				.type = AUTH_METHOD_HASH,
+				.param.hash = {
+					.data = &raw_data,
+					.hash = &tos_fw_extra2_hash,
 				}
 			}
 		}

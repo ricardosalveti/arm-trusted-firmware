@@ -1,31 +1,7 @@
 /*
  * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch.h>
@@ -37,6 +13,26 @@
 #include <runtime_svc.h>
 
 	.globl	runtime_exceptions
+
+	.globl	sync_exception_sp_el0
+	.globl	irq_sp_el0
+	.globl	fiq_sp_el0
+	.globl	serror_sp_el0
+
+	.globl	sync_exception_sp_elx
+	.globl	irq_sp_elx
+	.globl	fiq_sp_elx
+	.globl	serror_sp_elx
+
+	.globl	sync_exception_aarch64
+	.globl	irq_aarch64
+	.globl	fiq_aarch64
+	.globl	serror_aarch64
+
+	.globl	sync_exception_aarch32
+	.globl	irq_aarch32
+	.globl	fiq_aarch32
+	.globl	serror_aarch32
 
 	/* ---------------------------------------------------------------------
 	 * This macro handles Synchronous exceptions.
@@ -73,7 +69,8 @@
 	b.eq	smc_handler64
 
 	/* Other kinds of synchronous exceptions are not handled */
-	bl	report_unhandled_exception
+	ldr	x30, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_LR]
+	b	report_unhandled_exception
 	.endm
 
 
@@ -176,7 +173,7 @@ vector_base runtime_exceptions
 	 */
 vector_entry sync_exception_sp_el0
 	/* We don't expect any synchronous exceptions from EL3 */
-	bl	report_unhandled_exception
+	b	report_unhandled_exception
 	check_vector_size sync_exception_sp_el0
 
 vector_entry irq_sp_el0
@@ -184,17 +181,17 @@ vector_entry irq_sp_el0
 	 * EL3 code is non-reentrant. Any asynchronous exception is a serious
 	 * error. Loop infinitely.
 	 */
-	bl	report_unhandled_interrupt
+	b	report_unhandled_interrupt
 	check_vector_size irq_sp_el0
 
 
 vector_entry fiq_sp_el0
-	bl	report_unhandled_interrupt
+	b	report_unhandled_interrupt
 	check_vector_size fiq_sp_el0
 
 
 vector_entry serror_sp_el0
-	bl	report_unhandled_exception
+	b	report_unhandled_exception
 	check_vector_size serror_sp_el0
 
 	/* ---------------------------------------------------------------------
@@ -208,19 +205,19 @@ vector_entry sync_exception_sp_elx
 	 * synchronous exception. There is a high probability that SP_EL3 is
 	 * corrupted.
 	 */
-	bl	report_unhandled_exception
+	b	report_unhandled_exception
 	check_vector_size sync_exception_sp_elx
 
 vector_entry irq_sp_elx
-	bl	report_unhandled_interrupt
+	b	report_unhandled_interrupt
 	check_vector_size irq_sp_elx
 
 vector_entry fiq_sp_elx
-	bl	report_unhandled_interrupt
+	b	report_unhandled_interrupt
 	check_vector_size fiq_sp_elx
 
 vector_entry serror_sp_elx
-	bl	report_unhandled_exception
+	b	report_unhandled_exception
 	check_vector_size serror_sp_elx
 
 	/* ---------------------------------------------------------------------
@@ -250,7 +247,7 @@ vector_entry serror_aarch64
 	 * SError exceptions from lower ELs are not currently supported.
 	 * Report their occurrence.
 	 */
-	bl	report_unhandled_exception
+	b	report_unhandled_exception
 	check_vector_size serror_aarch64
 
 	/* ---------------------------------------------------------------------
@@ -280,7 +277,7 @@ vector_entry serror_aarch32
 	 * SError exceptions from lower ELs are not currently supported.
 	 * Report their occurrence.
 	 */
-	bl	report_unhandled_exception
+	b	report_unhandled_exception
 	check_vector_size serror_aarch32
 
 
@@ -415,5 +412,5 @@ smc_prohibited:
 rt_svc_fw_critical_error:
 	/* Switch to SP_ELx */
 	msr	spsel, #1
-	bl	report_unhandled_exception
+	no_ret	report_unhandled_exception
 endfunc smc_handler

@@ -1,43 +1,20 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * Neither the name of ARM nor the names of its contributors may be used
- * to endorse or promote products derived from this software without specific
- * prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <assert.h>
-#include <bl_common.h>
 #include <arch.h>
 #include <arch_helpers.h>
+#include <assert.h>
+#include <bl_common.h>
 #include <context.h>
 #include <context_mgmt.h>
 #include <cpu_data.h>
 #include <debug.h>
 #include <platform.h>
 #include <pmf.h>
+#include <pubsub_events.h>
 #include <runtime_instr.h>
 #include <stddef.h>
 #include "psci_private.h"
@@ -60,6 +37,11 @@ static void psci_suspend_to_standby_finisher(unsigned int cpu_idx,
 	 * state as a result of state coordination amongst other CPUs post wfi.
 	 */
 	psci_get_target_local_pwr_states(end_pwrlvl, &state_info);
+
+#if ENABLE_PSCI_STAT
+	plat_psci_stat_accounting_stop(&state_info);
+	psci_stats_update_pwr_up(end_pwrlvl, &state_info);
+#endif
 
 	/*
 	 * Plat. management: Allow the platform to do operations
@@ -87,14 +69,16 @@ static void psci_suspend_to_pwrdown_start(unsigned int end_pwrlvl,
 {
 	unsigned int max_off_lvl = psci_find_max_off_lvl(state_info);
 
+	PUBLISH_EVENT(psci_suspend_pwrdown_start);
+
 	/* Save PSCI target power level for the suspend finisher handler */
 	psci_set_suspend_pwrlvl(end_pwrlvl);
 
 	/*
-	 * Flush the target power level as it will be accessed on power up with
+	 * Flush the target power level as it might be accessed on power up with
 	 * Data cache disabled.
 	 */
-	flush_cpu_data(psci_svc_cpu_data.target_pwrlvl);
+	psci_flush_cpu_data(psci_svc_cpu_data.target_pwrlvl);
 
 	/*
 	 * Call the cpu suspend handler registered by the Secure Payload
@@ -104,19 +88,45 @@ static void psci_suspend_to_pwrdown_start(unsigned int end_pwrlvl,
 	if (psci_spd_pm && psci_spd_pm->svc_suspend)
 		psci_spd_pm->svc_suspend(max_off_lvl);
 
+#if !HW_ASSISTED_COHERENCY
+	/*
+	 * Plat. management: Allow the platform to perform any early
+	 * actions required to power down the CPU. This might be useful for
+	 * HW_ASSISTED_COHERENCY = 0 platforms that can safely perform these
+	 * actions with data caches enabled.
+	 */
+	if (psci_plat_pm_ops->pwr_domain_suspend_pwrdown_early)
+		psci_plat_pm_ops->pwr_domain_suspend_pwrdown_early(state_info);
+#endif
+
 	/*
 	 * Store the re-entry information for the non-secure world.
 	 */
 	cm_init_my_context(ep);
 
+#if ENABLE_RUNTIME_INSTRUMENTATION
+
 	/*
-	 * Arch. management. Perform the necessary steps to flush all
-	 * cpu caches. Currently we assume that the power level correspond
-	 * the cache level.
+	 * Flush cache line so that even if CPU power down happens
+	 * the timestamp update is reflected in memory.
+	 */
+	PMF_CAPTURE_TIMESTAMP(rt_instr_svc,
+		RT_INSTR_ENTER_CFLUSH,
+		PMF_CACHE_MAINT);
+#endif
+
+	/*
+	 * Arch. management. Initiate power down sequence.
 	 * TODO : Introduce a mechanism to query the cache level to flush
 	 * and the cpu-ops power down to perform from the platform.
 	 */
-	psci_do_pwrdown_cache_maintenance(max_off_lvl);
+	psci_do_pwrdown_sequence(max_off_lvl);
+
+#if ENABLE_RUNTIME_INSTRUMENTATION
+	PMF_CAPTURE_TIMESTAMP(rt_instr_svc,
+		RT_INSTR_EXIT_CFLUSH,
+		PMF_NO_CACHE_MAINT);
+#endif
 }
 
 /*******************************************************************************
@@ -194,13 +204,7 @@ void psci_cpu_suspend_start(entry_point_info_t *ep,
 	psci_plat_pm_ops->pwr_domain_suspend(state_info);
 
 #if ENABLE_PSCI_STAT
-	/*
-	 * Capture time-stamp while entering low power state.
-	 * No cache maintenance needed because caches are off
-	 * and writes are direct to main memory.
-	 */
-	PMF_CAPTURE_TIMESTAMP(psci_svc, PSCI_STAT_ID_ENTER_LOW_PWR,
-		PMF_NO_CACHE_MAINT);
+	plat_psci_stat_accounting_start(state_info);
 #endif
 
 exit:
@@ -284,12 +288,10 @@ void psci_cpu_suspend_finish(unsigned int cpu_idx,
 	 */
 	psci_plat_pm_ops->pwr_domain_suspend_finish(state_info);
 
-	/*
-	 * Arch. management: Enable the data cache, manage stack memory and
-	 * restore the stashed EL3 architectural context from the 'cpu_context'
-	 * structure for this cpu.
-	 */
+#if !(HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
+	/* Arch. management: Enable the data cache, stack memory maintenance. */
 	psci_do_pwrup_cache_maintenance();
+#endif
 
 	/* Re-init the cntfrq_el0 register */
 	counter_freq = plat_get_syscnt_freq2();
@@ -300,7 +302,7 @@ void psci_cpu_suspend_finish(unsigned int cpu_idx,
 	 * Dispatcher to let it do any bookeeping. If the handler encounters an
 	 * error, it's expected to assert within
 	 */
-	if (psci_spd_pm && psci_spd_pm->svc_suspend) {
+	if (psci_spd_pm && psci_spd_pm->svc_suspend_finish) {
 		max_off_lvl = psci_find_max_off_lvl(state_info);
 		assert (max_off_lvl != PSCI_INVALID_PWR_LVL);
 		psci_spd_pm->svc_suspend_finish(max_off_lvl);
@@ -308,6 +310,8 @@ void psci_cpu_suspend_finish(unsigned int cpu_idx,
 
 	/* Invalidate the suspend level for the cpu */
 	psci_set_suspend_pwrlvl(PSCI_INVALID_PWR_LVL);
+
+	PUBLISH_EVENT(psci_suspend_pwrdown_finish);
 
 	/*
 	 * Generic management: Now we just need to retrieve the

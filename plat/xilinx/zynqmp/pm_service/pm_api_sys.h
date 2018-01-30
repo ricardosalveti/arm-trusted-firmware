@@ -108,7 +108,6 @@ enum pm_ret_status pm_secure_rsaaes(uint32_t address_high,
 				    uint32_t size,
 				    uint32_t flags);
 
-void pm_get_callbackdata(uint32_t *data, size_t count);
 unsigned int pm_get_shutdown_scope();
 enum pm_ret_status pm_sha_hash(uint32_t address_high,
 				    uint32_t address_low,

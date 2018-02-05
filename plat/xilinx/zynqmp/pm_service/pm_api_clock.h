@@ -290,9 +290,9 @@ enum pm_ret_status pm_api_clock_setdivider(unsigned int clock_id,
 enum pm_ret_status pm_api_clock_getdivider(unsigned int clock_id,
 					   unsigned int *divider);
 enum pm_ret_status pm_api_clock_setrate(unsigned int clock_id,
-					unsigned int rate);
+					uint64_t rate);
 enum pm_ret_status pm_api_clock_getrate(unsigned int clock_id,
-					unsigned int *rate);
+					uint64_t *rate);
 enum pm_ret_status pm_api_clock_setparent(unsigned int clock_id,
 					  unsigned int parent_idx);
 enum pm_ret_status pm_api_clock_getparent(unsigned int clock_id,

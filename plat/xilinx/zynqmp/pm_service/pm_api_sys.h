@@ -161,4 +161,11 @@ enum pm_ret_status pm_query_data(enum pm_query_id qid,
 				 unsigned int arg2,
 				 unsigned int arg3,
 				 unsigned int *data);
+
+enum pm_ret_status pm_secure_image(uint32_t address_low,
+				   uint32_t address_high,
+				   uint32_t key_lo,
+				   uint32_t key_hi,
+				   uint32_t *value);
+
 #endif /* _PM_API_SYS_H_ */

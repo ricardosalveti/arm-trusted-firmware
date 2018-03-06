@@ -200,7 +200,7 @@ static const struct {
 
 static char *zynqmp_get_silicon_idcode_name(void)
 {
-	uint32_t id, ver, chip_id[2];
+	uint32_t id, ver, chipid[2];
 	size_t i, j, len;
 	enum pm_ret_status ret;
 	const char *name = "EG/EV";

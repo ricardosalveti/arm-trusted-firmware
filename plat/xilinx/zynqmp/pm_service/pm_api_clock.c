@@ -1218,7 +1218,7 @@ static struct pm_clock clocks[] = {
 		.num_nodes = ARRAY_SIZE(generic_mux_div_gate_nodes),
 	},
 	[CLK_DBG_FPD] = {
-		.name = "dbf_fpd",
+		.name = "dbg_fpd",
 		.control_reg = CRF_APB_DBG_FPD_CTRL,
 		.status_reg = 0,
 		.parents = &((int32_t []) {
@@ -1704,7 +1704,7 @@ static struct pm_clock clocks[] = {
 		.num_nodes = ARRAY_SIZE(generic_mux_div_gate_nodes),
 	},
 	[CLK_DBG_LPD] = {
-		.name = "dbf_lpd",
+		.name = "dbg_lpd",
 		.control_reg = CRL_APB_DBG_LPD_CTRL,
 		.status_reg = 0,
 		.parents = &((int32_t []) {

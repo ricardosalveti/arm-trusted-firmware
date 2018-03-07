@@ -1433,7 +1433,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &gem_nodes,
@@ -1447,7 +1447,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &gem_nodes,
@@ -1461,7 +1461,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &gem_nodes,
@@ -1475,7 +1475,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &gem_nodes,
@@ -1671,7 +1671,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &generic_mux_div_div_gate_nodes,
@@ -1697,7 +1697,7 @@ static struct pm_clock clocks[] = {
 			CLK_RPLL,
 			CLK_DUMMY_PARENT,
 			CLK_IOPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &generic_mux_div_gate_nodes,
@@ -1711,7 +1711,7 @@ static struct pm_clock clocks[] = {
 			CLK_RPLL,
 			CLK_DUMMY_PARENT,
 			CLK_IOPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &generic_mux_div_gate_nodes,
@@ -1725,7 +1725,7 @@ static struct pm_clock clocks[] = {
 			CLK_RPLL,
 			CLK_DUMMY_PARENT,
 			CLK_IOPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &generic_mux_div_unused_gate_nodes,
@@ -1820,10 +1820,14 @@ static struct pm_clock clocks[] = {
 		.control_reg = CRL_APB_TIMESTAMP_REF_CTRL,
 		.status_reg = 0,
 		.parents = &((int32_t []) {
-			CLK_RPLL,
-			CLK_DUMMY_PARENT,
 			CLK_IOPLL,
+			CLK_DUMMY_PARENT,
+			CLK_RPLL,
 			CLK_DPLL_TO_LPD,
+			EXT_CLK_PSS_REF | CLK_EXTERNAL_PARENT,
+			EXT_CLK_PSS_REF | CLK_EXTERNAL_PARENT,
+			EXT_CLK_PSS_REF | CLK_EXTERNAL_PARENT,
+			EXT_CLK_PSS_REF | CLK_EXTERNAL_PARENT,
 			CLK_NA_PARENT
 		}),
 		.nodes = &timestamp_ref_nodes,
@@ -1837,7 +1841,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &pl_nodes,
@@ -1851,7 +1855,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &pl_nodes,
@@ -1865,7 +1869,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &pl_nodes,
@@ -1879,7 +1883,7 @@ static struct pm_clock clocks[] = {
 			CLK_IOPLL,
 			CLK_DUMMY_PARENT,
 			CLK_RPLL,
-			CLK_DPLL,
+			CLK_DPLL_TO_LPD,
 			CLK_NA_PARENT
 		}),
 		.nodes = &pl_nodes,

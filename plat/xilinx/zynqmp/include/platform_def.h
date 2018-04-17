@@ -91,35 +91,6 @@
 
 #define PLAT_ARM_GICD_BASE	BASE_GICD_BASE
 #define PLAT_ARM_GICC_BASE	BASE_GICC_BASE
-/*
- * Define properties of Group 1 Secure and Group 0 interrupts as per GICv3
- * terminology. On a GICv2 system or mode, the lists will be merged and treated
- * as Group 0 interrupts.
- */
-#if !ZYNQMP_WARM_RESTART
-#define PLAT_ARM_G1S_IRQS	ARM_IRQ_SEC_PHY_TIMER,	\
-				ARM_IRQ_SEC_SGI_0,	\
-				ARM_IRQ_SEC_SGI_1,	\
-				ARM_IRQ_SEC_SGI_2,	\
-				ARM_IRQ_SEC_SGI_3,	\
-				ARM_IRQ_SEC_SGI_4,	\
-				ARM_IRQ_SEC_SGI_5,	\
-				ARM_IRQ_SEC_SGI_6,	\
-				ARM_IRQ_SEC_SGI_7
-#else
-#define PLAT_ARM_G1S_IRQS	ARM_IRQ_SEC_PHY_TIMER,	\
-				IRQ_TTC3_1,		\
-				ARM_IRQ_SEC_SGI_0,	\
-				ARM_IRQ_SEC_SGI_1,	\
-				ARM_IRQ_SEC_SGI_2,	\
-				ARM_IRQ_SEC_SGI_3,	\
-				ARM_IRQ_SEC_SGI_4,	\
-				ARM_IRQ_SEC_SGI_5,	\
-				ARM_IRQ_SEC_SGI_6,	\
-				ARM_IRQ_SEC_SGI_7
-
-#endif
-#define PLAT_ARM_G0_IRQS
 
 #if !ZYNQMP_WARM_RESTART
 #define PLAT_ARM_G1S_IRQ_PROPS(grp) \

@@ -335,4 +335,8 @@
 #define PGGS_BASEADDR		(0xFFD80050U)
 #define PGGS_NUM_REGS		(4)
 
+/* Warm restart boot health status register and mask */
+#define PM_BOOT_HEALTH_STATUS_REG		(GGS_BASEADDR + 0x10)
+#define PM_BOOT_HEALTH_STATUS_MASK		0x00000001
+
 #endif /* __ZYNQMP_DEF_H__ */

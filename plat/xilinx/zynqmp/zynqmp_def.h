@@ -339,4 +339,7 @@
 #define PM_BOOT_HEALTH_STATUS_REG		(GGS_BASEADDR + 0x10)
 #define PM_BOOT_HEALTH_STATUS_MASK		0x00000001
 
+/*AFI registers */
+#define  AFIFM6_WRCTRL		(13)
+#define  FABRIC_WIDTH		(3)
 #endif /* __ZYNQMP_DEF_H__ */

@@ -2937,7 +2937,7 @@ enum pm_ret_status pm_api_clock_getrate(unsigned int clock_id,
 /**
  * pm_api_clock_setparent - Set the clock parent for given id
  * @clock_id	Id of the clock
- * @parent_id	parent id
+ * @parent_idx	parent index
  *
  * This function is used by master to set parent for any clock.
  *
@@ -2986,7 +2986,7 @@ enum pm_ret_status pm_api_clock_setparent(unsigned int clock_id,
 /**
  * pm_api_clock_getparent - Get the clock parent for given id
  * @clock_id	Id of the clock
- * @parent_id	parent id
+ * @parent_idx	parent index
  *
  * This function is used by master to get parent index
  * for any clock.

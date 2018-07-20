@@ -269,6 +269,7 @@ enum topology_type {
 	TYPE_GATE,
 };
 
+enum pm_ret_status pm_api_clock_get_num_clocks(unsigned int *nclocks);
 void pm_api_clock_get_name(unsigned int clock_id, char *name);
 enum pm_ret_status pm_api_clock_get_topology(unsigned int clock_id,
 					     unsigned int index,

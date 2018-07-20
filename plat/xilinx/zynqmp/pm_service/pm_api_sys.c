@@ -742,6 +742,19 @@ enum pm_ret_status pm_ioctl(enum pm_node_id nid,
 }
 
 /**
+ * pm_clock_get_num_clocks - PM call to request number of clocks
+ * @nclockss: Number of clocks
+ *
+ * This function is used by master to get number of clocks.
+ *
+ * Return: Returns status, either success or error+reason.
+ */
+static enum pm_ret_status pm_clock_get_num_clocks(uint32_t *nclocks)
+{
+	return pm_api_clock_get_num_clocks(nclocks);
+}
+
+/**
  * pm_clock_get_name() - PM call to request a clock's name
  * @clock_id	Clock ID
  * @name	Name of clock (max 16 bytes)
@@ -1126,6 +1139,9 @@ void pm_query_data(enum pm_query_id qid, unsigned int arg1, unsigned int arg2,
 	case PM_QID_PINCTRL_GET_PIN_GROUPS:
 		data[0] = pm_pinctrl_get_pin_groups(arg1, arg2,
 						    (uint16_t *)&data[1]);
+		break;
+	case PM_QID_CLOCK_GET_NUM_CLOCKS:
+		data[0] = pm_clock_get_num_clocks(&data[1]);
 		break;
 	default:
 		data[0] = PM_RET_ERROR_ARGS;

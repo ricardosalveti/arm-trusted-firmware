@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -23,6 +23,10 @@
 #include <string.h>
 #include <tegra_def.h>
 #include <tegra_private.h>
+#include <utils_def.h>
+
+/* length of Trusty's input parameters (in bytes) */
+#define TRUSTY_PARAMS_LEN_BYTES	(4096*2)
 
 extern void zeromem16(void *mem, unsigned int length);
 
@@ -30,34 +34,24 @@ extern void zeromem16(void *mem, unsigned int length);
  * Declarations of linker defined symbols which will help us find the layout
  * of trusted SRAM
  ******************************************************************************/
-extern unsigned long __TEXT_START__;
-extern unsigned long __TEXT_END__;
-extern unsigned long __RW_START__;
-extern unsigned long __RW_END__;
-extern unsigned long __RODATA_START__;
-extern unsigned long __RODATA_END__;
-extern unsigned long __BL31_END__;
+
+IMPORT_SYM(unsigned long, __RW_START__,		BL31_RW_START);
+IMPORT_SYM(unsigned long, __RW_END__,		BL31_RW_END);
+IMPORT_SYM(unsigned long, __RODATA_START__,	BL31_RODATA_BASE);
+IMPORT_SYM(unsigned long, __RODATA_END__,	BL31_RODATA_END);
+IMPORT_SYM(unsigned long, __TEXT_START__,	TEXT_START);
+IMPORT_SYM(unsigned long, __TEXT_END__,		TEXT_END);
 
 extern uint64_t tegra_bl31_phys_base;
 extern uint64_t tegra_console_base;
 
-/*
- * The next 3 constants identify the extents of the code, RO data region and the
- * limit of the BL3-1 image.  These addresses are used by the MMU setup code and
- * therefore they must be page-aligned.  It is the responsibility of the linker
- * script to ensure that __RO_START__, __RO_END__ & __BL31_END__ linker symbols
- * refer to page-aligned addresses.
- */
-#define BL31_RW_START (unsigned long)(&__RW_START__)
-#define BL31_RW_END (unsigned long)(&__RW_END__)
-#define BL31_RODATA_BASE (unsigned long)(&__RODATA_START__)
-#define BL31_RODATA_END (unsigned long)(&__RODATA_END__)
-#define BL31_END (unsigned long)(&__BL31_END__)
 
 static entry_point_info_t bl33_image_ep_info, bl32_image_ep_info;
 static plat_params_from_bl2_t plat_bl31_params_from_bl2 = {
 	.tzdram_size = (uint64_t)TZDRAM_SIZE
 };
+static unsigned long bl32_mem_size;
+static unsigned long bl32_boot_params;
 
 /*******************************************************************************
  * This variable holds the non-secure image entry address
@@ -122,9 +116,6 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 {
 	plat_params_from_bl2_t *plat_params =
 		(plat_params_from_bl2_t *)plat_params_from_bl2;
-#if LOG_LEVEL >= LOG_LEVEL_INFO
-	int impl = (read_midr() >> MIDR_IMPL_SHIFT) & MIDR_IMPL_MASK;
-#endif
 	image_info_t bl32_img_info = { {0} };
 	uint64_t tzdram_start, tzdram_end, bl32_start, bl32_end;
 
@@ -147,8 +138,11 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 	assert(from_bl2->bl33_ep_info);
 	bl33_image_ep_info = *from_bl2->bl33_ep_info;
 
-	if (from_bl2->bl32_ep_info)
+	if (from_bl2->bl32_ep_info) {
 		bl32_image_ep_info = *from_bl2->bl32_ep_info;
+		bl32_mem_size = from_bl2->bl32_ep_info->args.arg0;
+		bl32_boot_params = from_bl2->bl32_ep_info->args.arg2;
+	}
 
 	/*
 	 * Parse platform specific parameters - TZDRAM aperture base and size
@@ -230,9 +224,19 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 	/* Early platform setup for Tegra SoCs */
 	plat_early_platform_setup();
 
-	INFO("BL3-1: Boot CPU: %s Processor [%lx]\n", (impl == DENVER_IMPL) ?
-		"Denver" : "ARM", read_mpidr());
+	INFO("BL3-1: Boot CPU: %s Processor [%lx]\n",
+	     (((read_midr() >> MIDR_IMPL_SHIFT) & MIDR_IMPL_MASK)
+	      == DENVER_IMPL) ? "Denver" : "ARM", read_mpidr());
 }
+
+#ifdef SPD_trusty
+void plat_trusty_set_boot_args(aapcs64_params_t *args)
+{
+	args->arg0 = bl32_mem_size;
+	args->arg1 = bl32_boot_params;
+	args->arg2 = TRUSTY_PARAMS_LEN_BYTES;
+}
+#endif
 
 /*******************************************************************************
  * Initialize the gic, configure the SCR.
@@ -294,8 +298,8 @@ void bl31_plat_arch_setup(void)
 	unsigned long rw_size = BL31_RW_END - BL31_RW_START;
 	unsigned long rodata_start = BL31_RODATA_BASE;
 	unsigned long rodata_size = BL31_RODATA_END - BL31_RODATA_BASE;
-	unsigned long code_base = (unsigned long)(&__TEXT_START__);
-	unsigned long code_size = (unsigned long)(&__TEXT_END__) - code_base;
+	unsigned long code_base = TEXT_START;
+	unsigned long code_size = TEXT_END - TEXT_START;
 	const mmap_region_t *plat_mmio_map = NULL;
 #if USE_COHERENT_MEM
 	unsigned long coh_start, coh_size;

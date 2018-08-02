@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -34,7 +34,7 @@ typedef struct tzc400_instance {
 	uint8_t num_regions;
 } tzc400_instance_t;
 
-tzc400_instance_t tzc400;
+static tzc400_instance_t tzc400;
 
 static inline unsigned int _tzc400_read_build_config(uintptr_t base)
 {
@@ -54,7 +54,7 @@ static inline void _tzc400_write_gate_keeper(uintptr_t base, unsigned int val)
 /*
  * Get the open status information for all filter units.
  */
-#define get_gate_keeper_os(base)	((_tzc400_read_gate_keeper(base) >>	\
+#define get_gate_keeper_os(_base)	((_tzc400_read_gate_keeper(_base) >>  \
 					GATE_KEEPER_OS_SHIFT) &		\
 					GATE_KEEPER_OS_MASK)
 
@@ -205,13 +205,16 @@ void tzc400_enable_filters(void)
 	for (filter = 0; filter < tzc400.num_filters; filter++) {
 		state = _tzc400_get_gate_keeper(tzc400.base, filter);
 		if (state) {
-			/* The TZC filter is already configured. Changing the
+			/*
+			 * The TZC filter is already configured. Changing the
 			 * programmer's view in an active system can cause
 			 * unpredictable behavior therefore panic for now rather
 			 * than try to determine whether this is safe in this
-			 * instance. See:
-			 * http://infocenter.arm.com/help/index.jsp?\
-			 * topic=/com.arm.doc.ddi0504c/CJHHECBF.html */
+			 * instance.
+			 *
+			 * See the 'ARM (R) CoreLink TM TZC-400 TrustZone (R)
+			 * Address Space Controller' Technical Reference Manual.
+			 */
 			ERROR("TZC-400 : Filter %d Gatekeeper already"
 				" enabled.\n", filter);
 			panic();

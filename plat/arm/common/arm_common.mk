@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -80,6 +80,27 @@ ARM_XLAT_TABLES_LIB_V1		:=	0
 $(eval $(call assert_boolean,ARM_XLAT_TABLES_LIB_V1))
 $(eval $(call add_define,ARM_XLAT_TABLES_LIB_V1))
 
+# Don't have the Linux kernel as a BL33 image by default
+ARM_LINUX_KERNEL_AS_BL33	:=	0
+$(eval $(call assert_boolean,ARM_LINUX_KERNEL_AS_BL33))
+$(eval $(call add_define,ARM_LINUX_KERNEL_AS_BL33))
+
+ifeq (${ARM_LINUX_KERNEL_AS_BL33},1)
+  ifneq (${ARCH},aarch64)
+    $(error "ARM_LINUX_KERNEL_AS_BL33 is only available in AArch64.")
+  endif
+  ifneq (${RESET_TO_BL31},1)
+    $(error "ARM_LINUX_KERNEL_AS_BL33 is only available if RESET_TO_BL31=1.")
+  endif
+  ifndef PRELOADED_BL33_BASE
+    $(error "PRELOADED_BL33_BASE must be set if ARM_LINUX_KERNEL_AS_BL33 is used.")
+  endif
+  ifndef ARM_PRELOADED_DTB_BASE
+    $(error "ARM_PRELOADED_DTB_BASE must be set if ARM_LINUX_KERNEL_AS_BL33 is used.")
+  endif
+  $(eval $(call add_define,ARM_PRELOADED_DTB_BASE))
+endif
+
 # Use an implementation of SHA-256 with a smaller memory footprint but reduced
 # speed.
 $(eval $(call add_define,MBEDTLS_SHA256_SMALLER))
@@ -87,10 +108,10 @@ $(eval $(call add_define,MBEDTLS_SHA256_SMALLER))
 # Add the build options to pack Trusted OS Extra1 and Trusted OS Extra2 images
 # in the FIP if the platform requires.
 ifneq ($(BL32_EXTRA1),)
-$(eval $(call FIP_ADD_IMG,BL32_EXTRA1,--tos-fw-extra1))
+$(eval $(call TOOL_ADD_IMG,bl32_extra1,--tos-fw-extra1))
 endif
 ifneq ($(BL32_EXTRA2),)
-$(eval $(call FIP_ADD_IMG,BL32_EXTRA2,--tos-fw-extra2))
+$(eval $(call TOOL_ADD_IMG,bl32_extra2,--tos-fw-extra2))
 endif
 
 # Enable PSCI_STAT_COUNT/RESIDENCY APIs on ARM platforms
@@ -103,6 +124,11 @@ SEPARATE_CODE_AND_RODATA	:=	1
 
 # Enable new version of image loading on ARM platforms
 LOAD_IMAGE_V2			:=	1
+
+# Use the multi console API, which is only available for AArch64 for now
+ifeq (${ARCH}, aarch64)
+  MULTI_CONSOLE_API		:=	1
+endif
 
 # Use generic OID definition (tbbr_oid.h)
 USE_TBBR_DEFS			:=	1
@@ -120,7 +146,8 @@ PLAT_INCLUDES		+=	-Iinclude/plat/arm/common/aarch64
 endif
 
 PLAT_BL_COMMON_SOURCES	+=	plat/arm/common/${ARCH}/arm_helpers.S		\
-				plat/arm/common/arm_common.c
+				plat/arm/common/arm_common.c			\
+				plat/arm/common/arm_console.c
 
 ifeq (${ARM_XLAT_TABLES_LIB_V1}, 1)
 PLAT_BL_COMMON_SOURCES	+=	lib/xlat_tables/xlat_tables_common.c		\
@@ -136,9 +163,10 @@ BL1_SOURCES		+=	drivers/arm/sp805/sp805.c			\
 				drivers/io/io_memmap.c				\
 				drivers/io/io_storage.c				\
 				plat/arm/common/arm_bl1_setup.c			\
+				plat/arm/common/arm_err.c			\
 				plat/arm/common/arm_io_storage.c
 ifdef EL3_PAYLOAD_BASE
-# Need the arm_program_trusted_mailbox() function to release secondary CPUs from
+# Need the plat_arm_program_trusted_mailbox() function to release secondary CPUs from
 # their holding pen
 BL1_SOURCES		+=	plat/arm/common/arm_pm.c
 endif
@@ -149,7 +177,19 @@ BL2_SOURCES		+=	drivers/delay_timer/delay_timer.c		\
 				drivers/io/io_memmap.c				\
 				drivers/io/io_storage.c				\
 				plat/arm/common/arm_bl2_setup.c			\
+				plat/arm/common/arm_err.c			\
 				plat/arm/common/arm_io_storage.c
+
+# Add `libfdt` and Arm common helpers required for Dynamic Config
+include lib/libfdt/libfdt.mk
+
+DYN_CFG_SOURCES		+=	plat/arm/common/arm_dyn_cfg.c		\
+				plat/arm/common/arm_dyn_cfg_helpers.c	\
+				common/fdt_wrappers.c			\
+				${LIBFDT_SRCS}
+
+BL1_SOURCES		+=	${DYN_CFG_SOURCES}
+BL2_SOURCES		+=	${DYN_CFG_SOURCES}
 
 ifeq (${BL2_AT_EL3},1)
 BL2_SOURCES		+=	plat/arm/common/arm_bl2_el3_setup.c
@@ -193,6 +233,12 @@ ifeq (${SDEI_SUPPORT},1)
 BL31_SOURCES		+=	plat/arm/common/aarch64/arm_sdei.c
 endif
 
+# RAS sources
+ifeq (${RAS_EXTENSION},1)
+BL31_SOURCES		+=	lib/extensions/ras/std_err_record.c		\
+				lib/extensions/ras/ras_common.c
+endif
+
 ifneq (${TRUSTED_BOARD_BOOT},0)
 
     # Include common TBB sources
@@ -211,7 +257,7 @@ ifneq (${TRUSTED_BOARD_BOOT},0)
     BL2_SOURCES		+=	${AUTH_SOURCES}					\
 				plat/common/tbbr/plat_tbbr.c
 
-    $(eval $(call FWU_FIP_ADD_IMG,NS_BL2U,--fwu))
+    $(eval $(call TOOL_ADD_IMG,ns_bl2u,--fwu,FWU_))
 
     # We expect to locate the *.mk files under the directories specified below
 ifeq (${ARM_CRYPTOCELL_INTEG},0)

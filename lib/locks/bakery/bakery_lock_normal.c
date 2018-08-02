@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -10,6 +10,7 @@
 #include <cpu_data.h>
 #include <platform.h>
 #include <string.h>
+#include <utils_def.h>
 
 /*
  * Functions in this file implement Bakery Algorithm for mutual exclusion with the
@@ -49,22 +50,21 @@ CASSERT((PLAT_PERCPU_BAKERY_LOCK_SIZE & (CACHE_WRITEBACK_GRANULE - 1)) == 0, \
  * Use the linker defined symbol which has evaluated the size reqiurement.
  * This is not as efficient as using a platform defined constant
  */
-extern void *__PERCPU_BAKERY_LOCK_SIZE__;
-#define PERCPU_BAKERY_LOCK_SIZE ((uintptr_t)&__PERCPU_BAKERY_LOCK_SIZE__)
+IMPORT_SYM(uintptr_t, __PERCPU_BAKERY_LOCK_SIZE__, PERCPU_BAKERY_LOCK_SIZE);
 #endif
 
-#define get_bakery_info(cpu_ix, lock)	\
-	(bakery_info_t *)((uintptr_t)lock + cpu_ix * PERCPU_BAKERY_LOCK_SIZE)
+#define get_bakery_info(_cpu_ix, _lock)	\
+	(bakery_info_t *)((uintptr_t)_lock + _cpu_ix * PERCPU_BAKERY_LOCK_SIZE)
 
-#define write_cache_op(addr, cached)	\
+#define write_cache_op(_addr, _cached)	\
 				do {	\
-					(cached ? dccvac((uintptr_t)addr) :\
-						dcivac((uintptr_t)addr));\
+					(_cached ? dccvac((uintptr_t)_addr) :\
+						dcivac((uintptr_t)_addr));\
 						dsbish();\
 				} while (0)
 
-#define read_cache_op(addr, cached)	if (cached) \
-					    dccivac((uintptr_t)addr)
+#define read_cache_op(_addr, _cached)	if (_cached) \
+					    dccivac((uintptr_t)_addr)
 
 /* Helper function to check if the lock is acquired */
 static inline int is_lock_acquired(const bakery_info_t *my_bakery_info,

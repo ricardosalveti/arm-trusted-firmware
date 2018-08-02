@@ -51,6 +51,9 @@ unsigned int zynqmp_get_uart_clk(void)
 		return 25000000;
 	case ZYNQMP_CSU_VERSION_QEMU:
 		return 133000000;
+	default:
+		/* Do nothing in default case */
+		break;
 	}
 
 	return 100000000;
@@ -84,13 +87,13 @@ static const struct {
 	{
 		.id = 0x20,
 		.name = "5EV",
-		.evexists = 1,
+		.evexists = true,
 	},
 	{
 		.id = 0x20,
 		.ver = 0x100,
 		.name = "5EG",
-		.evexists = 1,
+		.evexists = true,
 	},
 	{
 		.id = 0x20,
@@ -100,13 +103,13 @@ static const struct {
 	{
 		.id = 0x21,
 		.name = "4EV",
-		.evexists = 1,
+		.evexists = true,
 	},
 	{
 		.id = 0x21,
 		.ver = 0x100,
 		.name = "4EG",
-		.evexists = 1,
+		.evexists = true,
 	},
 	{
 		.id = 0x21,
@@ -116,13 +119,13 @@ static const struct {
 	{
 		.id = 0x30,
 		.name = "7EV",
-		.evexists = 1,
+		.evexists = true,
 	},
 	{
 		.id = 0x30,
 		.ver = 0x100,
 		.name = "7EG",
-		.evexists = 1,
+		.evexists = true,
 	},
 	{
 		.id = 0x30,
@@ -202,12 +205,21 @@ static char *zynqmp_get_silicon_idcode_name(void)
 {
 	uint32_t id, ver, chipid[2];
 	size_t i, j, len;
-	enum pm_ret_status ret;
 	const char *name = "EG/EV";
 
-	ret = pm_get_chipid(chipid);
-	if (ret)
+#ifdef IMAGE_BL32
+	/*
+	 * For BL32, get the chip id info directly by reading corresponding
+	 * registers instead of making pm call. This has limitation
+	 * that these registers should be configured to have access
+	 * from APU which is default case.
+	 */
+	chipid[0] = mmio_read_32(ZYNQMP_CSU_BASEADDR + ZYNQMP_CSU_IDCODE_OFFSET);
+	chipid[1] = mmio_read_32(EFUSE_BASEADDR + EFUSE_IPDISABLE_OFFSET);
+#else
+	if (pm_get_chipid(chipid) != PM_RET_SUCCESS)
 		return "UNKN";
+#endif
 
 	id = chipid[0] & (ZYNQMP_CSU_IDCODE_DEVICE_CODE_MASK |
 			  ZYNQMP_CSU_IDCODE_SVD_MASK);
@@ -298,6 +310,9 @@ static void zynqmp_print_platform_name(void)
 	case ZYNQMP_CSU_VERSION_SILICON:
 		label = "silicon";
 		break;
+	default:
+		/* Do nothing in default case */
+		break;
 	}
 
 	NOTICE("ATF running on XCZU%s/%s v%d/RTL%d.%d at 0x%x\n",
@@ -315,9 +330,8 @@ unsigned int zynqmp_get_bootmode(void)
 
 	ret = pm_mmio_read(CRL_APB_BOOT_MODE_USER, &r);
 
-	if (ret != PM_RET_SUCCESS) {
+	if (ret != PM_RET_SUCCESS)
 		r = mmio_read_32(CRL_APB_BOOT_MODE_USER);
-	}
 
 	return r & CRL_APB_BOOT_MODE_MASK;
 }
@@ -339,6 +353,9 @@ unsigned int plat_get_syscnt_freq2(void)
 		return 4000000;
 	case ZYNQMP_CSU_VERSION_QEMU:
 		return 50000000;
+	default:
+		/* Do nothing in default case */
+		break;
 	}
 
 	return mmio_read_32(IOU_SCNTRS_BASEFREQ);

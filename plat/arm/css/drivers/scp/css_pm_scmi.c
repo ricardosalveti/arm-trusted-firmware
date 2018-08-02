@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -13,6 +13,7 @@
 #include <platform.h>
 #include <string.h>
 #include "../scmi/scmi.h"
+#include "../mhu/css_mhu_doorbell.h"
 #include "css_scp.h"
 
 /*
@@ -35,21 +36,21 @@
 #define SCMI_PWR_STATE_MAX_PWR_LVL_WIDTH	4
 #define SCMI_PWR_STATE_MAX_PWR_LVL_MASK		\
 				((1 << SCMI_PWR_STATE_MAX_PWR_LVL_WIDTH) - 1)
-#define SCMI_SET_PWR_STATE_MAX_PWR_LVL(pwr_state, max_lvl)		\
-		(pwr_state) |= ((max_lvl) & SCMI_PWR_STATE_MAX_PWR_LVL_MASK)	\
+#define SCMI_SET_PWR_STATE_MAX_PWR_LVL(_power_state, _max_level)		\
+		(_power_state) |= ((_max_level) & SCMI_PWR_STATE_MAX_PWR_LVL_MASK)\
 				<< SCMI_PWR_STATE_MAX_PWR_LVL_SHIFT
-#define SCMI_GET_PWR_STATE_MAX_PWR_LVL(pwr_state)		\
-		(((pwr_state) >> SCMI_PWR_STATE_MAX_PWR_LVL_SHIFT)	\
+#define SCMI_GET_PWR_STATE_MAX_PWR_LVL(_power_state)		\
+		(((_power_state) >> SCMI_PWR_STATE_MAX_PWR_LVL_SHIFT)	\
 				& SCMI_PWR_STATE_MAX_PWR_LVL_MASK)
 
 #define SCMI_PWR_STATE_LVL_WIDTH		4
 #define SCMI_PWR_STATE_LVL_MASK			\
 				((1 << SCMI_PWR_STATE_LVL_WIDTH) - 1)
-#define SCMI_SET_PWR_STATE_LVL(pwr_state, lvl, lvl_state)		\
-		(pwr_state) |= ((lvl_state) & SCMI_PWR_STATE_LVL_MASK)	\
-				<< (SCMI_PWR_STATE_LVL_WIDTH * (lvl))
-#define SCMI_GET_PWR_STATE_LVL(pwr_state, lvl)		\
-		(((pwr_state) >> (SCMI_PWR_STATE_LVL_WIDTH * (lvl))) &	\
+#define SCMI_SET_PWR_STATE_LVL(_power_state, _level, _level_state)		\
+		(_power_state) |= ((_level_state) & SCMI_PWR_STATE_LVL_MASK)	\
+				<< (SCMI_PWR_STATE_LVL_WIDTH * (_level))
+#define SCMI_GET_PWR_STATE_LVL(_power_state, _level)		\
+		(((_power_state) >> (SCMI_PWR_STATE_LVL_WIDTH * (_level))) &	\
 				SCMI_PWR_STATE_LVL_MASK)
 
 /*
@@ -62,19 +63,13 @@ typedef enum {
 } scmi_power_state_t;
 
 /*
- * This mapping array has to be exported by the platform. Each element at
- * a given index maps that core to an SCMI power domain.
- */
-extern uint32_t plat_css_core_pos_to_scmi_dmn_id_map[];
-
-/*
  * The global handle for invoking the SCMI driver APIs after the driver
  * has been initialized.
  */
-void *scmi_handle;
+static void *scmi_handle;
 
 /* The SCMI channel global object */
-static scmi_channel_t scmi_channel;
+static scmi_channel_t channel;
 
 ARM_INSTANTIATE_LOCK;
 
@@ -82,7 +77,7 @@ ARM_INSTANTIATE_LOCK;
  * Helper function to suspend a CPU power domain and its parent power domains
  * if applicable.
  */
-void css_scp_suspend(const psci_power_state_t *target_state)
+void css_scp_suspend(const struct psci_power_state *target_state)
 {
 	int lvl, ret;
 	uint32_t scmi_pwr_state = 0;
@@ -92,7 +87,7 @@ void css_scp_suspend(const psci_power_state_t *target_state)
 						ARM_LOCAL_STATE_OFF);
 
 	/* Check if power down at system power domain level is requested */
-	if (CSS_SYSTEM_PWR_STATE(target_state) == ARM_LOCAL_STATE_OFF) {
+	if (css_system_pwr_state(target_state) == ARM_LOCAL_STATE_OFF) {
 		/* Issue SCMI command for SYSTEM_SUSPEND */
 		ret = scmi_sys_pwr_state_set(scmi_handle,
 				SCMI_SYS_PWR_FORCEFUL_REQ,
@@ -147,7 +142,7 @@ void css_scp_suspend(const psci_power_state_t *target_state)
  * Helper function to turn off a CPU power domain and its parent power domains
  * if applicable.
  */
-void css_scp_off(const psci_power_state_t *target_state)
+void css_scp_off(const struct psci_power_state *target_state)
 {
 	int lvl = 0, ret;
 	uint32_t scmi_pwr_state = 0;
@@ -303,20 +298,47 @@ void __dead2 css_scp_sys_reboot(void)
 	css_scp_system_off(SCMI_SYS_PWR_COLD_RESET);
 }
 
-scmi_channel_plat_info_t plat_css_scmi_plat_info = {
+static scmi_channel_plat_info_t plat_css_scmi_plat_info = {
 		.scmi_mbx_mem = CSS_SCMI_PAYLOAD_BASE,
 		.db_reg_addr = PLAT_CSS_MHU_BASE + CSS_SCMI_MHU_DB_REG_OFF,
 		.db_preserve_mask = 0xfffffffe,
 		.db_modify_mask = 0x1,
+		.ring_doorbell = &mhu_ring_doorbell,
 };
+
+static int scmi_ap_core_init(scmi_channel_t *ch)
+{
+#if PROGRAMMABLE_RESET_ADDRESS
+	uint32_t version;
+	int ret;
+
+	ret = scmi_proto_version(ch, SCMI_AP_CORE_PROTO_ID, &version);
+	if (ret != SCMI_E_SUCCESS) {
+		WARN("SCMI AP core protocol version message failed\n");
+		return -1;
+	}
+
+	if (!is_scmi_version_compatible(SCMI_AP_CORE_PROTO_VER, version)) {
+		WARN("SCMI AP core protocol version 0x%x incompatible with driver version 0x%x\n",
+			version, SCMI_AP_CORE_PROTO_VER);
+		return -1;
+	}
+	INFO("SCMI AP core protocol version 0x%x detected\n", version);
+#endif
+	return 0;
+}
 
 void plat_arm_pwrc_setup(void)
 {
-	scmi_channel.info = &plat_css_scmi_plat_info;
-	scmi_channel.lock = ARM_LOCK_GET_INSTANCE;
-	scmi_handle = scmi_init(&scmi_channel);
+	channel.info = &plat_css_scmi_plat_info;
+	channel.lock = ARM_LOCK_GET_INSTANCE;
+	scmi_handle = scmi_init(&channel);
 	if (scmi_handle == NULL) {
 		ERROR("SCMI Initialization failed\n");
+		panic();
+	}
+	if (scmi_ap_core_init(&channel) < 0) {
+		ERROR("SCMI AP core protocol initialization failed\n");
 		panic();
 	}
 }
@@ -390,3 +412,18 @@ int css_system_reset2(int is_vendor, int reset_type, u_register_t cookie)
 	 */
 	return 0;
 }
+
+#if PROGRAMMABLE_RESET_ADDRESS
+void plat_arm_program_trusted_mailbox(uintptr_t address)
+{
+	int ret;
+
+	assert(scmi_handle);
+	ret = scmi_ap_core_set_reset_addr(scmi_handle, address,
+		SCMI_AP_CORE_LOCK_ATTR);
+	if (ret != SCMI_E_SUCCESS) {
+		ERROR("CSS: Failed to program reset address: %d\n", ret);
+		panic();
+	}
+}
+#endif

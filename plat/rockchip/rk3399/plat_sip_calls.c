@@ -11,7 +11,6 @@
 #include <plat_sip_calls.h>
 #include <rockchip_sip_svc.h>
 #include <runtime_svc.h>
-#include <stdint.h>
 
 #define RK_SIP_DDR_CFG		0x82000008
 #define DRAM_INIT		0x00
@@ -47,14 +46,14 @@ uint32_t ddr_smc_handler(uint64_t arg0, uint64_t arg1,
 	return 0;
 }
 
-uint64_t rockchip_plat_sip_handler(uint32_t smc_fid,
-				   uint64_t x1,
-				   uint64_t x2,
-				   uint64_t x3,
-				   uint64_t x4,
-				   void *cookie,
-				   void *handle,
-				   uint64_t flags)
+uintptr_t rockchip_plat_sip_handler(uint32_t smc_fid,
+				    u_register_t x1,
+				    u_register_t x2,
+				    u_register_t x3,
+				    u_register_t x4,
+				    void *cookie,
+				    void *handle,
+				    u_register_t flags)
 {
 	uint64_t x5, x6;
 

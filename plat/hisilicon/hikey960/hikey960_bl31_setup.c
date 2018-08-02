@@ -16,6 +16,8 @@
 #include <gicv2.h>
 #include <hi3660.h>
 #include <hisi_ipc.h>
+#include <interrupt_mgmt.h>
+#include <platform.h>
 #include <platform_def.h>
 
 #include "hikey960_def.h"
@@ -76,13 +78,8 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
 	return NULL;
 }
 
-#if LOAD_IMAGE_V2
 void bl31_early_platform_setup(void *from_bl2,
 			       void *plat_params_from_bl2)
-#else
-void bl31_early_platform_setup(bl31_params_t *from_bl2,
-		void *plat_params_from_bl2)
-#endif
 {
 	unsigned int id, uart_base;
 
@@ -100,7 +97,6 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 	cci_init(CCI400_REG_BASE, cci_map, ARRAY_SIZE(cci_map));
 	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr_el1()));
 
-#if LOAD_IMAGE_V2
 	/*
 	 * Check params passed from BL2 should not be NULL,
 	 */
@@ -127,23 +123,6 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 
 	if (bl33_ep_info.pc == 0)
 		panic();
-
-#else /* LOAD_IMAGE_V2 */
-
-	/*
-	 * Check params passed from BL2 should not be NULL,
-	 */
-	assert(from_bl2 != NULL);
-	assert(from_bl2->h.type == PARAM_BL31);
-	assert(from_bl2->h.version >= VERSION_1);
-
-	/*
-	 * Copy BL3-2 and BL3-3 entry point information.
-	 * They are stored in Secure RAM, in BL2's address space.
-	 */
-	bl32_ep_info = *from_bl2->bl32_ep_info;
-	bl33_ep_info = *from_bl2->bl33_ep_info;
-#endif /* LOAD_IMAGE_V2 */
 }
 
 void bl31_plat_arch_setup(void)
@@ -167,6 +146,37 @@ void bl31_platform_setup(void)
 	hisi_ipc_init();
 }
 
+#ifdef SPD_none
+static uint64_t hikey_debug_fiq_handler(uint32_t id,
+					uint32_t flags,
+					void *handle,
+					void *cookie)
+{
+	int intr, intr_raw;
+
+	/* Acknowledge interrupt */
+	intr_raw = plat_ic_acknowledge_interrupt();
+	intr = plat_ic_get_interrupt_id(intr_raw);
+	ERROR("Invalid interrupt: intr=%d\n", intr);
+	console_flush();
+	panic();
+
+	return 0;
+}
+#endif
+
 void bl31_plat_runtime_setup(void)
 {
+#ifdef SPD_none
+	uint32_t flags;
+	int32_t rc;
+
+	flags = 0;
+	set_interrupt_rm_flag(flags, NON_SECURE);
+	rc = register_interrupt_type_handler(INTR_TYPE_S_EL1,
+					     hikey_debug_fiq_handler,
+					     flags);
+	if (rc != 0)
+		panic();
+#endif
 }

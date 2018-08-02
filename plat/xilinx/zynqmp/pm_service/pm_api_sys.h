@@ -114,22 +114,13 @@ enum pm_ret_status pm_secure_rsaaes(uint32_t address_high,
 				    uint32_t address_low,
 				    uint32_t size,
 				    uint32_t flags);
-
-unsigned int pm_get_shutdown_scope();
-enum pm_ret_status pm_sha_hash(uint32_t address_high,
-				    uint32_t address_low,
-				    uint32_t size,
-				    uint32_t flags);
-enum pm_ret_status pm_rsa_core(uint32_t address_high,
-				    uint32_t address_low,
-				    uint32_t size,
-				    uint32_t flags);
+unsigned int pm_get_shutdown_scope(void);
 enum pm_ret_status pm_pinctrl_request(unsigned int pin);
 enum pm_ret_status pm_pinctrl_release(unsigned int pin);
 enum pm_ret_status pm_pinctrl_get_function(unsigned int pin,
-					   unsigned int *value);
+					   enum pm_node_id *nid);
 enum pm_ret_status pm_pinctrl_set_function(unsigned int pin,
-					   unsigned int value);
+					   enum pm_node_id nid);
 enum pm_ret_status pm_pinctrl_get_config(unsigned int pin,
 					 unsigned int param,
 					 unsigned int *value);
@@ -161,12 +152,19 @@ void pm_query_data(enum pm_query_id qid, unsigned int arg1,
 		   unsigned int arg2, unsigned int arg3,
 		   unsigned int *data);
 
+enum pm_ret_status pm_sha_hash(uint32_t address_high,
+				    uint32_t address_low,
+				    uint32_t size,
+				    uint32_t flags);
+enum pm_ret_status pm_rsa_core(uint32_t address_high,
+				    uint32_t address_low,
+				    uint32_t size,
+				    uint32_t flags);
 enum pm_ret_status pm_secure_image(uint32_t address_low,
 				   uint32_t address_high,
 				   uint32_t key_lo,
 				   uint32_t key_hi,
 				   uint32_t *value);
-
 enum pm_ret_status pm_fpga_read(uint32_t reg_numframes,
 				uint32_t address_low,
 				uint32_t address_high,

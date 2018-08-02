@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -68,7 +68,7 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
 	    .ep_info.spsr = SPSR_64(MODE_EL3, MODE_SP_ELX,
 		    DISABLE_ALL_EXCEPTIONS),
 #if DEBUG
-	    .ep_info.args.arg1 = ARM_BL31_PLAT_PARAM_VAL,
+	    .ep_info.args.arg3 = ARM_BL31_PLAT_PARAM_VAL,
 #endif
 
 	    SET_STATIC_PARAM_HEAD(image_info, PARAM_EP,
@@ -82,7 +82,24 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
 	    .next_handoff_image_id = BL33_IMAGE_ID,
 # endif
     },
-
+	/* Fill HW_CONFIG related information */
+    {
+	    .image_id = HW_CONFIG_ID,
+	    SET_STATIC_PARAM_HEAD(ep_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, entry_point_info_t, NON_SECURE | NON_EXECUTABLE),
+	    SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, image_info_t, IMAGE_ATTRIB_SKIP_LOADING),
+	    .next_handoff_image_id = INVALID_IMAGE_ID,
+    },
+	/* Fill SOC_FW_CONFIG related information */
+    {
+	    .image_id = SOC_FW_CONFIG_ID,
+	    SET_STATIC_PARAM_HEAD(ep_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, entry_point_info_t, SECURE | NON_EXECUTABLE),
+	    SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, image_info_t, IMAGE_ATTRIB_SKIP_LOADING),
+	    .next_handoff_image_id = INVALID_IMAGE_ID,
+    },
 # ifdef BL32_BASE
 	/* Fill BL32 related information */
     {
@@ -136,6 +153,16 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
 #endif
 	    .next_handoff_image_id = INVALID_IMAGE_ID,
     },
+
+	/* Fill TOS_FW_CONFIG related information */
+    {
+	    .image_id = TOS_FW_CONFIG_ID,
+	    SET_STATIC_PARAM_HEAD(ep_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, entry_point_info_t, SECURE | NON_EXECUTABLE),
+	    SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, image_info_t, IMAGE_ATTRIB_SKIP_LOADING),
+	    .next_handoff_image_id = INVALID_IMAGE_ID,
+    },
 # endif /* BL32_BASE */
 
 	/* Fill BL33 related information */
@@ -157,6 +184,15 @@ static bl_mem_params_node_t bl2_mem_params_descs[] = {
 	    .image_info.image_max_size = ARM_DRAM1_SIZE,
 # endif /* PRELOADED_BL33_BASE */
 
+	    .next_handoff_image_id = INVALID_IMAGE_ID,
+    },
+	/* Fill NT_FW_CONFIG related information */
+    {
+	    .image_id = NT_FW_CONFIG_ID,
+	    SET_STATIC_PARAM_HEAD(ep_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, entry_point_info_t, NON_SECURE | NON_EXECUTABLE),
+	    SET_STATIC_PARAM_HEAD(image_info, PARAM_IMAGE_BINARY,
+		    VERSION_2, image_info_t, IMAGE_ATTRIB_SKIP_LOADING),
 	    .next_handoff_image_id = INVALID_IMAGE_ID,
     }
 #endif /* EL3_PAYLOAD_BASE */

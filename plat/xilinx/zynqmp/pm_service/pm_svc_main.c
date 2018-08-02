@@ -10,18 +10,17 @@
  */
 
 #include <errno.h>
-#include <gicv2.h>
 #include <runtime_svc.h>
+#include "../zynqmp_private.h"
 #include "pm_api_sys.h"
 #include "pm_client.h"
 #include "pm_ipi.h"
-#include "../zynqmp_private.h"
-
-#if ZYNQMP_WARM_RESTART
+#if ZYNQMP_WDT_RESTART
 #include <arch_helpers.h>
+#include <gicv2.h>
+#include <mmio.h>
 #include <platform.h>
 #include <spinlock.h>
-#include <mmio.h>
 #endif
 
 #define PM_SET_SUSPEND_MODE	0xa02
@@ -29,10 +28,12 @@
 
 /* !0 - UP, 0 - DOWN */
 static int32_t pm_up = 0;
-#if ZYNQMP_WARM_RESTART
+
+#if ZYNQMP_WDT_RESTART
 static spinlock_t inc_lock;
 static int active_cores = 0;
 #endif
+
 /**
  * pm_context - Structure which contains data for power management
  * @api_version		version of PM API, must match with one on PMU side
@@ -44,14 +45,14 @@ static struct {
 	uint32_t payload[PAYLOAD_ARG_CNT];
 } pm_ctx;
 
-#if ZYNQMP_WARM_RESTART
+#if ZYNQMP_WDT_RESTART
 /**
- * trigger_warm_restart() - Trigger warm restart event to APU cores
+ * trigger_wdt_restart() - Trigger warm restart event to APU cores
  *
  * This function triggers SGI for all active APU CPUs. SGI handler then
  * power down CPU and call system reset.
  */
-static void trigger_warm_restart(void)
+static void trigger_wdt_restart(void)
 {
 	uint32_t core_count = 0;
 	uint32_t core_status[3];
@@ -73,17 +74,17 @@ static void trigger_warm_restart(void)
 	INFO("Active Cores: %d\n", active_cores);
 
 	/* trigger SGI to active cores */
-	plat_ic_trigger_sgi(ARM_IRQ_SEC_SGI_7, target_cpu_list);
+	gicv2_raise_sgi(ARM_IRQ_SEC_SGI_7, target_cpu_list);
 }
 
 /**
  * ttc_fiq_handler() - TTC Handler for timer event
- * @id		number of the highest priority pending interrupt of the type
- *		that this handler was registered for
- * @flags	security state, bit[0]
- * @handler	pointer to 'cpu_context' structure of the current CPU for the
- *		security state specified in the 'flags' parameter
- * @cookie	unused
+ * @id         number of the highest priority pending interrupt of the type
+ *             that this handler was registered for
+ * @flags      security state, bit[0]
+ * @handler    pointer to 'cpu_context' structure of the current CPU for the
+ *             security state specified in the 'flags' parameter
+ * @cookie     unused
  *
  * Function registered as INTR_TYPE_EL3 interrupt handler
  *
@@ -107,18 +108,19 @@ static uint64_t ttc_fiq_handler(uint32_t id, uint32_t flags, void *handle,
 	/* Disable the timer interrupts */
 	mmio_write_32(TTC3_INTR_ENABLE_1, 0);
 
-	trigger_warm_restart();
+	trigger_wdt_restart();
 
 	return 0;
 }
+
 /**
  * zynqmp_sgi7_irq() - Handler for SGI7 IRQ
- * @id		number of the highest priority pending interrupt of the type
- *		that this handler was registered for
- * @flags	security state, bit[0]
- * @handler	pointer to 'cpu_context' structure of the current CPU for the
- *		security state specified in the 'flags' parameter
- * @cookie	unused
+ * @id         number of the highest priority pending interrupt of the type
+ *             that this handler was registered for
+ * @flags      security state, bit[0]
+ * @handler    pointer to 'cpu_context' structure of the current CPU for the
+ *             security state specified in the 'flags' parameter
+ * @cookie     unused
  *
  * Function registered as INTR_TYPE_EL3 interrupt handler
  *
@@ -147,7 +149,7 @@ static uint64_t __unused __dead2 zynqmp_sgi7_irq(uint32_t id, uint32_t flags,
 
 	if (active_cores == 0) {
 		pm_system_shutdown(PMF_SHUTDOWN_TYPE_RESET,
-					PMF_SHUTDOWN_SUBTYPE_SUBSYSTEM);
+				   PMF_SHUTDOWN_SUBTYPE_SUBSYSTEM);
 	}
 
 	/* enter wfi and stay there */
@@ -156,12 +158,12 @@ static uint64_t __unused __dead2 zynqmp_sgi7_irq(uint32_t id, uint32_t flags,
 }
 
 /**
- * pm_warm_restart_setup() - Setup warm restart interrupts
+ * pm_wdt_restart_setup() - Setup warm restart interrupts
  *
  * This function sets up handler for SGI7 and TTC interrupts
  * used for warm restart.
  */
-static int pm_warm_restart_setup(void)
+static int pm_wdt_restart_setup(void)
 {
 	int ret;
 
@@ -196,32 +198,28 @@ err:
  */
 int pm_setup(void)
 {
-	int status;
+	int status, ret;
 
 	status = pm_ipi_init(primary_proc);
-	if (status) {
-		WARN("BL31: pm_ipi_init() failed\n");
-		goto err;
-	}
 
-#if ZYNQMP_WARM_RESTART
-	status = pm_warm_restart_setup();
-	if (status) {
+#if ZYNQMP_WDT_RESTART
+	status = pm_wdt_restart_setup();
+	if (status)
 		WARN("BL31: warm-restart setup failed\n");
-		goto err;
-	}
-
 #endif
-err:
-	if (status == 0)
+
+	if (status >= 0) {
 		INFO("BL31: PM Service Init Complete: API v%d.%d\n",
 		     PM_VERSION_MAJOR, PM_VERSION_MINOR);
-	else
+		     ret = 0;
+	} else {
 		INFO("BL31: PM Service Init Failed, Error Code %d!\n", status);
+		ret = status;
+	}
 
 	pm_up = !status;
 
-	return status;
+	return ret;
 }
 
 /**
@@ -345,7 +343,7 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 
 		ret = pm_get_node_status(pm_arg[0], buff);
 		SMC_RET2(handle, (uint64_t)ret | ((uint64_t)buff[0] << 32),
-			(uint64_t)buff[1] | ((uint64_t)buff[2] << 32));
+			 (uint64_t)buff[1] | ((uint64_t)buff[2] << 32));
 	}
 
 	case PM_GET_OP_CHARACTERISTIC:
@@ -413,20 +411,6 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 				       pm_arg[3]);
 		SMC_RET1(handle, (uint64_t)ret);
 
-	case PM_SET_SUSPEND_MODE:
-		ret = pm_set_suspend_mode(pm_arg[0]);
-		SMC_RET1(handle, (uint64_t)ret);
-
-	case PM_SECURE_SHA:
-		ret = pm_sha_hash(pm_arg[0], pm_arg[1], pm_arg[2],
-				pm_arg[3]);
-		SMC_RET1(handle, (uint64_t)ret);
-
-	case PM_SECURE_RSA:
-		ret = pm_rsa_core(pm_arg[0], pm_arg[1], pm_arg[2],
-				       pm_arg[3]);
-		SMC_RET1(handle, (uint64_t)ret);
-
 	case PM_PINCTRL_REQUEST:
 		ret = pm_pinctrl_request(pm_arg[0]);
 		SMC_RET1(handle, (uint64_t)ret);
@@ -437,7 +421,7 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 
 	case PM_PINCTRL_GET_FUNCTION:
 	{
-		uint32_t value;
+		uint32_t value = 0;
 
 		ret = pm_pinctrl_get_function(pm_arg[0], &value);
 		SMC_RET1(handle, (uint64_t)ret | ((uint64_t)value) << 32);
@@ -470,7 +454,7 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 
 	case PM_QUERY_DATA:
 	{
-		uint32_t data[4];
+		uint32_t data[4] = { 0 };
 
 		pm_query_data(pm_arg[0], pm_arg[1], pm_arg[2],
 			      pm_arg[3], data);
@@ -508,7 +492,8 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 
 	case PM_CLOCK_SETRATE:
 		ret = pm_clock_setrate(pm_arg[0],
-				       ((uint64_t)pm_arg[2]) << 32 | pm_arg[1]);
+		       ((uint64_t)pm_arg[2]) << 32 | pm_arg[1]);
+
 		SMC_RET1(handle, (uint64_t)ret);
 
 	case PM_CLOCK_GETRATE:
@@ -516,8 +501,10 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 		uint64_t value;
 
 		ret = pm_clock_getrate(pm_arg[0], &value);
-		SMC_RET2(handle, (uint64_t)ret | (value & 0xFFFFFFFF) << 32,
-			 (value >> 32) & 0xFFFFFFFF);
+		SMC_RET2(handle, (uint64_t)ret |
+				  (((uint64_t)value & 0xFFFFFFFFU) << 32U),
+			 (value >> 32U) & 0xFFFFFFFFU);
+
 	}
 
 	case PM_CLOCK_SETPARENT:
@@ -535,6 +522,20 @@ uint64_t pm_smc_handler(uint32_t smc_fid, uint64_t x1, uint64_t x2, uint64_t x3,
 	case PM_GET_TRUSTZONE_VERSION:
 		SMC_RET1(handle, (uint64_t)PM_RET_SUCCESS |
 			 ((uint64_t)ZYNQMP_TZ_VERSION << 32));
+
+	case PM_SET_SUSPEND_MODE:
+		ret = pm_set_suspend_mode(pm_arg[0]);
+		SMC_RET1(handle, (uint64_t)ret);
+
+	case PM_SECURE_SHA:
+		ret = pm_sha_hash(pm_arg[0], pm_arg[1], pm_arg[2],
+				pm_arg[3]);
+		SMC_RET1(handle, (uint64_t)ret);
+
+	case PM_SECURE_RSA:
+		ret = pm_rsa_core(pm_arg[0], pm_arg[1], pm_arg[2],
+				       pm_arg[3]);
+		SMC_RET1(handle, (uint64_t)ret);
 
 	case PM_SECURE_IMAGE:
 	{

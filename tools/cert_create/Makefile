@@ -35,7 +35,7 @@ PLAT_INCLUDE		:=	../../include/tools_share
 else
 PLAT_MSG		:=	${PLAT}
 
-PLATFORM_ROOT		:=	../../plat/
+TF_PLATFORM_ROOT		:=	../../plat/
 include ${MAKE_HELPERS_DIRECTORY}plat_helpers.mk
 
 PLAT_INCLUDE		:=	$(wildcard ${PLAT_DIR}include)
@@ -75,7 +75,7 @@ ${BINARY}: ${OBJECTS} Makefile
 	@echo "  LD      $@"
 	@echo 'const char build_msg[] = "Built : "__TIME__", "__DATE__; \
                 const char platform_msg[] = "${PLAT_MSG}";' | \
-                ${CC} -c ${CFLAGS} -xc - -o src/build_msg.o
+                ${HOSTCC} -c ${CFLAGS} -xc - -o src/build_msg.o
 	${Q}${HOSTCC} src/build_msg.o ${OBJECTS} ${LIB_DIR} ${LIB} -o $@
 
 %.o: %.c
@@ -86,5 +86,5 @@ clean:
 	$(call SHELL_DELETE_ALL, src/build_msg.o ${OBJECTS})
 
 realclean: clean
-	$(call SHELL_DELETE, ${BINARY})
+	$(call SHELL_DELETE,${BINARY})
 

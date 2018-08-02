@@ -12,6 +12,7 @@
 #include <delay_timer.h>
 #include <dfs.h>
 #include <errno.h>
+#include <gicv3.h>
 #include <gpio.h>
 #include <m0_ctl.h>
 #include <mmio.h>
@@ -32,7 +33,7 @@ DEFINE_BAKERY_LOCK(rockchip_pd_lock);
 
 static uint32_t cpu_warm_boot_addr;
 static char store_sram[SRAM_BIN_LIMIT + SRAM_TEXT_LIMIT + SRAM_DATA_LIMIT];
-static uint32_t store_cru[CRU_SDIO0_CON1 / 4];
+static uint32_t store_cru[CRU_SDIO0_CON1 / 4 + 1];
 static uint32_t store_usbphy0[7];
 static uint32_t store_usbphy1[7];
 static uint32_t store_grf_io_vsel;
@@ -45,6 +46,8 @@ static uint32_t store_grf_soc_con7;
 static uint32_t store_grf_ddrc_con[4];
 static uint32_t store_wdt0[2];
 static uint32_t store_wdt1[2];
+static gicv3_dist_ctx_t dist_ctx;
+static gicv3_redist_ctx_t rdist_ctx;
 
 /*
  * There are two ways to powering on or off on core.
@@ -79,9 +82,12 @@ static void pmu_bus_idle_req(uint32_t bus, uint32_t state)
 	do {
 		bus_state = mmio_read_32(PMU_BASE + PMU_BUS_IDLE_ST) & bus_id;
 		bus_ack = mmio_read_32(PMU_BASE + PMU_BUS_IDLE_ACK) & bus_id;
+		if (bus_state == bus_req && bus_ack == bus_req)
+			break;
+
 		wait_cnt++;
-	} while ((bus_state != bus_req || bus_ack != bus_req) &&
-		 (wait_cnt < MAX_WAIT_COUNT));
+		udelay(1);
+	} while (wait_cnt < MAX_WAIT_COUNT);
 
 	if (bus_state != bus_req || bus_ack != bus_req) {
 		INFO("%s:st=%x(%x)\n", __func__,
@@ -95,7 +101,7 @@ static void pmu_bus_idle_req(uint32_t bus, uint32_t state)
 
 struct pmu_slpdata_s pmu_slpdata;
 
-static void qos_save(void)
+static void qos_restore(void)
 {
 	if (pmu_power_domain_st(PD_GPU) == pmu_pd_on)
 		RESTORE_QOS(pmu_slpdata.gpu_qos, GPU);
@@ -161,7 +167,7 @@ static void qos_save(void)
 	}
 }
 
-static void qos_restore(void)
+static void qos_save(void)
 {
 	if (pmu_power_domain_st(PD_GPU) == pmu_pd_on)
 		SAVE_QOS(pmu_slpdata.gpu_qos, GPU);
@@ -304,6 +310,7 @@ static int pmu_set_power_domain(uint32_t pd_id, uint32_t pd_state)
 		pmu_bus_idle_req(BUS_ID_PERIHP, state);
 		break;
 	default:
+		/* Do nothing in default case */
 		break;
 	}
 
@@ -430,6 +437,7 @@ static void pmu_scu_b_pwrdn(void)
 	while (!(mmio_read_32(PMU_BASE + PMU_CORE_PWR_ST) &
 		 BIT(STANDBY_BY_WFIL2_CLUSTER_B))) {
 		wait_cnt++;
+		udelay(1);
 		if (wait_cnt >= MAX_WAIT_COUNT)
 			ERROR("%s:wait cluster-b l2(%x)\n", __func__,
 			      mmio_read_32(PMU_BASE + PMU_CORE_PWR_ST));
@@ -640,12 +648,8 @@ int rockchip_soc_cores_pwr_dm_off(void)
 int rockchip_soc_hlvl_pwr_dm_off(uint32_t lvl,
 				 plat_local_state_t lvl_state)
 {
-	switch (lvl) {
-	case MPIDR_AFFLVL1:
+	if (lvl == MPIDR_AFFLVL1) {
 		clst_pwr_domain_suspend(lvl_state);
-		break;
-	default:
-		break;
 	}
 
 	return PSCI_E_SUCCESS;
@@ -668,12 +672,8 @@ int rockchip_soc_cores_pwr_dm_suspend(void)
 
 int rockchip_soc_hlvl_pwr_dm_suspend(uint32_t lvl, plat_local_state_t lvl_state)
 {
-	switch (lvl) {
-	case MPIDR_AFFLVL1:
+	if (lvl == MPIDR_AFFLVL1) {
 		clst_pwr_domain_suspend(lvl_state);
-		break;
-	default:
-		break;
 	}
 
 	return PSCI_E_SUCCESS;
@@ -691,12 +691,8 @@ int rockchip_soc_cores_pwr_dm_on_finish(void)
 int rockchip_soc_hlvl_pwr_dm_on_finish(uint32_t lvl,
 				       plat_local_state_t lvl_state)
 {
-	switch (lvl) {
-	case MPIDR_AFFLVL1:
+	if (lvl == MPIDR_AFFLVL1) {
 		clst_pwr_domain_resume(lvl_state);
-		break;
-	default:
-		break;
 	}
 
 	return PSCI_E_SUCCESS;
@@ -714,11 +710,8 @@ int rockchip_soc_cores_pwr_dm_resume(void)
 
 int rockchip_soc_hlvl_pwr_dm_resume(uint32_t lvl, plat_local_state_t lvl_state)
 {
-	switch (lvl) {
-	case MPIDR_AFFLVL1:
+	if (lvl == MPIDR_AFFLVL1) {
 		clst_pwr_domain_resume(lvl_state);
-	default:
-		break;
 	}
 
 	return PSCI_E_SUCCESS;
@@ -843,6 +836,7 @@ static void sys_slp_config(void)
 		      BIT_WITH_WMSK(PMU_CLR_GIC2_CORE_L_HW));
 
 	slp_mode_cfg = BIT(PMU_PWR_MODE_EN) |
+		       BIT(PMU_WKUP_RST_EN) |
 		       BIT(PMU_INPUT_CLAMP_EN) |
 		       BIT(PMU_POWER_OFF_REQ_CFG) |
 		       BIT(PMU_CPU0_PD_EN) |
@@ -860,7 +854,6 @@ static void sys_slp_config(void)
 		       BIT(PMU_DDRIO0_RET_DE_REQ) |
 		       BIT(PMU_DDRIO1_RET_EN) |
 		       BIT(PMU_DDRIO1_RET_DE_REQ) |
-		       BIT(PMU_DDRIO_RET_HW_DE_REQ) |
 		       BIT(PMU_CENTER_PD_EN) |
 		       BIT(PMU_PERILP_PD_EN) |
 		       BIT(PMU_CLK_PERILP_SRC_GATE_EN) |
@@ -1069,12 +1062,6 @@ static void resume_gpio(void)
 		gpio_set_direction(suspend_gpio[i].index, GPIO_DIR_OUT);
 		udelay(1);
 	}
-}
-
-static void m0_configure_suspend(void)
-{
-	/* set PARAM to M0_FUNC_SUSPEND */
-	mmio_write_32(M0_PARAM_ADDR + PARAM_M0_FUNC, M0_FUNC_SUSPEND);
 }
 
 void sram_save(void)
@@ -1312,10 +1299,14 @@ void wdt_register_restore(void)
 {
 	int i;
 
-	for (i = 0; i < 2; i++) {
+	for (i = 1; i >= 0; i--) {
 		mmio_write_32(WDT0_BASE + i * 4, store_wdt0[i]);
 		mmio_write_32(WDT1_BASE + i * 4, store_wdt1[i]);
 	}
+
+	/* write 0x76 to cnt_restart to keep watchdog alive */
+	mmio_write_32(WDT0_BASE + 0x0c, 0x76);
+	mmio_write_32(WDT1_BASE + 0x0c, 0x76);
 }
 
 int rockchip_soc_sys_pwr_dm_suspend(void)
@@ -1326,6 +1317,9 @@ int rockchip_soc_sys_pwr_dm_suspend(void)
 	ddr_prepare_for_sys_suspend();
 	dmc_suspend();
 	pmu_scu_b_pwrdn();
+
+	gicv3_rdistif_save(plat_my_core_pos(), &rdist_ctx);
+	gicv3_distif_save(&dist_ctx);
 
 	/* need to save usbphy before shutdown PERIHP PD */
 	save_usbphy();
@@ -1344,7 +1338,7 @@ int rockchip_soc_sys_pwr_dm_suspend(void)
 	set_pmu_rsthold();
 	sys_slp_config();
 
-	m0_configure_suspend();
+	m0_configure_execute_addr(M0PMU_BINCODE_BASE);
 	m0_start();
 
 	pmu_sgrf_rst_hld();
@@ -1369,10 +1363,12 @@ int rockchip_soc_sys_pwr_dm_suspend(void)
 			      mmio_read_32(PMU_BASE + PMU_ADB400_ST));
 			panic();
 		}
+		udelay(1);
 	}
 	mmio_setbits_32(PMU_BASE + PMU_PWRDN_CON, BIT(PMU_SCU_B_PWRDWN_EN));
 
-	secure_watchdog_disable();
+	wdt_register_save();
+	secure_watchdog_gate();
 
 	/*
 	 * Disabling PLLs/PWM/DVFS is approaching WFI which is
@@ -1387,7 +1383,6 @@ int rockchip_soc_sys_pwr_dm_suspend(void)
 	suspend_uart();
 	grf_register_save();
 	cru_register_save();
-	wdt_register_save();
 	sram_save();
 	plat_rockchip_save_gpio();
 
@@ -1400,9 +1395,9 @@ int rockchip_soc_sys_pwr_dm_resume(void)
 	uint32_t status = 0;
 
 	plat_rockchip_restore_gpio();
-	wdt_register_restore();
 	cru_register_restore();
 	grf_register_restore();
+	wdt_register_restore();
 	resume_uart();
 	resume_apio();
 	resume_gpio();
@@ -1412,7 +1407,6 @@ int rockchip_soc_sys_pwr_dm_resume(void)
 	udelay(300);
 	enable_dvfs_plls();
 
-	secure_watchdog_enable();
 	secure_sgrf_init();
 	secure_sgrf_ddr_rgn_init();
 
@@ -1462,14 +1456,13 @@ int rockchip_soc_sys_pwr_dm_resume(void)
 			      mmio_read_32(PMU_BASE + PMU_ADB400_ST));
 			panic();
 		}
+		udelay(1);
 	}
 
-	pmu_sgrf_rst_hld_release();
 	pmu_scu_b_pwrup();
 	pmu_power_domains_resume();
 
 	restore_abpll();
-	restore_pmu_rsthold();
 	clr_hw_idle(BIT(PMU_CLR_CENTER1) |
 				BIT(PMU_CLR_ALIVE) |
 				BIT(PMU_CLR_MSCH0) |
@@ -1481,6 +1474,8 @@ int rockchip_soc_sys_pwr_dm_resume(void)
 				BIT(PMU_CLR_PERILPM0) |
 				BIT(PMU_CLR_GIC));
 
+	gicv3_distif_init_restore(&dist_ctx);
+	gicv3_rdistif_init_restore(plat_my_core_pos(), &rdist_ctx);
 	plat_rockchip_gic_cpuif_enable();
 	m0_stop();
 

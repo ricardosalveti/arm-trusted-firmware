@@ -32,9 +32,17 @@
 #define CORTEX_A72_CPUACTLR_EL1					S3_1_C15_C2_0
 
 #define CORTEX_A72_CPUACTLR_EL1_DISABLE_L1_DCACHE_HW_PFTCH	(ULL(1) << 56)
+#define CORTEX_A72_CPUACTLR_EL1_DIS_LOAD_PASS_STORE		(ULL(1) << 55)
 #define CORTEX_A72_CPUACTLR_EL1_NO_ALLOC_WBWA			(ULL(1) << 49)
 #define CORTEX_A72_CPUACTLR_EL1_DCC_AS_DCCI			(ULL(1) << 44)
 #define CORTEX_A72_CPUACTLR_EL1_DIS_INSTR_PREFETCH		(ULL(1) << 32)
+
+/*******************************************************************************
+ *  L2 Auxiliary Control register specific definitions.
+ ******************************************************************************/
+#define CORTEX_A72_L2ACTLR_EL1					S3_1_C15_C0_0
+
+#define CORTEX_A72_L2ACTLR_ENABLE_UNIQUE_CLEAN			(ULL(1) << 14)
 
 /*******************************************************************************
  * L2 Control register specific definitions.

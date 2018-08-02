@@ -1,12 +1,13 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __JUNO_DEF_H__
-#define __JUNO_DEF_H__
+#ifndef JUNO_DEF_H
+#define JUNO_DEF_H
 
+#include <utils_def.h>
 
 /*******************************************************************************
  * Juno memory map related constants
@@ -79,4 +80,15 @@
 #define JUNO_IRQ_GPU_SMMU_1		73
 #define JUNO_IRQ_ETR_SMMU		75
 
-#endif /* __JUNO_DEF_H__ */
+/*******************************************************************************
+ * Memprotect definitions
+ ******************************************************************************/
+/* PSCI memory protect definitions:
+ * This variable is stored in a non-secure flash because some ARM reference
+ * platforms do not have secure NVRAM. Real systems that provided MEM_PROTECT
+ * support must use a secure NVRAM to store the PSCI MEM_PROTECT definitions.
+ */
+#define PLAT_ARM_MEM_PROT_ADDR		(V2M_FLASH0_BASE + \
+					 V2M_FLASH0_SIZE - V2M_FLASH_BLOCK_SIZE)
+
+#endif /* JUNO_DEF_H */

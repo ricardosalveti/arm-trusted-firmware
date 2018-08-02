@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -27,7 +27,7 @@ static unsigned int pm_shutdown_scope = PMF_SHUTDOWN_SUBTYPE_SYSTEM;
  *
  * @return	Shutdown scope value
  */
-unsigned int pm_get_shutdown_scope()
+unsigned int pm_get_shutdown_scope(void)
 {
 	return pm_shutdown_scope;
 }
@@ -363,7 +363,7 @@ enum pm_ret_status pm_set_configuration(unsigned int phys_addr)
 /**
  * pm_init_finalize() - Call to notify PMU firmware that master has power
  *			management enabled and that it has finished its
- * 			initialization
+ *			initialization
  *
  * @return	Status returned by the PMU firmware
  */
@@ -380,9 +380,9 @@ enum pm_ret_status pm_init_finalize(void)
  * pm_get_node_status() - PM call to request a node's current status
  * @nid		Node id
  * @ret_buff	Buffer for the return values:
- * 		[0] - Current power state of the node
- * 		[1] - Current requirements for the node (slave nodes only)
- * 		[2] - Current usage status for the node (slave nodes only)
+ *		[0] - Current power state of the node
+ *		[1] - Current requirements for the node (slave nodes only)
+ *		[2] - Current usage status for the node (slave nodes only)
  *
  * @return	Returns status, either success or error+reason
  */
@@ -603,33 +603,6 @@ enum pm_ret_status pm_secure_rsaaes(uint32_t address_low,
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
 
-enum pm_ret_status pm_sha_hash(uint32_t address_high,
-				    uint32_t address_low,
-				    uint32_t size,
-				    uint32_t flags)
-{
-	uint32_t payload[PAYLOAD_ARG_CNT];
-
-	/* Send request to the PMU */
-	PM_PACK_PAYLOAD5(payload, PM_SECURE_SHA, address_high, address_low,
-				 size, flags);
-	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
-
-}
-
-enum pm_ret_status pm_rsa_core(uint32_t address_high,
-				    uint32_t address_low,
-				    uint32_t size,
-				    uint32_t flags)
-{
-	uint32_t payload[PAYLOAD_ARG_CNT];
-
-	/* Send request to the PMU */
-	PM_PACK_PAYLOAD5(payload, PM_SECURE_RSA, address_high, address_low,
-				 size, flags);
-	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
-}
-
 /**
  * pm_pinctrl_request() - Request Pin from firmware
  * @pin		Pin number to request
@@ -683,7 +656,7 @@ enum pm_ret_status pm_pinctrl_get_function(unsigned int pin,
 enum pm_ret_status pm_pinctrl_set_function(unsigned int pin,
 					   enum pm_node_id nid)
 {
-	return pm_api_pinctrl_set_function(pin, nid);
+	return pm_api_pinctrl_set_function(pin, (unsigned int)nid);
 }
 
 /**
@@ -1037,7 +1010,8 @@ static enum pm_ret_status pm_pinctrl_get_num_function_groups(unsigned int fid,
  * This function is used by master to get name of function specified
  * by given function Id
  */
-static void pm_pinctrl_get_function_name(unsigned int fid, char *name)
+static void pm_pinctrl_get_function_name(unsigned int fid,
+					 char *name)
 {
 	pm_api_pinctrl_get_function_name(fid, name);
 }
@@ -1147,6 +1121,32 @@ void pm_query_data(enum pm_query_id qid, unsigned int arg1, unsigned int arg2,
 		data[0] = PM_RET_ERROR_ARGS;
 		WARN("Unimplemented query service call: 0x%x\n", qid);
 	}
+}
+
+enum pm_ret_status pm_sha_hash(uint32_t address_high,
+				    uint32_t address_low,
+				    uint32_t size,
+				    uint32_t flags)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD5(payload, PM_SECURE_SHA, address_high, address_low,
+				 size, flags);
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+}
+
+enum pm_ret_status pm_rsa_core(uint32_t address_high,
+				    uint32_t address_low,
+				    uint32_t size,
+				    uint32_t flags)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD5(payload, PM_SECURE_RSA, address_high, address_low,
+				 size, flags);
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
 
 enum pm_ret_status pm_secure_image(uint32_t address_low,

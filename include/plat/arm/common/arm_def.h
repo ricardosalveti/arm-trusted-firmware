@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef __ARM_DEF_H__
-#define __ARM_DEF_H__
+#ifndef ARM_DEF_H
+#define ARM_DEF_H
 
 #include <arch.h>
 #include <common_def.h>
@@ -40,12 +40,12 @@
  *  within the power-state parameter.
  */
 /* Local power state for power domains in Run state. */
-#define ARM_LOCAL_STATE_RUN	0
+#define ARM_LOCAL_STATE_RUN	U(0)
 /* Local power state for retention. Valid only for CPU power domains */
-#define ARM_LOCAL_STATE_RET	1
+#define ARM_LOCAL_STATE_RET	U(1)
 /* Local power state for OFF/power-down. Valid for CPU and cluster power
    domains */
-#define ARM_LOCAL_STATE_OFF	2
+#define ARM_LOCAL_STATE_OFF	U(2)
 
 /* Memory location options for TSP */
 #define ARM_TRUSTED_SRAM_ID		0
@@ -241,14 +241,33 @@
 						ARM_EL3_TZC_DRAM1_SIZE,	\
 						MT_MEMORY | MT_RW | MT_SECURE)
 
+#if SEPARATE_CODE_AND_RODATA
+#define ARM_MAP_BL_CODE			MAP_REGION_FLAT(			\
+						BL_CODE_BASE,			\
+						BL_CODE_END - BL_CODE_BASE,	\
+						MT_CODE | MT_SECURE)
+#define ARM_MAP_BL_RO_DATA		MAP_REGION_FLAT(			\
+						BL_RO_DATA_BASE,		\
+						BL_RO_DATA_END			\
+							- BL_RO_DATA_BASE,	\
+						MT_RO_DATA | MT_SECURE)
+#endif
+#if USE_COHERENT_MEM
+#define ARM_MAP_BL_COHERENT_RAM		MAP_REGION_FLAT(			\
+						BL_COHERENT_RAM_BASE,		\
+						BL_COHERENT_RAM_END		\
+							- BL_COHERENT_RAM_BASE, \
+						MT_DEVICE | MT_RW | MT_SECURE)
+#endif
+
 /*
  * The number of regions like RO(code), coherent and data required by
  * different BL stages which need to be mapped in the MMU.
  */
 #if USE_COHERENT_MEM
-#define ARM_BL_REGIONS			3
+# define ARM_BL_REGIONS			4
 #else
-#define ARM_BL_REGIONS			2
+# define ARM_BL_REGIONS			3
 #endif
 
 #define MAX_MMAP_REGIONS		(PLAT_ARM_MMAP_ENTRIES +	\
@@ -258,6 +277,8 @@
 #define ARM_SYS_CNTCTL_BASE		0x2a430000
 #define ARM_SYS_CNTREAD_BASE		0x2a800000
 #define ARM_SYS_TIMCTL_BASE		0x2a810000
+#define ARM_SYS_CNT_BASE_S		0x2a820000
+#define ARM_SYS_CNT_BASE_NS		0x2a830000
 
 #define ARM_CONSOLE_BAUDRATE		115200
 
@@ -279,11 +300,11 @@
  * AArch64 builds
  */
 #ifdef AARCH64
-#define PLAT_PHY_ADDR_SPACE_SIZE			(1ull << 36)
-#define PLAT_VIRT_ADDR_SPACE_SIZE			(1ull << 36)
+#define PLAT_PHY_ADDR_SPACE_SIZE			(1ULL << 36)
+#define PLAT_VIRT_ADDR_SPACE_SIZE			(1ULL << 36)
 #else
-#define PLAT_PHY_ADDR_SPACE_SIZE			(1ull << 32)
-#define PLAT_VIRT_ADDR_SPACE_SIZE			(1ull << 32)
+#define PLAT_PHY_ADDR_SPACE_SIZE			(1ULL << 32)
+#define PLAT_VIRT_ADDR_SPACE_SIZE			(1ULL << 32)
 #endif
 
 
@@ -306,6 +327,12 @@
  */
 #define CACHE_WRITEBACK_GRANULE		(1 << ARM_CACHE_WRITEBACK_SHIFT)
 
+/*
+ * To enable TB_FW_CONFIG to be loaded by BL1, define the corresponding base
+ * and limit. Leave enough space of BL2 meminfo.
+ */
+#define ARM_TB_FW_CONFIG_BASE		ARM_BL_RAM_BASE + sizeof(meminfo_t)
+#define ARM_TB_FW_CONFIG_LIMIT		ARM_BL_RAM_BASE + PAGE_SIZE
 
 /*******************************************************************************
  * BL1 specific defines.
@@ -326,32 +353,18 @@
 /*******************************************************************************
  * BL2 specific defines.
  ******************************************************************************/
-#if ARM_BL31_IN_DRAM
+#if BL2_AT_EL3
+/* Put BL2 towards the middle of the Trusted SRAM */
+#define BL2_BASE			(ARM_TRUSTED_SRAM_BASE + \
+						(PLAT_ARM_TRUSTED_SRAM_SIZE >> 1) + 0x2000)
+#define BL2_LIMIT			(ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)
+
+#else
 /*
- * For AArch64 BL31 is loaded in the DRAM.
  * Put BL2 just below BL1.
  */
 #define BL2_BASE			(BL1_RW_BASE - PLAT_ARM_MAX_BL2_SIZE)
 #define BL2_LIMIT			BL1_RW_BASE
-
-#elif BL2_AT_EL3
-
-#define BL2_BASE			ARM_BL_RAM_BASE
-#define BL2_LIMIT			(ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)
-
-#elif defined(AARCH32) || JUNO_AARCH32_EL3_RUNTIME
-/*
- * Put BL2 just below BL32.
- */
-#define BL2_BASE			(BL32_BASE - PLAT_ARM_MAX_BL2_SIZE)
-#define BL2_LIMIT			BL32_BASE
-
-#else
-/*
- * Put BL2 just below BL31.
- */
-#define BL2_BASE			(BL31_BASE - PLAT_ARM_MAX_BL2_SIZE)
-#define BL2_LIMIT			BL31_BASE
 #endif
 
 /*******************************************************************************
@@ -372,14 +385,19 @@
 						(PLAT_ARM_TRUSTED_SRAM_SIZE >> 1))
 #define BL31_LIMIT			(ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)
 #else
+/* Put BL31 below BL2 in the Trusted SRAM.*/
+#define BL31_BASE			((ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)\
+						- PLAT_ARM_MAX_BL31_SIZE)
+#define BL31_PROGBITS_LIMIT		BL2_BASE
 /*
- * Put BL31 at the top of the Trusted SRAM.
+ * For BL2_AT_EL3 make sure the BL31 can grow up until BL2_BASE. This is
+ * because in the BL2_AT_EL3 configuration, BL2 is always resident.
  */
-#define BL31_BASE			(ARM_BL_RAM_BASE +		\
-						ARM_BL_RAM_SIZE -	\
-						PLAT_ARM_MAX_BL31_SIZE)
-#define BL31_PROGBITS_LIMIT		BL1_RW_BASE
+#if BL2_AT_EL3
+#define BL31_LIMIT			BL2_BASE
+#else
 #define BL31_LIMIT			(ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)
+#endif
 #endif
 
 #if defined(AARCH32) || JUNO_AARCH32_EL3_RUNTIME
@@ -387,15 +405,17 @@
  * BL32 specific defines for EL3 runtime in AArch32 mode
  ******************************************************************************/
 # if RESET_TO_SP_MIN && !JUNO_AARCH32_EL3_RUNTIME
-/* SP_MIN is the only BL image in SRAM. Allocate the whole of SRAM to BL32 */
-#  define BL32_BASE			ARM_BL_RAM_BASE
+/*
+ * SP_MIN is the only BL image in SRAM. Allocate the whole of SRAM (excluding
+ * the page reserved for fw_configs) to BL32
+ */
+#  define BL32_BASE			ARM_TB_FW_CONFIG_LIMIT
 #  define BL32_LIMIT			(ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)
 # else
-/* Put BL32 at the top of the Trusted SRAM.*/
-#  define BL32_BASE			(ARM_BL_RAM_BASE +		\
-						ARM_BL_RAM_SIZE -	\
-						PLAT_ARM_MAX_BL32_SIZE)
-#  define BL32_PROGBITS_LIMIT		BL1_RW_BASE
+/* Put BL32 below BL2 in the Trusted SRAM.*/
+#  define BL32_BASE			((ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)\
+						- PLAT_ARM_MAX_BL32_SIZE)
+#  define BL32_PROGBITS_LIMIT		BL2_BASE
 #  define BL32_LIMIT			(ARM_BL_RAM_BASE + ARM_BL_RAM_SIZE)
 # endif /* RESET_TO_SP_MIN && !JUNO_AARCH32_EL3_RUNTIME */
 
@@ -426,8 +446,8 @@
 # elif ARM_TSP_RAM_LOCATION_ID == ARM_TRUSTED_SRAM_ID
 #  define TSP_SEC_MEM_BASE		ARM_BL_RAM_BASE
 #  define TSP_SEC_MEM_SIZE		ARM_BL_RAM_SIZE
-#  define TSP_PROGBITS_LIMIT		BL2_BASE
-#  define BL32_BASE			ARM_BL_RAM_BASE
+#  define TSP_PROGBITS_LIMIT		BL31_BASE
+#  define BL32_BASE			ARM_TB_FW_CONFIG_LIMIT
 #  define BL32_LIMIT			BL31_BASE
 # elif ARM_TSP_RAM_LOCATION_ID == ARM_TRUSTED_DRAM_ID
 #  define TSP_SEC_MEM_BASE		PLAT_ARM_TRUSTED_DRAM_BASE
@@ -477,6 +497,7 @@
 #define PLAT_PERCPU_BAKERY_LOCK_SIZE		(1 * CACHE_WRITEBACK_GRANULE)
 
 /* Priority levels for ARM platforms */
+#define PLAT_RAS_PRI			0x10
 #define PLAT_SDEI_CRITICAL_PRI		0x60
 #define PLAT_SDEI_NORMAL_PRI		0x70
 
@@ -507,4 +528,4 @@
 	SDEI_SHARED_EVENT(ARM_SDEI_DS_EVENT_1, SDEI_DYN_IRQ, SDEI_MAPF_DYNAMIC), \
 	SDEI_SHARED_EVENT(ARM_SDEI_DS_EVENT_2, SDEI_DYN_IRQ, SDEI_MAPF_DYNAMIC)
 
-#endif /* __ARM_DEF_H__ */
+#endif /* ARM_DEF_H */

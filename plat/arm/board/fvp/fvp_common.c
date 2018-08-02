@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,6 +7,7 @@
 #include <arm_config.h>
 #include <arm_def.h>
 #include <arm_spm_def.h>
+#include <arm_xlat_tables.h>
 #include <assert.h>
 #include <cci.h>
 #include <ccn.h>
@@ -17,6 +18,7 @@
 #include <secure_partition.h>
 #include <v2m_def.h>
 #include "../fvp_def.h"
+#include "fvp_private.h"
 
 /* Defines for GIC Driver build time selection */
 #define FVP_GICV2		1
@@ -128,6 +130,9 @@ const mmap_region_t plat_arm_mmap[] = {
 #if ENABLE_SPM && defined(IMAGE_BL31)
 const mmap_region_t plat_arm_secure_partition_mmap[] = {
 	V2M_MAP_IOFPGA_EL0, /* for the UART */
+	MAP_REGION_FLAT(DEVICE0_BASE,				\
+			DEVICE0_SIZE,				\
+			MT_DEVICE | MT_RO | MT_SECURE | MT_USER),
 	ARM_SP_IMAGE_MMAP,
 	ARM_SP_IMAGE_NS_BUF_MMAP,
 	ARM_SP_IMAGE_RW_MMAP,
@@ -140,6 +145,7 @@ const mmap_region_t plat_arm_secure_partition_mmap[] = {
 const mmap_region_t plat_arm_mmap[] = {
 #ifdef AARCH32
 	ARM_MAP_SHARED_RAM,
+	ARM_V2M_MAP_MEM_PROTECT,
 #endif
 	V2M_MAP_IOFPGA,
 	MAP_DEVICE0,

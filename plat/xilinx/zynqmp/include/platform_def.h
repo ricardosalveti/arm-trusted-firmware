@@ -1,15 +1,16 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __PLATFORM_DEF_H__
-#define __PLATFORM_DEF_H__
+#ifndef PLATFORM_DEF_H
+#define PLATFORM_DEF_H
 
 #include <arch.h>
 #include <gic_common.h>
 #include <interrupt_props.h>
+#include <utils_def.h>
 #include "../zynqmp_def.h"
 
 /*******************************************************************************
@@ -21,9 +22,9 @@
 
 #define PLATFORM_CORE_COUNT		4
 #define PLAT_NUM_POWER_DOMAINS		5
-#define PLAT_MAX_PWR_LVL		1
-#define PLAT_MAX_RET_STATE		1
-#define PLAT_MAX_OFF_STATE		2
+#define PLAT_MAX_PWR_LVL		U(1)
+#define PLAT_MAX_RET_STATE		U(1)
+#define PLAT_MAX_OFF_STATE		U(2)
 
 /*******************************************************************************
  * BL31 specific defines.
@@ -34,7 +35,7 @@
  * little space for growth.
  */
 #ifndef ZYNQMP_ATF_MEM_BASE
-#if !DEBUG
+#if !DEBUG && defined(SPD_none)
 # define BL31_BASE			0xfffea000
 # define BL31_LIMIT			0xffffffff
 #else
@@ -81,8 +82,8 @@
 /*******************************************************************************
  * Platform specific page table and MMU setup constants
  ******************************************************************************/
-#define PLAT_PHY_ADDR_SPACE_SIZE	(1ull << 32)
-#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ull << 32)
+#define PLAT_PHY_ADDR_SPACE_SIZE	(1ULL << 32)
+#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ULL << 32)
 #define MAX_MMAP_REGIONS		7
 #define MAX_XLAT_TABLES			5
 
@@ -91,8 +92,12 @@
 
 #define PLAT_ARM_GICD_BASE	BASE_GICD_BASE
 #define PLAT_ARM_GICC_BASE	BASE_GICC_BASE
-
-#if !ZYNQMP_WARM_RESTART
+/*
+ * Define properties of Group 1 Secure and Group 0 interrupts as per GICv3
+ * terminology. On a GICv2 system or mode, the lists will be merged and treated
+ * as Group 0 interrupts.
+ */
+#if !ZYNQMP_WDT_RESTART
 #define PLAT_ARM_G1S_IRQ_PROPS(grp) \
 	INTR_PROP_DESC(ARM_IRQ_SEC_PHY_TIMER, GIC_HIGHEST_SEC_PRIORITY, grp, \
 			GIC_INTR_CFG_LEVEL), \
@@ -138,4 +143,4 @@
 
 #define PLAT_ARM_G0_IRQ_PROPS(grp)
 
-#endif /* __PLATFORM_DEF_H__ */
+#endif /* PLATFORM_DEF_H */

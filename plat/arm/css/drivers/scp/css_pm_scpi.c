@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -19,13 +19,13 @@
 /*
  * Helper function to inform power down state to SCP.
  */
-void css_scp_suspend(const psci_power_state_t *target_state)
+void css_scp_suspend(const struct psci_power_state *target_state)
 {
 	uint32_t cluster_state = scpi_power_on;
 	uint32_t system_state = scpi_power_on;
 
 	/* Check if power down at system power domain level is requested */
-	if (CSS_SYSTEM_PWR_STATE(target_state) == ARM_LOCAL_STATE_OFF)
+	if (css_system_pwr_state(target_state) == ARM_LOCAL_STATE_OFF)
 		system_state = scpi_power_retention;
 
 	/* Cluster is to be turned off, so disable coherency */
@@ -47,7 +47,7 @@ void css_scp_suspend(const psci_power_state_t *target_state)
  * if applicable. Since SCPI doesn't differentiate between OFF and suspend, we
  * call the suspend helper here.
  */
-void css_scp_off(const psci_power_state_t *target_state)
+void css_scp_off(const struct psci_power_state *target_state)
 {
 	css_scp_suspend(target_state);
 }

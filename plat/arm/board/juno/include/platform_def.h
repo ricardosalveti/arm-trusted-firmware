@@ -1,11 +1,23 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef __PLATFORM_DEF_H__
 #define __PLATFORM_DEF_H__
+
+/* Enable the dynamic translation tables library. */
+#ifdef AARCH32
+# if defined(IMAGE_BL32) && RESET_TO_SP_MIN
+#  define PLAT_XLAT_TABLES_DYNAMIC     1
+# endif
+#else
+# if defined(IMAGE_BL31) && RESET_TO_BL31
+#  define PLAT_XLAT_TABLES_DYNAMIC     1
+# endif
+#endif /* AARCH32 */
+
 
 #include <arm_def.h>
 #include <board_arm_def.h>
@@ -44,6 +56,12 @@
 /* Use the bypass address */
 #define PLAT_ARM_TRUSTED_ROM_BASE	V2M_FLASH0_BASE + BL1_ROM_BYPASS_OFFSET
 
+#define NSRAM_BASE			0x2e000000
+#define NSRAM_SIZE			0x00008000	/* 32KB */
+
+/* virtual address used by dynamic mem_protect for chunk_base */
+#define PLAT_ARM_MEM_PROTEC_VA_FRAME	0xc0000000
+
 /*
  * Actual ROM size on Juno is 64 KB, but TBB currently requires at least 80 KB
  * in debug mode. We can test TBB on Juno bypassing the ROM and using 128 KB of
@@ -80,7 +98,7 @@
 #endif
 
 #ifdef IMAGE_BL2U
-# define PLAT_ARM_MMAP_ENTRIES		4
+# define PLAT_ARM_MMAP_ENTRIES		5
 # define MAX_XLAT_TABLES		3
 #endif
 
@@ -90,7 +108,7 @@
 #endif
 
 #ifdef IMAGE_BL32
-# define PLAT_ARM_MMAP_ENTRIES		5
+# define PLAT_ARM_MMAP_ENTRIES		6
 # define MAX_XLAT_TABLES		4
 #endif
 
@@ -99,7 +117,7 @@
  * plus a little space for growth.
  */
 #if TRUSTED_BOARD_BOOT
-# define PLAT_ARM_MAX_BL1_RW_SIZE	0xA000
+# define PLAT_ARM_MAX_BL1_RW_SIZE	0xB000
 #else
 # define PLAT_ARM_MAX_BL1_RW_SIZE	0x6000
 #endif
@@ -110,31 +128,32 @@
  */
 #if TRUSTED_BOARD_BOOT
 #if TF_MBEDTLS_KEY_ALG_ID == TF_MBEDTLS_RSA_AND_ECDSA
-# define PLAT_ARM_MAX_BL2_SIZE		0x1E000
+# define PLAT_ARM_MAX_BL2_SIZE		0x1F000
+#elif TF_MBEDTLS_KEY_ALG_ID == TF_MBEDTLS_ECDSA
+# define PLAT_ARM_MAX_BL2_SIZE		0x1D000
 #else
-# define PLAT_ARM_MAX_BL2_SIZE		0x1A000
+# define PLAT_ARM_MAX_BL2_SIZE		0x1C000
 #endif
 #else
-# define PLAT_ARM_MAX_BL2_SIZE		0xC000
+# define PLAT_ARM_MAX_BL2_SIZE		0xE000
 #endif
 
 /*
- * PLAT_ARM_MAX_BL31_SIZE is calculated using the current BL31 debug size plus a
- * little space for growth.
- * SCP_BL2 image is loaded into the space BL31 -> BL1_RW_BASE.
- * For TBB use case, PLAT_ARM_MAX_BL1_RW_SIZE has been increased and therefore
- * PLAT_ARM_MAX_BL31_SIZE has been increased to ensure SCP_BL2 has the same
- * space available.
+ * Since BL31 NOBITS overlays BL2 and BL1-RW, PLAT_ARM_MAX_BL31_SIZE is
+ * calculated using the current BL31 PROGBITS debug size plus the sizes of
+ * BL2 and BL1-RW.  SCP_BL2 image is loaded into the space BL31 -> BL2_BASE.
+ * Hence the BL31 PROGBITS size should be >= PLAT_CSS_MAX_SCP_BL2_SIZE.
  */
-#define PLAT_ARM_MAX_BL31_SIZE		0x1E000
+#define PLAT_ARM_MAX_BL31_SIZE		0x3E000
 
 #if JUNO_AARCH32_EL3_RUNTIME
 /*
- * PLAT_ARM_MAX_BL32_SIZE is calculated for SP_MIN as the AArch32 Secure
- * Payload. We also need to take care of SCP_BL2 size as well, as the SCP_BL2
- * is loaded into the space BL32 -> BL1_RW_BASE
+ * Since BL32 NOBITS overlays BL2 and BL1-RW, PLAT_ARM_MAX_BL32_SIZE is
+ * calculated using the current BL32 PROGBITS debug size plus the sizes of
+ * BL2 and BL1-RW.  SCP_BL2 image is loaded into the space BL32 -> BL2_BASE.
+ * Hence the BL32 PROGBITS size should be >= PLAT_CSS_MAX_SCP_BL2_SIZE.
  */
-# define PLAT_ARM_MAX_BL32_SIZE		0x1E000
+#define PLAT_ARM_MAX_BL32_SIZE		0x3E000
 #endif
 
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,6 +9,7 @@
 
 #include <ep_info.h>
 #include <param_header.h>
+#include <utils_def.h>
 
 #define UP	1
 #define DOWN	0
@@ -31,10 +32,10 @@
 #define IMAGE_STATE_EXECUTED			4
 #define IMAGE_STATE_INTERRUPTED			5
 
-#define IMAGE_ATTRIB_SKIP_LOADING	0x02
-#define IMAGE_ATTRIB_PLAT_SETUP		0x04
+#define IMAGE_ATTRIB_SKIP_LOADING	U(0x02)
+#define IMAGE_ATTRIB_PLAT_SETUP		U(0x04)
 
-#define INVALID_IMAGE_ID		(0xFFFFFFFF)
+#define INVALID_IMAGE_ID		U(0xFFFFFFFF)
 
 /*******************************************************************************
  * Constants to indicate type of exception to the common exception handler.
@@ -63,33 +64,41 @@
 #include <types.h>
 #include <utils_def.h> /* To retain compatibility */
 
+
 /*
  * Declarations of linker defined symbols to help determine memory layout of
  * BL images
  */
 #if SEPARATE_CODE_AND_RODATA
-extern uintptr_t __TEXT_START__;
-extern uintptr_t __TEXT_END__;
-extern uintptr_t __RODATA_START__;
-extern uintptr_t __RODATA_END__;
+IMPORT_SYM(unsigned long, __TEXT_START__,	BL_CODE_BASE);
+IMPORT_SYM(unsigned long, __TEXT_END__,		BL_CODE_END);
+IMPORT_SYM(unsigned long, __RODATA_START__,	BL_RO_DATA_BASE);
+IMPORT_SYM(unsigned long, __RODATA_END__,	BL_RO_DATA_END);
 #else
-extern uintptr_t __RO_START__;
-extern uintptr_t __RO_END__;
+IMPORT_SYM(unsigned long, __RO_START__,		BL_CODE_BASE);
+IMPORT_SYM(unsigned long, __RO_END__,		BL_CODE_END);
 #endif
 
 #if defined(IMAGE_BL2)
-extern uintptr_t __BL2_END__;
+IMPORT_SYM(unsigned long, __BL2_END__,		BL2_END);
 #elif defined(IMAGE_BL2U)
-extern uintptr_t __BL2U_END__;
+IMPORT_SYM(unsigned long, __BL2U_END__,		BL2U_END);
 #elif defined(IMAGE_BL31)
-extern uintptr_t __BL31_END__;
+IMPORT_SYM(unsigned long, __BL31_END__,		BL31_END);
 #elif defined(IMAGE_BL32)
-extern uintptr_t __BL32_END__;
+IMPORT_SYM(unsigned long, __BL32_END__,		BL32_END);
 #endif /* IMAGE_BLX */
 
+/*
+ * The next 2 constants identify the extents of the coherent memory region.
+ * These addresses are used by the MMU setup code and therefore they must be
+ * page-aligned.  It is the responsibility of the linker script to ensure that
+ * __COHERENT_RAM_START__ and __COHERENT_RAM_END__ linker symbols refer to
+ * page-aligned addresses.
+ */
 #if USE_COHERENT_MEM
-extern uintptr_t __COHERENT_RAM_START__;
-extern uintptr_t __COHERENT_RAM_END__;
+IMPORT_SYM(unsigned long, __COHERENT_RAM_START__,	BL_COHERENT_RAM_BASE);
+IMPORT_SYM(unsigned long, __COHERENT_RAM_END__,		BL_COHERENT_RAM_END);
 #endif
 
 /*******************************************************************************
@@ -198,7 +207,7 @@ typedef struct bl31_params {
 /*******************************************************************************
  * Function & variable prototypes
  ******************************************************************************/
-size_t image_size(unsigned int image_id);
+size_t get_image_size(unsigned int image_id);
 
 int is_mem_free(uintptr_t free_base, size_t free_size,
 		uintptr_t addr, size_t size);
@@ -209,7 +218,6 @@ int load_auth_image(unsigned int image_id, image_info_t *image_data);
 
 #else
 
-uintptr_t page_align(uintptr_t, unsigned);
 int load_image(meminfo_t *mem_layout,
 	       unsigned int image_id,
 	       uintptr_t image_base,
@@ -225,10 +233,19 @@ void reserve_mem(uintptr_t *free_base, size_t *free_size,
 
 #endif /* LOAD_IMAGE_V2 */
 
+#if TRUSTED_BOARD_BOOT && defined(DYN_DISABLE_AUTH)
+/*
+ * API to dynamically disable authentication. Only meant for development
+ * systems.
+ */
+void dyn_disable_auth(void);
+#endif
+
 extern const char build_message[];
 extern const char version_string[];
 
 void print_entry_point_info(const entry_point_info_t *ep_info);
+uintptr_t page_align(uintptr_t value, unsigned dir);
 
 #endif /*__ASSEMBLY__*/
 

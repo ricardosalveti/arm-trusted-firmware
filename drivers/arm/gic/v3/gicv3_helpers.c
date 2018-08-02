@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -232,12 +232,15 @@ void gicr_set_ipriorityr(uintptr_t base, unsigned int id, unsigned int pri)
  */
 void gicr_set_icfgr0(uintptr_t base, unsigned int id, unsigned int cfg)
 {
-	unsigned bit_num = id & ((1 << ICFGR_SHIFT) - 1);
+	/* Interrupt configuration is a 2-bit field */
+	unsigned int bit_num = id & ((1 << ICFGR_SHIFT) - 1);
+	unsigned int bit_shift = bit_num << 1;
+
 	uint32_t reg_val = gicr_read_icfgr0(base);
 
 	/* Clear the field, and insert required configuration */
-	reg_val &= ~(GIC_CFG_MASK << bit_num);
-	reg_val |= ((cfg & GIC_CFG_MASK) << bit_num);
+	reg_val &= ~(GIC_CFG_MASK << bit_shift);
+	reg_val |= ((cfg & GIC_CFG_MASK) << bit_shift);
 
 	gicr_write_icfgr0(base, reg_val);
 }
@@ -248,12 +251,15 @@ void gicr_set_icfgr0(uintptr_t base, unsigned int id, unsigned int cfg)
  */
 void gicr_set_icfgr1(uintptr_t base, unsigned int id, unsigned int cfg)
 {
-	unsigned bit_num = id & ((1 << ICFGR_SHIFT) - 1);
+	/* Interrupt configuration is a 2-bit field */
+	unsigned int bit_num = id & ((1 << ICFGR_SHIFT) - 1);
+	unsigned int bit_shift = bit_num << 1;
+
 	uint32_t reg_val = gicr_read_icfgr1(base);
 
 	/* Clear the field, and insert required configuration */
-	reg_val &= ~(GIC_CFG_MASK << bit_num);
-	reg_val |= ((cfg & GIC_CFG_MASK) << bit_num);
+	reg_val &= ~(GIC_CFG_MASK << bit_shift);
+	reg_val |= ((cfg & GIC_CFG_MASK) << bit_shift);
 
 	gicr_write_icfgr1(base, reg_val);
 }
@@ -336,7 +342,7 @@ void gicv3_rdistif_base_addrs_probe(uintptr_t *rdistif_base_addrs,
 /*******************************************************************************
  * Helper function to configure the default attributes of SPIs.
  ******************************************************************************/
-void gicv3_spis_configure_defaults(uintptr_t gicd_base)
+void gicv3_spis_config_defaults(uintptr_t gicd_base)
 {
 	unsigned int index, num_ints;
 
@@ -369,7 +375,7 @@ void gicv3_spis_configure_defaults(uintptr_t gicd_base)
 /*******************************************************************************
  * Helper function to configure secure G0 and G1S SPIs.
  ******************************************************************************/
-void gicv3_secure_spis_configure(uintptr_t gicd_base,
+void gicv3_secure_spis_config(uintptr_t gicd_base,
 				     unsigned int num_ints,
 				     const unsigned int *sec_intr_list,
 				     unsigned int int_grp)
@@ -417,7 +423,7 @@ void gicv3_secure_spis_configure(uintptr_t gicd_base,
 /*******************************************************************************
  * Helper function to configure properties of secure SPIs
  ******************************************************************************/
-unsigned int gicv3_secure_spis_configure_props(uintptr_t gicd_base,
+unsigned int gicv3_secure_spis_config_props(uintptr_t gicd_base,
 		const interrupt_prop_t *interrupt_props,
 		unsigned int interrupt_props_num)
 {
@@ -427,8 +433,7 @@ unsigned int gicv3_secure_spis_configure_props(uintptr_t gicd_base,
 	unsigned int ctlr_enable = 0;
 
 	/* Make sure there's a valid property array */
-	assert(interrupt_props != NULL);
-	assert(interrupt_props_num > 0);
+	assert(interrupt_props_num > 0 ? interrupt_props != NULL : 1);
 
 	for (i = 0; i < interrupt_props_num; i++) {
 		current_prop = &interrupt_props[i];
@@ -473,7 +478,7 @@ unsigned int gicv3_secure_spis_configure_props(uintptr_t gicd_base,
 /*******************************************************************************
  * Helper function to configure the default attributes of SPIs.
  ******************************************************************************/
-void gicv3_ppi_sgi_configure_defaults(uintptr_t gicr_base)
+void gicv3_ppi_sgi_config_defaults(uintptr_t gicr_base)
 {
 	unsigned int index;
 
@@ -502,7 +507,7 @@ void gicv3_ppi_sgi_configure_defaults(uintptr_t gicr_base)
 /*******************************************************************************
  * Helper function to configure secure G0 and G1S SPIs.
  ******************************************************************************/
-void gicv3_secure_ppi_sgi_configure(uintptr_t gicr_base,
+void gicv3_secure_ppi_sgi_config(uintptr_t gicr_base,
 					unsigned int num_ints,
 					const unsigned int *sec_intr_list,
 					unsigned int int_grp)
@@ -541,7 +546,7 @@ void gicv3_secure_ppi_sgi_configure(uintptr_t gicr_base,
 /*******************************************************************************
  * Helper function to configure properties of secure G0 and G1S PPIs and SGIs.
  ******************************************************************************/
-unsigned int gicv3_secure_ppi_sgi_configure_props(uintptr_t gicr_base,
+unsigned int gicv3_secure_ppi_sgi_config_props(uintptr_t gicr_base,
 		const interrupt_prop_t *interrupt_props,
 		unsigned int interrupt_props_num)
 {
@@ -550,8 +555,7 @@ unsigned int gicv3_secure_ppi_sgi_configure_props(uintptr_t gicr_base,
 	unsigned int ctlr_enable = 0;
 
 	/* Make sure there's a valid property array */
-	assert(interrupt_props != NULL);
-	assert(interrupt_props_num > 0);
+	assert(interrupt_props_num > 0 ? interrupt_props != NULL : 1);
 
 	for (i = 0; i < interrupt_props_num; i++) {
 		current_prop = &interrupt_props[i];

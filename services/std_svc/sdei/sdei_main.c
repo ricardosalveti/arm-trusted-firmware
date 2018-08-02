@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -10,7 +10,6 @@
 #include <bl_common.h>
 #include <cassert.h>
 #include <context.h>
-#include <context_mgmt.h>
 #include <debug.h>
 #include <ehf.h>
 #include <interrupt_mgmt.h>
@@ -111,6 +110,9 @@ void sdei_class_init(sdei_class_t class)
 
 		/* No shared mapping should have signalable property */
 		assert(!is_event_signalable(map));
+
+		/* Shared mappings can't be explicit */
+		assert(!is_map_explicit(map));
 #endif
 
 		/* Skip initializing the wrong priority */
@@ -162,6 +164,16 @@ void sdei_class_init(sdei_class_t class)
 
 		/* Make sure it's a private event */
 		assert(is_event_private(map));
+
+		/*
+		 * Other than priority, explicit events can only have explicit
+		 * and private flags set.
+		 */
+		if (is_map_explicit(map)) {
+			assert((map->map_flags | SDEI_MAPF_CRITICAL) ==
+					(SDEI_MAPF_EXPLICIT | SDEI_MAPF_PRIVATE
+					| SDEI_MAPF_CRITICAL));
+		}
 #endif
 
 		/* Skip initializing the wrong priority */
@@ -174,6 +186,12 @@ void sdei_class_init(sdei_class_t class)
 				assert(map->intr == SDEI_DYN_IRQ);
 				assert(is_event_normal(map));
 				num_dyn_priv_slots++;
+			} else if (is_map_explicit(map)) {
+				/*
+				 * Explicit mappings don't have a backing
+				 * SDEI interrupt, but verify that anyway.
+				 */
+				assert(map->intr == SDEI_DYN_IRQ);
 			} else {
 				/*
 				 * Private mappings must be bound to private
@@ -914,49 +932,43 @@ uint64_t sdei_smc_handler(uint32_t smc_fid,
 	case SDEI_VERSION:
 		SDEI_LOG("> VER\n");
 		ret = sdei_version();
-		SDEI_LOG("< VER:%lx\n", ret);
+		SDEI_LOG("< VER:%llx\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_REGISTER:
 		x5 = SMC_GET_GP(handle, CTX_GPREG_X5);
-		SDEI_LOG("> REG(n:%d e:%lx a:%lx f:%x m:%lx)\n", (int) x1,
+		SDEI_LOG("> REG(n:%d e:%llx a:%llx f:%x m:%llx)\n", (int) x1,
 				x2, x3, (int) x4, x5);
 		ret = sdei_event_register(x1, x2, x3, x4, x5);
-		SDEI_LOG("< REG:%ld\n", ret);
+		SDEI_LOG("< REG:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_ENABLE:
 		SDEI_LOG("> ENABLE(n:%d)\n", (int) x1);
 		ret = sdei_event_enable(x1);
-		SDEI_LOG("< ENABLE:%ld\n", ret);
+		SDEI_LOG("< ENABLE:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_DISABLE:
 		SDEI_LOG("> DISABLE(n:%d)\n", (int) x1);
 		ret = sdei_event_disable(x1);
-		SDEI_LOG("< DISABLE:%ld\n", ret);
+		SDEI_LOG("< DISABLE:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_CONTEXT:
 		SDEI_LOG("> CTX(p:%d):%lx\n", (int) x1, read_mpidr_el1());
 		ret = sdei_event_context(handle, x1);
-		SDEI_LOG("< CTX:%ld\n", ret);
+		SDEI_LOG("< CTX:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_COMPLETE_AND_RESUME:
 		resume = 1;
-		/* Fall through */
 
 	case SDEI_EVENT_COMPLETE:
-		SDEI_LOG("> COMPLETE(r:%d sta/ep:%lx):%lx\n", resume, x1,
+		SDEI_LOG("> COMPLETE(r:%d sta/ep:%llx):%lx\n", resume, x1,
 				read_mpidr_el1());
 		ret = sdei_event_complete(resume, x1);
-		SDEI_LOG("< COMPLETE:%lx\n", ret);
+		SDEI_LOG("< COMPLETE:%llx\n", ret);
 
 		/*
 		 * Set error code only if the call failed. If the call
@@ -969,92 +981,81 @@ uint64_t sdei_smc_handler(uint32_t smc_fid,
 			SMC_RET1(handle, ret);
 
 		SMC_RET0(handle);
-		break;
 
 	case SDEI_EVENT_STATUS:
 		SDEI_LOG("> STAT(n:%d)\n", (int) x1);
 		ret = sdei_event_status(x1);
-		SDEI_LOG("< STAT:%ld\n", ret);
+		SDEI_LOG("< STAT:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_GET_INFO:
 		SDEI_LOG("> INFO(n:%d, %d)\n", (int) x1, (int) x2);
 		ret = sdei_event_get_info(x1, x2);
-		SDEI_LOG("< INFO:%ld\n", ret);
+		SDEI_LOG("< INFO:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_UNREGISTER:
 		SDEI_LOG("> UNREG(n:%d)\n", (int) x1);
 		ret = sdei_event_unregister(x1);
-		SDEI_LOG("< UNREG:%ld\n", ret);
+		SDEI_LOG("< UNREG:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_PE_UNMASK:
 		SDEI_LOG("> UNMASK:%lx\n", read_mpidr_el1());
 		sdei_pe_unmask();
 		SDEI_LOG("< UNMASK:%d\n", 0);
 		SMC_RET1(handle, 0);
-		break;
 
 	case SDEI_PE_MASK:
 		SDEI_LOG("> MASK:%lx\n", read_mpidr_el1());
 		ret = sdei_pe_mask();
-		SDEI_LOG("< MASK:%ld\n", ret);
+		SDEI_LOG("< MASK:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_INTERRUPT_BIND:
 		SDEI_LOG("> BIND(%d)\n", (int) x1);
 		ret = sdei_interrupt_bind(x1);
-		SDEI_LOG("< BIND:%ld\n", ret);
+		SDEI_LOG("< BIND:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_INTERRUPT_RELEASE:
 		SDEI_LOG("> REL(%d)\n", (int) x1);
 		ret = sdei_interrupt_release(x1);
-		SDEI_LOG("< REL:%ld\n", ret);
+		SDEI_LOG("< REL:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_SHARED_RESET:
 		SDEI_LOG("> S_RESET():%lx\n", read_mpidr_el1());
 		ret = sdei_shared_reset();
-		SDEI_LOG("< S_RESET:%ld\n", ret);
+		SDEI_LOG("< S_RESET:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_PRIVATE_RESET:
 		SDEI_LOG("> P_RESET():%lx\n", read_mpidr_el1());
 		ret = sdei_private_reset();
-		SDEI_LOG("< P_RESET:%ld\n", ret);
+		SDEI_LOG("< P_RESET:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_ROUTING_SET:
-		SDEI_LOG("> ROUTE_SET(n:%d f:%lx aff:%lx)\n", (int) x1, x2, x3);
+		SDEI_LOG("> ROUTE_SET(n:%d f:%llx aff:%llx)\n", (int) x1, x2, x3);
 		ret = sdei_event_routing_set(x1, x2, x3);
-		SDEI_LOG("< ROUTE_SET:%ld\n", ret);
+		SDEI_LOG("< ROUTE_SET:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_FEATURES:
-		SDEI_LOG("> FTRS(f:%lx)\n", x1);
+		SDEI_LOG("> FTRS(f:%llx)\n", x1);
 		ret = sdei_features(x1);
-		SDEI_LOG("< FTRS:%lx\n", ret);
+		SDEI_LOG("< FTRS:%llx\n", ret);
 		SMC_RET1(handle, ret);
-		break;
 
 	case SDEI_EVENT_SIGNAL:
-		SDEI_LOG("> SIGNAL(e:%lx t:%lx)\n", x1, x2);
+		SDEI_LOG("> SIGNAL(e:%llx t:%llx)\n", x1, x2);
 		ret = sdei_signal(x1, x2);
-		SDEI_LOG("< SIGNAL:%ld\n", ret);
+		SDEI_LOG("< SIGNAL:%lld\n", ret);
 		SMC_RET1(handle, ret);
-		break;
+
 	default:
+		/* Do nothing in default case */
 		break;
 	}
 

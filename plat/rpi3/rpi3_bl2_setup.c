@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,9 +7,9 @@
 #include <arch_helpers.h>
 #include <assert.h>
 #include <bl_common.h>
-#include <console.h>
 #include <debug.h>
 #include <desc_image_load.h>
+#include <optee_utils.h>
 #include <platform_def.h>
 #include <xlat_mmu_helpers.h>
 #include <xlat_tables_defs.h>
@@ -27,8 +27,7 @@ static meminfo_t bl2_tzram_layout __aligned(CACHE_WRITEBACK_GRANULE);
 void bl2_early_platform_setup(meminfo_t *mem_layout)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(PLAT_RPI3_UART_BASE, PLAT_RPI3_UART_CLK_IN_HZ,
-		     PLAT_RPI3_UART_BAUDRATE);
+	rpi3_console_init();
 
 	/* Setup the BL2 memory layout */
 	bl2_tzram_layout = *mem_layout;
@@ -40,7 +39,7 @@ void bl2_platform_setup(void)
 {
 	/*
 	 * This is where a TrustZone address space controller and other
-	 * security related peripherals, would be configured.
+	 * security related peripherals would be configured.
 	 */
 }
 
@@ -69,11 +68,28 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 {
 	int err = 0;
 	bl_mem_params_node_t *bl_mem_params = get_bl_mem_params_node(image_id);
+#ifdef SPD_opteed
+	bl_mem_params_node_t *pager_mem_params = NULL;
+	bl_mem_params_node_t *paged_mem_params = NULL;
+#endif
 
 	assert(bl_mem_params != NULL);
 
 	switch (image_id) {
 	case BL32_IMAGE_ID:
+#ifdef SPD_opteed
+		pager_mem_params = get_bl_mem_params_node(BL32_EXTRA1_IMAGE_ID);
+		assert(pager_mem_params);
+
+		paged_mem_params = get_bl_mem_params_node(BL32_EXTRA2_IMAGE_ID);
+		assert(paged_mem_params);
+
+		err = parse_optee_header(&bl_mem_params->ep_info,
+				&pager_mem_params->image_info,
+				&paged_mem_params->image_info);
+		if (err != 0)
+			WARN("OPTEE header parse error.\n");
+#endif
 		bl_mem_params->ep_info.spsr = rpi3_get_spsr_for_bl32_entry();
 		break;
 
@@ -83,6 +99,9 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 		bl_mem_params->ep_info.spsr = rpi3_get_spsr_for_bl33_entry();
 		break;
 
+	default:
+		/* Do nothing in default case */
+		break;
 	}
 
 	return err;

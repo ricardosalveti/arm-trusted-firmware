@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -8,7 +8,7 @@
 # Trusted Firmware Version
 #
 VERSION_MAJOR			:= 1
-VERSION_MINOR			:= 4
+VERSION_MINOR			:= 5
 
 # Default goal is build all images
 .DEFAULT_GOAL			:= all
@@ -85,12 +85,17 @@ $(eval $(call add_define,DEBUG))
 ifneq (${DEBUG}, 0)
         BUILD_TYPE	:=	debug
         TF_CFLAGS	+= 	-g
-        ASFLAGS		+= 	-g -Wa,--gdwarf-2
+
+        ifneq ($(findstring clang,$(notdir $(CC))),)
+             ASFLAGS		+= 	-g
+        else
+             ASFLAGS		+= 	-g -Wa,--gdwarf-2
+        endif
+
         # Use LOG_LEVEL_INFO by default for debug builds
         LOG_LEVEL	:=	40
 else
         BUILD_TYPE	:=	release
-        $(eval $(call add_define,NDEBUG))
         # Use LOG_LEVEL_NOTICE by default for release builds
         LOG_LEVEL	:=	20
 endif
@@ -120,12 +125,18 @@ CC			:=	${CROSS_COMPILE}gcc
 CPP			:=	${CROSS_COMPILE}cpp
 AS			:=	${CROSS_COMPILE}gcc
 AR			:=	${CROSS_COMPILE}ar
-LD			:=	${CROSS_COMPILE}ld
+LINKER			:=	${CROSS_COMPILE}ld
 OC			:=	${CROSS_COMPILE}objcopy
 OD			:=	${CROSS_COMPILE}objdump
 NM			:=	${CROSS_COMPILE}nm
 PP			:=	${CROSS_COMPILE}gcc -E
-DTC			?=	dtc
+DTC			:=	dtc
+
+# Use ${LD}.bfd instead if it exists (as absolute path or together with $PATH).
+ifneq ($(strip $(wildcard ${LD}.bfd) \
+	$(foreach dir,$(subst :, ,${PATH}),$(wildcard ${dir}/${LINKER}.bfd))),)
+LINKER			:=	${LINKER}.bfd
+endif
 
 ifeq (${ARM_ARCH_MAJOR},7)
 target32-directive	= 	-target arm-none-eabi
@@ -138,14 +149,24 @@ endif
 ifeq ($(notdir $(CC)),armclang)
 TF_CFLAGS_aarch32	=	-target arm-arm-none-eabi $(march32-directive)
 TF_CFLAGS_aarch64	=	-target aarch64-arm-none-eabi -march=armv8-a
+LD			=	$(LINKER)
+AS			=	$(CC) -c -x assembler-with-cpp $(TF_CFLAGS_$(ARCH))
+CPP			=	$(CC) -E $(TF_CFLAGS_$(ARCH))
+PP			=	$(CC) -E $(TF_CFLAGS_$(ARCH))
 else ifneq ($(findstring clang,$(notdir $(CC))),)
 TF_CFLAGS_aarch32	=	$(target32-directive)
 TF_CFLAGS_aarch64	=	-target aarch64-elf
+LD			=	$(LINKER)
+AS			=	$(CC) -c -x assembler-with-cpp $(TF_CFLAGS_$(ARCH))
+CPP			=	$(CC) -E
+PP			=	$(CC) -E
 else
 TF_CFLAGS_aarch32	=	$(march32-directive)
 TF_CFLAGS_aarch64	=	-march=armv8-a
+LD			=	$(LINKER)
 endif
 
+TF_CFLAGS_aarch32	+=	-mno-unaligned-access
 TF_CFLAGS_aarch64	+=	-mgeneral-regs-only -mstrict-align
 
 ASFLAGS_aarch32		=	$(march32-directive)
@@ -163,7 +184,7 @@ TF_CFLAGS		+=	$(CPPFLAGS) $(TF_CFLAGS_$(ARCH))		\
 GCC_V_OUTPUT		:=	$(shell $(CC) -v 2>&1)
 PIE_FOUND		:=	$(findstring --enable-default-pie,${GCC_V_OUTPUT})
 
-ifeq ($(PIE_FOUND),1)
+ifneq ($(PIE_FOUND),)
 TF_CFLAGS		+=	-fno-PIE
 endif
 
@@ -186,13 +207,17 @@ BL_COMMON_SOURCES	+=	common/bl_common.c			\
 				common/${ARCH}/debug.S			\
 				lib/${ARCH}/cache_helpers.S		\
 				lib/${ARCH}/misc_helpers.S		\
+				plat/common/plat_bl_common.c		\
 				plat/common/plat_log_common.c		\
 				plat/common/${ARCH}/plat_common.c	\
 				plat/common/${ARCH}/platform_helpers.S	\
 				${COMPILER_RT_SRCS}			\
 				${STDLIB_SRCS}
 
-INCLUDES		+=	-Iinclude/bl1				\
+INCLUDES		+=	-Iinclude				\
+				-Iinclude/bl1				\
+				-Iinclude/bl2				\
+				-Iinclude/bl2u				\
 				-Iinclude/bl31				\
 				-Iinclude/common			\
 				-Iinclude/common/${ARCH}		\
@@ -264,13 +289,6 @@ endif
         # If both BL32_SOURCES and BL32 are defined, the binary takes precedence
         # over the sources.
 endif
-
-################################################################################
-# Include libraries' Makefile that are used in all BL
-################################################################################
-
-include lib/stack_protector/stack_protector.mk
-
 
 ################################################################################
 # Include the platform specific Makefile after the SPD Makefile (the platform
@@ -365,6 +383,51 @@ ifeq ($(HW_ASSISTED_COHERENCY)-$(USE_COHERENT_MEM),1-1)
 $(error USE_COHERENT_MEM cannot be enabled with HW_ASSISTED_COHERENCY)
 endif
 
+ifneq ($(MULTI_CONSOLE_API), 0)
+    ifeq (${ARCH},aarch32)
+        $(error "Error: MULTI_CONSOLE_API is not supported for AArch32")
+    endif
+endif
+
+#For now, BL2_IN_XIP_MEM is only supported when BL2_AT_EL3 is 1.
+ifeq ($(BL2_AT_EL3)-$(BL2_IN_XIP_MEM),0-1)
+$(error "BL2_IN_XIP_MEM is only supported when BL2_AT_EL3 is enabled")
+endif
+
+# SMC Calling Convention checks
+ifneq (${SMCCC_MAJOR_VERSION},1)
+    ifneq (${SPD},none)
+        $(error "SMC Calling Convention 1.X must be used with SPDs")
+    endif
+    ifeq (${ARCH},aarch32)
+        $(error "Only SMCCC 1.X is supported in AArch32 mode.")
+    endif
+endif
+
+# For RAS_EXTENSION, require that EAs are handled in EL3 first
+ifeq ($(RAS_EXTENSION),1)
+    ifneq ($(HANDLE_EA_EL3_FIRST),1)
+        $(error For RAS_EXTENSION, HANDLE_EA_EL3_FIRST must also be 1)
+    endif
+endif
+
+# When FAULT_INJECTION_SUPPORT is used, require that RAS_EXTENSION is enabled
+ifeq ($(FAULT_INJECTION_SUPPORT),1)
+    ifneq ($(RAS_EXTENSION),1)
+        $(error For FAULT_INJECTION_SUPPORT, RAS_EXTENSION must also be 1)
+    endif
+endif
+
+# DYN_DISABLE_AUTH can be set only when TRUSTED_BOARD_BOOT=1 and LOAD_IMAGE_V2=1
+ifeq ($(DYN_DISABLE_AUTH), 1)
+    ifeq (${TRUSTED_BOARD_BOOT}, 0)
+        $(error "TRUSTED_BOARD_BOOT must be enabled for DYN_DISABLE_AUTH to be set.")
+    endif
+    ifeq (${LOAD_IMAGE_V2}, 0)
+        $(error "DYN_DISABLE_AUTH is only supported for LOAD_IMAGE_V2.")
+    endif
+endif
+
 ################################################################################
 # Process platform overrideable behaviour
 ################################################################################
@@ -426,6 +489,12 @@ FIP_ARGS += --align ${FIP_ALIGN}
 endif
 
 ################################################################################
+# Include libraries' Makefile that are used in all BL
+################################################################################
+
+include lib/stack_protector/stack_protector.mk
+
+################################################################################
 # Auxiliary tools (fiptool, cert_create, etc)
 ################################################################################
 
@@ -475,6 +544,8 @@ $(eval $(call assert_boolean,CTX_INCLUDE_AARCH32_REGS))
 $(eval $(call assert_boolean,CTX_INCLUDE_FPREGS))
 $(eval $(call assert_boolean,DEBUG))
 $(eval $(call assert_boolean,DISABLE_PEDANTIC))
+$(eval $(call assert_boolean,DYN_DISABLE_AUTH))
+$(eval $(call assert_boolean,EL3_EXCEPTION_HANDLING))
 $(eval $(call assert_boolean,ENABLE_AMU))
 $(eval $(call assert_boolean,ENABLE_ASSERTIONS))
 $(eval $(call assert_boolean,ENABLE_PLAT_COMPAT))
@@ -482,16 +553,21 @@ $(eval $(call assert_boolean,ENABLE_PMF))
 $(eval $(call assert_boolean,ENABLE_PSCI_STAT))
 $(eval $(call assert_boolean,ENABLE_RUNTIME_INSTRUMENTATION))
 $(eval $(call assert_boolean,ENABLE_SPE_FOR_LOWER_ELS))
+$(eval $(call assert_boolean,ENABLE_SPM))
 $(eval $(call assert_boolean,ENABLE_SVE_FOR_NS))
 $(eval $(call assert_boolean,ERROR_DEPRECATED))
+$(eval $(call assert_boolean,FAULT_INJECTION_SUPPORT))
 $(eval $(call assert_boolean,GENERATE_COT))
 $(eval $(call assert_boolean,GICV2_G0_FOR_EL3))
+$(eval $(call assert_boolean,HANDLE_EA_EL3_FIRST))
 $(eval $(call assert_boolean,HW_ASSISTED_COHERENCY))
 $(eval $(call assert_boolean,LOAD_IMAGE_V2))
+$(eval $(call assert_boolean,MULTI_CONSOLE_API))
 $(eval $(call assert_boolean,NS_TIMER_SWITCH))
 $(eval $(call assert_boolean,PL011_GENERIC_UART))
 $(eval $(call assert_boolean,PROGRAMMABLE_RESET_ADDRESS))
 $(eval $(call assert_boolean,PSCI_EXTENDED_STATE_ID))
+$(eval $(call assert_boolean,RAS_EXTENSION))
 $(eval $(call assert_boolean,RESET_TO_BL31))
 $(eval $(call assert_boolean,SAVE_KEYS))
 $(eval $(call assert_boolean,SEPARATE_CODE_AND_RODATA))
@@ -501,9 +577,11 @@ $(eval $(call assert_boolean,USE_COHERENT_MEM))
 $(eval $(call assert_boolean,USE_TBBR_DEFS))
 $(eval $(call assert_boolean,WARMBOOT_ENABLE_DCACHE_EARLY))
 $(eval $(call assert_boolean,BL2_AT_EL3))
+$(eval $(call assert_boolean,BL2_IN_XIP_MEM))
 
 $(eval $(call assert_numeric,ARM_ARCH_MAJOR))
 $(eval $(call assert_numeric,ARM_ARCH_MINOR))
+$(eval $(call assert_numeric,SMCCC_MAJOR_VERSION))
 
 ################################################################################
 # Add definitions to the cpp preprocessor based on the current build options.
@@ -517,6 +595,7 @@ $(eval $(call add_define,ARM_GIC_ARCH))
 $(eval $(call add_define,COLD_BOOT_SINGLE_CPU))
 $(eval $(call add_define,CTX_INCLUDE_AARCH32_REGS))
 $(eval $(call add_define,CTX_INCLUDE_FPREGS))
+$(eval $(call add_define,EL3_EXCEPTION_HANDLING))
 $(eval $(call add_define,ENABLE_AMU))
 $(eval $(call add_define,ENABLE_ASSERTIONS))
 $(eval $(call add_define,ENABLE_PLAT_COMPAT))
@@ -524,20 +603,25 @@ $(eval $(call add_define,ENABLE_PMF))
 $(eval $(call add_define,ENABLE_PSCI_STAT))
 $(eval $(call add_define,ENABLE_RUNTIME_INSTRUMENTATION))
 $(eval $(call add_define,ENABLE_SPE_FOR_LOWER_ELS))
+$(eval $(call add_define,ENABLE_SPM))
 $(eval $(call add_define,ENABLE_SVE_FOR_NS))
 $(eval $(call add_define,ERROR_DEPRECATED))
+$(eval $(call add_define,FAULT_INJECTION_SUPPORT))
 $(eval $(call add_define,GICV2_G0_FOR_EL3))
+$(eval $(call add_define,HANDLE_EA_EL3_FIRST))
 $(eval $(call add_define,HW_ASSISTED_COHERENCY))
 $(eval $(call add_define,LOAD_IMAGE_V2))
 $(eval $(call add_define,LOG_LEVEL))
+$(eval $(call add_define,MULTI_CONSOLE_API))
 $(eval $(call add_define,NS_TIMER_SWITCH))
 $(eval $(call add_define,PL011_GENERIC_UART))
 $(eval $(call add_define,PLAT_${PLAT}))
 $(eval $(call add_define,PROGRAMMABLE_RESET_ADDRESS))
 $(eval $(call add_define,PSCI_EXTENDED_STATE_ID))
+$(eval $(call add_define,RAS_EXTENSION))
 $(eval $(call add_define,RESET_TO_BL31))
 $(eval $(call add_define,SEPARATE_CODE_AND_RODATA))
-$(eval $(call add_define,ENABLE_SPM))
+$(eval $(call add_define,SMCCC_MAJOR_VERSION))
 $(eval $(call add_define,SPD_${SPD}))
 $(eval $(call add_define,SPIN_ON_BL1_EXIT))
 $(eval $(call add_define,TRUSTED_BOARD_BOOT))
@@ -545,6 +629,7 @@ $(eval $(call add_define,USE_COHERENT_MEM))
 $(eval $(call add_define,USE_TBBR_DEFS))
 $(eval $(call add_define,WARMBOOT_ENABLE_DCACHE_EARLY))
 $(eval $(call add_define,BL2_AT_EL3))
+$(eval $(call add_define,BL2_IN_XIP_MEM))
 
 # Define the EL3_PAYLOAD_BASE flag only if it is provided.
 ifdef EL3_PAYLOAD_BASE
@@ -563,6 +648,11 @@ else
         $(eval $(call add_define,AARCH64))
 endif
 
+# Define the DYN_DISABLE_AUTH flag only if set.
+ifeq (${DYN_DISABLE_AUTH},1)
+$(eval $(call add_define,DYN_DISABLE_AUTH))
+endif
+
 ################################################################################
 # Build targets
 ################################################################################
@@ -575,9 +665,9 @@ all: msg_start
 msg_start:
 	@echo "Building ${PLAT}"
 
-# Check if deprecated declarations should be treated as error or not.
+# Check if deprecated declarations and cpp warnings should be treated as error or not.
 ifeq (${ERROR_DEPRECATED},0)
-    TF_CFLAGS		+= 	-Wno-error=deprecated-declarations
+    CPPFLAGS		+= 	-Wno-error=deprecated-declarations -Wno-error=cpp
 endif
 
 # Expand build macros for the different images
@@ -590,45 +680,44 @@ ifeq (${BL2_AT_EL3}, 0)
 FIP_BL2_ARGS := tb-fw
 endif
 
-$(if ${BL2}, $(eval $(call MAKE_TOOL_ARGS,2,${BL2},${FIP_BL2_ARGS})),\
+$(if ${BL2}, $(eval $(call TOOL_ADD_IMG,bl2,--${FIP_BL2_ARGS})),\
 	$(eval $(call MAKE_BL,2,${FIP_BL2_ARGS})))
 endif
 
 ifeq (${NEED_SCP_BL2},yes)
-$(eval $(call FIP_ADD_IMG,SCP_BL2,--scp-fw))
+$(eval $(call TOOL_ADD_IMG,scp_bl2,--scp-fw))
 endif
 
 ifeq (${NEED_BL31},yes)
 BL31_SOURCES += ${SPD_SOURCES}
-$(if ${BL31}, $(eval $(call MAKE_TOOL_ARGS,31,${BL31},soc-fw)),\
+$(if ${BL31}, $(eval $(call TOOL_ADD_IMG,bl31,--soc-fw)),\
 	$(eval $(call MAKE_BL,31,soc-fw)))
 endif
 
 # If a BL32 image is needed but neither BL32 nor BL32_SOURCES is defined, the
-# build system will call FIP_ADD_IMG to print a warning message and abort the
+# build system will call TOOL_ADD_IMG to print a warning message and abort the
 # process. Note that the dependency on BL32 applies to the FIP only.
 ifeq (${NEED_BL32},yes)
-$(if ${BL32}, $(eval $(call MAKE_TOOL_ARGS,32,${BL32},tos-fw)),\
-	$(if ${BL32_SOURCES}, $(eval $(call MAKE_BL,32,tos-fw)),\
-		$(eval $(call FIP_ADD_IMG,BL32,--tos-fw))))
+
+BUILD_BL32 := $(if $(BL32),,$(if $(BL32_SOURCES),1))
+
+$(if ${BUILD_BL32}, $(eval $(call MAKE_BL,32,tos-fw)),\
+	$(eval $(call TOOL_ADD_IMG,bl32,--tos-fw)))
 endif
 
 # Add the BL33 image if required by the platform
 ifeq (${NEED_BL33},yes)
-$(eval $(call FIP_ADD_IMG,BL33,--nt-fw))
+$(eval $(call TOOL_ADD_IMG,bl33,--nt-fw))
 endif
 
 ifeq (${NEED_BL2U},yes)
-BL2U_PATH	:= $(if ${BL2U},${BL2U},$(call IMG_BIN,2u))
-$(if ${BL2U}, ,$(eval $(call MAKE_BL,2u)))
-$(eval $(call FWU_FIP_ADD_PAYLOAD,${BL2U_PATH},--ap-fwu-cfg))
+$(if ${BL2U}, $(eval $(call TOOL_ADD_IMG,bl2u,--ap-fwu-cfg,FWU_)),\
+	$(eval $(call MAKE_BL,2u,ap-fwu-cfg,FWU_)))
 endif
 
 # Expand build macros for the different images
 ifeq (${NEED_FDT},yes)
-$(eval $(call MAKE_DTBS,$(BUILD_PLAT)/fdts,$(FDT_SOURCES)))
-$(eval $(call MAKE_FDT))
-dtbs: $(DTBS)
+    $(eval $(call MAKE_DTBS,$(BUILD_PLAT)/fdts,$(FDT_SOURCES)))
 endif
 
 locate-checkpatch:
@@ -672,7 +761,14 @@ checkcodebase:		locate-checkpatch
 
 checkpatch:		locate-checkpatch
 	@echo "  CHECKING STYLE"
-	${Q}git format-patch --stdout ${BASE_COMMIT}..HEAD -- ${CHECK_PATHS} | ${CHECKPATCH} - || true
+	${Q}COMMON_COMMIT=$$(git merge-base HEAD ${BASE_COMMIT});	\
+	for commit in `git rev-list $$COMMON_COMMIT..HEAD`; do		\
+		printf "\n[*] Checking style of '$$commit'\n\n";	\
+		git log --format=email "$$commit~..$$commit"		\
+			-- ${CHECK_PATHS} | ${CHECKPATCH} - || true;	\
+		git diff --format=email "$$commit~..$$commit"		\
+			-- ${CHECK_PATHS} | ${CHECKPATCH} - || true;	\
+	done
 
 certtool: ${CRTTOOL}
 
@@ -758,7 +854,7 @@ help:
 	@echo "  distclean      Remove all build artifacts for all platforms"
 	@echo "  certtool       Build the Certificate generation tool"
 	@echo "  fiptool        Build the Firmware Image Package (FIP) creation tool"
-	@echo "  dtbs           Build the Flattened device tree (if required for the platform)"
+	@echo "  dtbs           Build the Device Tree Blobs (if required for the platform)"
 	@echo ""
 	@echo "Note: most build targets require PLAT to be set to a specific platform."
 	@echo ""

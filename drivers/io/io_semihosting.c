@@ -1,12 +1,14 @@
 /*
- * Copyright (c) 2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <assert.h>
 #include <io_driver.h>
+#include <io_semihosting.h>
 #include <io_storage.h>
+#include <platform_def.h>
 #include <semihosting.h>
 
 
@@ -132,7 +134,6 @@ static int sh_file_read(io_entity_t *entity, uintptr_t buffer, size_t length,
 	long file_handle;
 
 	assert(entity != NULL);
-	assert(buffer != (uintptr_t)NULL);
 	assert(length_read != NULL);
 
 	file_handle = (long)entity->info;
@@ -157,7 +158,6 @@ static int sh_file_write(io_entity_t *entity, const uintptr_t buffer,
 	size_t bytes = length;
 
 	assert(entity != NULL);
-	assert(buffer != (uintptr_t)NULL);
 	assert(length_written != NULL);
 
 	file_handle = (long)entity->info;

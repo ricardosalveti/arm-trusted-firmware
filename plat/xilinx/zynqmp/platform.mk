@@ -1,3 +1,4 @@
+#
 # Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -8,6 +9,7 @@ override PROGRAMMABLE_RESET_ADDRESS := 1
 PSCI_EXTENDED_STATE_ID := 1
 A53_DISABLE_NON_TEMPORAL_HINT := 0
 SEPARATE_CODE_AND_RODATA := 1
+ZYNQMP_WDT_RESTART := 0
 ZYNQMP_WARM_RESTART := 0
 override RESET_TO_BL31 := 1
 
@@ -38,8 +40,12 @@ ifdef ZYNQMP_BL32_MEM_BASE
     $(eval $(call add_define,ZYNQMP_BL32_MEM_SIZE))
 endif
 
-ifdef ZYNQMP_WARM_RESTART
-  $(eval $(call add_define,ZYNQMP_WARM_RESTART))
+ifeq ($(ZYNQMP_WARM_RESTART), 1)
+    ZYNQMP_WDT_RESTART = $(ZYNQMP_WARM_RESTART)
+endif
+
+ifdef ZYNQMP_WDT_RESTART
+    $(eval $(call add_define,ZYNQMP_WDT_RESTART))
 endif
 
 PLAT_INCLUDES		:=	-Iinclude/plat/arm/common/			\

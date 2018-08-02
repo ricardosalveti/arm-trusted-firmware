@@ -271,6 +271,7 @@ static int ufs_prepare_cmd(utp_utrd_t *utrd, uint8_t op, uint8_t lun,
 		break;
 	default:
 		assert(0);
+		break;
 	}
 	if (hd->dd == DD_IN)
 		flush_dcache_range(buf, length);
@@ -359,6 +360,7 @@ static int ufs_prepare_query(utp_utrd_t *utrd, uint8_t op, uint8_t idn,
 		break;
 	default:
 		assert(0);
+		break;
 	}
 	flush_dcache_range((uintptr_t)utrd, sizeof(utp_utrd_t));
 	flush_dcache_range((uintptr_t)utrd->header, UFS_DESC_SIZE);
@@ -511,6 +513,9 @@ static void ufs_query(uint8_t op, uint8_t idn, uint8_t index, uint8_t sel,
 	case QUERY_WRITE_ATTR:
 		assert(((buf & 3) == 0) && (size != 0));
 		break;
+	default:
+		/* Do nothing in default case */
+		break;
 	}
 	get_utrd(&utrd);
 	ufs_prepare_query(&utrd, op, idn, index, sel, buf, size);
@@ -532,6 +537,9 @@ static void ufs_query(uint8_t op, uint8_t idn, uint8_t index, uint8_t sel,
 		memcpy((void *)buf,
 		       (void *)(utrd.resp_upiu + sizeof(query_resp_upiu_t)),
 		       size);
+		break;
+	default:
+		/* Do nothing in default case */
 		break;
 	}
 	(void)result;
@@ -705,11 +713,27 @@ static void ufs_enum(void)
 	}
 }
 
+static void ufs_get_device_info(struct ufs_dev_desc *card_data)
+{
+	uint8_t desc_buf[DESC_DEVICE_MAX_SIZE];
+
+	ufs_query(QUERY_READ_DESC, DESC_TYPE_DEVICE, 0, 0,
+				(uintptr_t)desc_buf, DESC_DEVICE_MAX_SIZE);
+
+	/*
+	 * getting vendor (manufacturerID) and Bank Index in big endian
+	 * format
+	 */
+	card_data->wmanufacturerid = (uint16_t)((desc_buf[DEVICE_DESC_PARAM_MANF_ID] << 8) |
+				     (desc_buf[DEVICE_DESC_PARAM_MANF_ID + 1]));
+}
+
 int ufs_init(const ufs_ops_t *ops, ufs_params_t *params)
 {
 	int result;
 	unsigned int data;
 	uic_cmd_t cmd;
+	struct ufs_dev_desc card = {0};
 
 	assert((params != NULL) &&
 	       (params->reg_base != 0) &&
@@ -750,10 +774,17 @@ int ufs_init(const ufs_ops_t *ops, ufs_params_t *params)
 		ops->phy_init(&ufs_params);
 		result = ufshc_link_startup(ufs_params.reg_base);
 		assert(result == 0);
+
+		ufs_enum();
+
+		ufs_get_device_info(&card);
+		if (card.wmanufacturerid == UFS_VENDOR_SKHYNIX) {
+			ufs_params.flags |= UFS_FLAGS_VENDOR_SKHYNIX;
+		}
+
 		ops->phy_set_pwr_mode(&ufs_params);
 	}
 
-	ufs_enum();
 	(void)result;
 	return 0;
 }

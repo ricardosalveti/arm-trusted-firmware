@@ -1,19 +1,23 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __PLATFORM_DEF_H__
-#define __PLATFORM_DEF_H__
+#ifndef PLATFORM_DEF_H
+#define PLATFORM_DEF_H
 
 #include <arch.h>
 #include <common_def.h>
 #include <gic_common.h>
 #include <interrupt_props.h>
 #include <tbbr/tbbr_img_def.h>
+#include <utils_def.h>
 #include "hi3798cv200.h"
 #include "poplar_layout.h"		/* BL memory region sizes, etc */
+
+/* Special value used to verify platform parameters from BL2 to BL3-1 */
+#define POPLAR_BL31_PLAT_PARAM_VAL	0x0f1e2d3c4b5a6978ULL
 
 #define PLATFORM_LINKER_FORMAT		"elf64-littleaarch64"
 #define PLATFORM_LINKER_ARCH		aarch64
@@ -38,9 +42,20 @@
 #define MAX_IO_HANDLES			(4)
 #define MAX_IO_BLOCK_DEVICES		(2)
 
+/* Memory size options */
+#define POPLAR_DRAM_SIZE_1G	0
+#define POPLAR_DRAM_SIZE_2G	1
+
 /* Memory map related constants */
 #define DDR_BASE			(0x00000000)
+
+#if (POPLAR_DRAM_SIZE_ID == POPLAR_DRAM_SIZE_2G)
+#define DDR_SIZE			(0x80000000)
+#elif (POPLAR_DRAM_SIZE_ID == POPLAR_DRAM_SIZE_1G)
 #define DDR_SIZE			(0x40000000)
+#else
+#error "Currently unsupported POPLAR_DRAM_SIZE_ID value"
+#endif
 
 #define DEVICE_BASE			(0xF0000000)
 #define DEVICE_SIZE			(0x0F000000)
@@ -53,20 +68,15 @@
 #define POPLAR_DRAM_ID	1
 
 /*
- * DDR for OP-TEE (28MB from 0x02200000 -0x04000000) is divided in several
+ * DDR for OP-TEE (26MB from 0x02400000 -0x04000000) is divided in several
  * regions:
  *   - Secure DDR (default is the top 16MB) used by OP-TEE
  *   - Non-secure DDR (4MB) reserved for OP-TEE's future use
  *   - Secure DDR (4MB aligned on 4MB) for OP-TEE's "Secure Data Path" feature
  *   - Non-secure DDR used by OP-TEE (shared memory and padding) (4MB)
- *   - Non-secure DDR (2MB) reserved for OP-TEE's future use
  */
 #define DDR_SEC_SIZE			0x01000000
 #define DDR_SEC_BASE			0x03000000
-
-#define BL_MEM_BASE			(BL1_RO_BASE)
-#define BL_MEM_LIMIT			(BL31_LIMIT)
-#define BL_MEM_SIZE			(BL_MEM_LIMIT - BL_MEM_BASE)
 
 /*
  * BL3-2 specific defines.
@@ -77,6 +87,14 @@
  */
 #define BL32_DRAM_BASE			0x03000000
 #define BL32_DRAM_LIMIT			0x04000000
+
+#if LOAD_IMAGE_V2
+#ifdef SPD_opteed
+/* Load pageable part of OP-TEE at end of allocated DRAM space for BL32 */
+#define POPLAR_OPTEE_PAGEABLE_LOAD_SIZE	0x400000 /* 4MB */
+#define POPLAR_OPTEE_PAGEABLE_LOAD_BASE	(BL32_DRAM_LIMIT - POPLAR_OPTEE_PAGEABLE_LOAD_SIZE) /* 0x03C0_0000 */
+#endif
+#endif
 
 #if (POPLAR_TSP_RAM_LOCATION_ID == POPLAR_DRAM_ID)
 #define TSP_SEC_MEM_BASE		BL32_DRAM_BASE
@@ -96,10 +114,15 @@
 #endif /* SPD_none */
 #endif
 
+#define POPLAR_EMMC_DATA_BASE U(0x02200000)
+#define POPLAR_EMMC_DATA_SIZE EMMC_DESC_SIZE
+#define POPLAR_EMMC_DESC_BASE (POPLAR_EMMC_DATA_BASE + POPLAR_EMMC_DATA_SIZE)
+#define POPLAR_EMMC_DESC_SIZE EMMC_DESC_SIZE
+
 #define PLAT_POPLAR_NS_IMAGE_OFFSET	0x37000000
 
 /* Page table and MMU setup constants */
-#define ADDR_SPACE_SIZE			(1ull << 32)
+#define ADDR_SPACE_SIZE			(1ULL << 32)
 #define MAX_XLAT_TABLES			(4)
 #define MAX_MMAP_REGIONS		(16)
 
@@ -108,8 +131,8 @@
 
 /* Power states */
 #define PLAT_MAX_PWR_LVL		(MPIDR_AFFLVL1)
-#define PLAT_MAX_OFF_STATE		2
-#define PLAT_MAX_RET_STATE		1
+#define PLAT_MAX_OFF_STATE		U(2)
+#define PLAT_MAX_RET_STATE		U(1)
 
 /* Interrupt controller */
 #define PLAT_ARM_GICD_BASE	GICD_BASE
@@ -145,4 +168,4 @@
 
 #define PLAT_ARM_G0_IRQ_PROPS(grp)
 
-#endif /* __PLATFORM_DEF_H__ */
+#endif /* PLATFORM_DEF_H */

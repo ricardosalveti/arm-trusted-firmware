@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __UTILS_DEF_H__
-#define __UTILS_DEF_H__
+#ifndef UTILS_DEF_H
+#define UTILS_DEF_H
 
 /* Compute the number of elements in the given array */
 #define ARRAY_SIZE(a)				\
@@ -16,13 +16,42 @@
 
 #define SIZE_FROM_LOG2_WORDS(n)		(4 << (n))
 
-#define BIT(nr)				(1ULL << (nr))
+#define BIT_32(nr)			(U(1) << (nr))
+#define BIT_64(nr)			(ULL(1) << (nr))
+
+#ifdef AARCH32
+#define BIT				BIT_32
+#else
+#define BIT				BIT_64
+#endif
+
+/*
+ * Create a contiguous bitmask starting at bit position @l and ending at
+ * position @h. For example
+ * GENMASK_64(39, 21) gives us the 64bit vector 0x000000ffffe00000.
+ */
+#define GENMASK_32(h, l) \
+	(((~UINT32_C(0)) << (l)) & (~UINT32_C(0) >> (32 - 1 - (h))))
+
+#define GENMASK_64(h, l) \
+	(((~UINT64_C(0)) << (l)) & (~UINT64_C(0) >> (64 - 1 - (h))))
+
+#ifdef AARCH32
+#define GENMASK				GENMASK_32
+#else
+#define GENMASK				GENMASK_64
+#endif
 
 /*
  * This variant of div_round_up can be used in macro definition but should not
  * be used in C code as the `div` parameter is evaluated twice.
  */
 #define DIV_ROUND_UP_2EVAL(n, d)	(((n) + (d) - 1) / (d))
+
+#define div_round_up(val, div) __extension__ ({	\
+	__typeof__(div) _div = (div);		\
+	((val) + _div - 1) / _div;		\
+})
 
 #define MIN(x, y) __extension__ ({	\
 	__typeof__(x) _x = (x);		\
@@ -55,33 +84,48 @@
 #define round_down(value, boundary)		\
 	((value) & ~round_boundary(value, boundary))
 
-#define div_round_up(val, div) __extension__ ({	\
-	__typeof__(div) _div = (div);		\
-	round_up((val), _div)/_div;		\
-})
-
 /*
  * Evaluates to 1 if (ptr + inc) overflows, 0 otherwise.
  * Both arguments must be unsigned pointer values (i.e. uintptr_t).
  */
-#define check_uptr_overflow(ptr, inc)		\
-	(((ptr) > UINTPTR_MAX - (inc)) ? 1 : 0)
+#define check_uptr_overflow(_ptr, _inc)		\
+	((_ptr) > (UINTPTR_MAX - (_inc)))
 
 /*
- * For those constants to be shared between C and other sources, apply a 'u'
- * or 'ull' suffix to the argument only in C, to avoid undefined or unintended
- * behaviour.
+ * Evaluates to 1 if (u32 + inc) overflows, 0 otherwise.
+ * Both arguments must be 32-bit unsigned integers (i.e. effectively uint32_t).
+ */
+#define check_u32_overflow(_u32, _inc) \
+	((_u32) > (UINT32_MAX - (_inc)))
+
+/*
+ * For those constants to be shared between C and other sources, apply a 'U',
+ * 'UL', 'ULL', 'L' or 'LL' suffix to the argument only in C, to avoid
+ * undefined or unintended behaviour.
  *
- * The GNU assembler and linker do not support the 'u' and 'ull' suffix (it
- * causes the build process to fail) therefore the suffix is omitted when used
- * in linker scripts and assembler files.
+ * The GNU assembler and linker do not support these suffixes (it causes the
+ * build process to fail) therefore the suffix is omitted when used in linker
+ * scripts and assembler files.
 */
 #if defined(__LINKER__) || defined(__ASSEMBLY__)
-# define  U(_x)		(_x)
+# define   U(_x)	(_x)
+# define  UL(_x)	(_x)
 # define ULL(_x)	(_x)
+# define   L(_x)	(_x)
+# define  LL(_x)	(_x)
 #else
-# define  U(_x)		(_x##u)
-# define ULL(_x)	(_x##ull)
+# define   U(_x)	(_x##U)
+# define  UL(_x)	(_x##UL)
+# define ULL(_x)	(_x##ULL)
+# define   L(_x)	(_x##L)
+# define  LL(_x)	(_x##LL)
+#endif
+
+/* Register size of the current architecture. */
+#ifdef AARCH32
+#define REGSZ		U(4)
+#else
+#define REGSZ		U(8)
 #endif
 
 /*
@@ -89,7 +133,24 @@
  * expected.
  */
 #define ARM_ARCH_AT_LEAST(_maj, _min) \
-	((ARM_ARCH_MAJOR > _maj) || \
-	 ((ARM_ARCH_MAJOR == _maj) && (ARM_ARCH_MINOR >= _min)))
+	((ARM_ARCH_MAJOR > (_maj)) || \
+	 ((ARM_ARCH_MAJOR == (_maj)) && (ARM_ARCH_MINOR >= (_min))))
 
-#endif /* __UTILS_DEF_H__ */
+/*
+ * Import an assembly or linker symbol as a C expression with the specified
+ * type
+ */
+#define IMPORT_SYM(type, sym, name) \
+	extern char sym[];\
+	static const __attribute__((unused)) type name = (type) sym;
+
+/*
+ * When the symbol is used to hold a pointer, its alignment can be asserted
+ * with this macro. For example, if there is a linker symbol that is going to
+ * be used as a 64-bit pointer, the value of the linker symbol must also be
+ * aligned to 64 bit. This macro makes sure this is the case.
+ */
+#define ASSERT_SYM_PTR_ALIGN(sym) assert(((size_t)(sym) % __alignof__(*(sym))) == 0)
+
+
+#endif /* UTILS_DEF_H */

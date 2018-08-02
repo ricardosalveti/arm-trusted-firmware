@@ -1,16 +1,21 @@
 /*
- * Copyright (c) 2014-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __FVP_DEF_H__
-#define __FVP_DEF_H__
+#ifndef FVP_DEF_H
+#define FVP_DEF_H
+
+#include <utils_def.h>
 
 #ifndef FVP_CLUSTER_COUNT
 #define FVP_CLUSTER_COUNT		2
 #endif
+
+#ifndef FVP_MAX_CPUS_PER_CLUSTER
 #define FVP_MAX_CPUS_PER_CLUSTER	4
+#endif
 
 #ifndef FVP_MAX_PE_PER_CPU
 # define FVP_MAX_PE_PER_CPU		1
@@ -139,4 +144,15 @@
 #define FVP_NSAID_HDLCD0		2
 #define FVP_NSAID_CLCD			7
 
-#endif /* __FVP_DEF_H__ */
+/*******************************************************************************
+ * Memprotect definitions
+ ******************************************************************************/
+/* PSCI memory protect definitions:
+ * This variable is stored in a non-secure flash because some ARM reference
+ * platforms do not have secure NVRAM. Real systems that provided MEM_PROTECT
+ * support must use a secure NVRAM to store the PSCI MEM_PROTECT definitions.
+ */
+#define PLAT_ARM_MEM_PROT_ADDR		(V2M_FLASH0_BASE + \
+					 V2M_FLASH0_SIZE - V2M_FLASH_BLOCK_SIZE)
+
+#endif /* FVP_DEF_H */

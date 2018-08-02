@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -28,9 +28,15 @@
 #  define PLATFORM_STACK_SIZE 0x400
 # endif
 #elif defined(IMAGE_BL2U)
-# define PLATFORM_STACK_SIZE 0x200
-#elif defined(IMAGE_BL31)
 # define PLATFORM_STACK_SIZE 0x400
+#elif defined(IMAGE_BL31)
+#if ENABLE_SPM
+# define PLATFORM_STACK_SIZE 0x500
+#elif PLAT_XLAT_TABLES_DYNAMIC
+# define PLATFORM_STACK_SIZE 0x800
+#else
+# define PLATFORM_STACK_SIZE 0x400
+#endif
 #elif defined(IMAGE_BL32)
 # define PLATFORM_STACK_SIZE 0x440
 #endif
@@ -59,11 +65,11 @@
 #  define PLAT_SP_IMAGE_MMAP_REGIONS	7
 #  define PLAT_SP_IMAGE_MAX_XLAT_TABLES	10
 # else
-#  define PLAT_ARM_MMAP_ENTRIES		7
+#  define PLAT_ARM_MMAP_ENTRIES		8
 #  define MAX_XLAT_TABLES		5
 # endif
 #elif defined(IMAGE_BL32)
-# define PLAT_ARM_MMAP_ENTRIES		7
+# define PLAT_ARM_MMAP_ENTRIES		8
 # define MAX_XLAT_TABLES		5
 #else
 # define PLAT_ARM_MMAP_ENTRIES		11
@@ -81,23 +87,25 @@
  * little space for growth.
  */
 #if TRUSTED_BOARD_BOOT
-# define PLAT_ARM_MAX_BL2_SIZE		0x1E000
+# define PLAT_ARM_MAX_BL2_SIZE		0x1F000
 #else
-# define PLAT_ARM_MAX_BL2_SIZE		0xF000
+# define PLAT_ARM_MAX_BL2_SIZE		0x11000
 #endif
 
 /*
- * PLAT_ARM_MAX_BL31_SIZE is calculated using the current BL31 debug size plus a
- * little space for growth.
+ * Since BL31 NOBITS overlays BL2 and BL1-RW, PLAT_ARM_MAX_BL31_SIZE is
+ * calculated using the current BL31 PROGBITS debug size plus the sizes of
+ * BL2 and BL1-RW
  */
-#define PLAT_ARM_MAX_BL31_SIZE		0x20000
+#define PLAT_ARM_MAX_BL31_SIZE		0x3B000
 
 #ifdef AARCH32
 /*
- * PLAT_ARM_MAX_BL32_SIZE is calculated for SP_MIN as the AArch32 Secure
- * Payload.
+ * Since BL32 NOBITS overlays BL2 and BL1-RW, PLAT_ARM_MAX_BL32_SIZE is
+ * calculated using the current SP_MIN PROGBITS debug size plus the sizes of
+ * BL2 and BL1-RW
  */
-# define PLAT_ARM_MAX_BL32_SIZE		0x1D000
+# define PLAT_ARM_MAX_BL32_SIZE		0x3B000
 #endif
 
 #endif /* ARM_BOARD_OPTIMISE_MEM */
@@ -113,14 +121,6 @@
 
 #define PLAT_ARM_NVM_BASE		V2M_FLASH0_BASE
 #define PLAT_ARM_NVM_SIZE		(V2M_FLASH0_SIZE - V2M_FLASH_BLOCK_SIZE)
-
-/* PSCI memory protect definitions:
- * This variable is stored in a non-secure flash because some ARM reference
- * platforms do not have secure NVRAM. Real systems that provided MEM_PROTECT
- * support must use a secure NVRAM to store the PSCI MEM_PROTECT definitions.
- */
-#define PLAT_ARM_MEM_PROT_ADDR		(V2M_FLASH0_BASE + \
-					 V2M_FLASH0_SIZE - V2M_FLASH_BLOCK_SIZE)
 
 /*
  * Map mem_protect flash region with read and write permissions

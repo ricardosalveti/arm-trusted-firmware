@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,19 +8,14 @@
 #include <assert.h>
 #include <bl_common.h>
 #include <console.h>
+#include <coreboot.h>
 #include <debug.h>
 #include <generic_delay_timer.h>
 #include <mmio.h>
 #include <plat_private.h>
 #include <platform.h>
 #include <platform_def.h>
-
-/*******************************************************************************
- * Declarations of linker defined symbols which will help us find the layout
- * of trusted SRAM
- ******************************************************************************/
-unsigned long __RO_START__;
-unsigned long __RO_END__;
+#include <uart_16550.h>
 
 /*
  * The next 2 constants identify the extents of the code & RO data region.
@@ -28,8 +23,8 @@ unsigned long __RO_END__;
  * page-aligned.  It is the responsibility of the linker script to ensure that
  * __RO_START__ and __RO_END__ linker symbols refer to page-aligned addresses.
  */
-#define BL31_RO_BASE (unsigned long)(&__RO_START__)
-#define BL31_RO_LIMIT (unsigned long)(&__RO_END__)
+IMPORT_SYM(unsigned long, __RO_START__,	BL31_RO_BASE);
+IMPORT_SYM(unsigned long, __RO_END__,	BL31_RO_LIMIT);
 
 static entry_point_info_t bl32_ep_info;
 static entry_point_info_t bl33_ep_info;
@@ -69,8 +64,20 @@ void params_early_setup(void *plat_param_from_bl2)
 void bl31_early_platform_setup(bl31_params_t *from_bl2,
 			       void *plat_params_from_bl2)
 {
-	console_init(PLAT_RK_UART_BASE, PLAT_RK_UART_CLOCK,
-		     PLAT_RK_UART_BAUDRATE);
+	static console_16550_t console;
+
+	params_early_setup(plat_params_from_bl2);
+
+#if COREBOOT
+	if (coreboot_serial.type)
+		console_16550_register(coreboot_serial.baseaddr,
+				       coreboot_serial.input_hertz,
+				       coreboot_serial.baud,
+				       &console);
+#else
+	console_16550_register(PLAT_RK_UART_BASE, PLAT_RK_UART_CLOCK,
+			       PLAT_RK_UART_BAUDRATE, &console);
+#endif
 
 	VERBOSE("bl31_setup\n");
 
@@ -82,9 +89,6 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 
 	bl32_ep_info = *from_bl2->bl32_ep_info;
 	bl33_ep_info = *from_bl2->bl33_ep_info;
-
-	/* there may have some board sepcific message need to initialize */
-	params_early_setup(plat_params_from_bl2);
 }
 
 /*******************************************************************************

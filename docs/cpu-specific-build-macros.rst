@@ -1,4 +1,4 @@
-ARM CPU Specific Build Macros
+Arm CPU Specific Build Macros
 =============================
 
 
@@ -14,19 +14,33 @@ for a specific CPU on a platform.
 Security Vulnerability Workarounds
 ----------------------------------
 
-ARM Trusted Firmware exports a series of build flags which control which
-security vulnerability workarounds should be applied at runtime.
+TF-A exports a series of build flags which control which security
+vulnerability workarounds should be applied at runtime.
 
 -  ``WORKAROUND_CVE_2017_5715``: Enables the security workaround for
-   `CVE-2017-5715`_. Defaults to 1.
+   `CVE-2017-5715`_. This flag can be set to 0 by the platform if none
+   of the PEs in the system need the workaround. Setting this flag to 0 provides
+   no performance benefit for non-affected platforms, it just helps to comply
+   with the recommendation in the spec regarding workaround discovery.
+   Defaults to 1.
+
+-  ``WORKAROUND_CVE_2018_3639``: Enables the security workaround for
+   `CVE-2018-3639`_. Defaults to 1. The TF-A project recommends to keep
+   the default value of 1 even on platforms that are unaffected by
+   CVE-2018-3639, in order to comply with the recommendation in the spec
+   regarding workaround discovery.
+
+-  ``DYNAMIC_WORKAROUND_CVE_2018_3639``: Enables dynamic mitigation for
+   `CVE-2018-3639`_. This build option should be set to 1 if the target
+   platform contains at least 1 CPU that requires dynamic mitigation.
+   Defaults to 0.
 
 CPU Errata Workarounds
 ----------------------
 
-ARM Trusted Firmware exports a series of build flags which control the
-errata workarounds that are applied to each CPU by the reset handler. The
-errata details can be found in the CPU specific errata documents published
-by ARM:
+TF-A exports a series of build flags which control the errata workarounds that
+are applied to each CPU by the reset handler. The errata details can be found
+in the CPU specific errata documents published by Arm:
 
 -  `Cortex-A53 MPCore Software Developers Errata Notice`_
 -  `Cortex-A57 MPCore Software Developers Errata Notice`_
@@ -135,8 +149,8 @@ architecture that can be enabled by the platform as desired.
 -  ``A53_DISABLE_NON_TEMPORAL_HINT``: This flag disables the cache non-temporal
    hint. The LDNP/STNP instructions as implemented on Cortex-A53 do not behave
    in a way most programmers expect, and will most probably result in a
-   significant speed degradation to any code that employs them. The ARMv8-A
-   architecture (see ARM DDI 0487A.h, section D3.4.3) allows cores to ignore
+   significant speed degradation to any code that employs them. The Armv8-A
+   architecture (see Arm DDI 0487A.h, section D3.4.3) allows cores to ignore
    the non-temporal hint and treat LDNP/STNP as LDP/STP instead. Enabling this
    flag enforces this behaviour. This needs to be enabled only for revisions
    <= r0p3 of the CPU and is enabled by default.
@@ -149,7 +163,7 @@ architecture that can be enabled by the platform as desired.
 
 --------------
 
-*Copyright (c) 2014-2016, ARM Limited and Contributors. All rights reserved.*
+*Copyright (c) 2014-2018, Arm Limited and Contributors. All rights reserved.*
 
 .. _CVE-2017-5715: http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=2017-5715
 .. _Cortex-A53 MPCore Software Developers Errata Notice: http://infocenter.arm.com/help/topic/com.arm.doc.epm048406/Cortex_A53_MPCore_Software_Developers_Errata_Notice.pdf

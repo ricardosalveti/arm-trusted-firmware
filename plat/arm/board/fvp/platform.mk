@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -13,8 +13,13 @@ FVP_USE_SP804_TIMER	:= 0
 # Default cluster count for FVP
 FVP_CLUSTER_COUNT	:= 2
 
+# Default number of CPUs per cluster on FVP
+FVP_MAX_CPUS_PER_CLUSTER	:= 4
+
 # Default number of threads per CPU on FVP
 FVP_MAX_PE_PER_CPU	:= 1
+
+FVP_DT_PREFIX		:= fvp-base-gicv3-psci
 
 $(eval $(call assert_boolean,FVP_USE_SP804_TIMER))
 $(eval $(call add_define,FVP_USE_SP804_TIMER))
@@ -24,6 +29,9 @@ $(eval $(call add_define,FVP_USE_GIC_DRIVER))
 
 # Pass FVP_CLUSTER_COUNT to the build system.
 $(eval $(call add_define,FVP_CLUSTER_COUNT))
+
+# Pass FVP_MAX_CPUS_PER_CLUSTER to the build system.
+$(eval $(call add_define,FVP_MAX_CPUS_PER_CLUSTER))
 
 # Pass FVP_MAX_PE_PER_CPU to the build system.
 $(eval $(call add_define,FVP_MAX_PE_PER_CPU))
@@ -59,6 +67,9 @@ FVP_GIC_SOURCES		:=	drivers/arm/gic/common/gic_common.c	\
 				drivers/arm/gic/v2/gicv2_helpers.c	\
 				plat/common/plat_gicv2.c		\
 				plat/arm/common/arm_gicv2.c
+
+FVP_DT_PREFIX		:=	fvp-base-gicv2-psci
+
 else ifeq (${FVP_USE_GIC_DRIVER}, FVP_GICV3_LEGACY)
   ifeq (${ARCH}, aarch32)
     $(error "GICV3 Legacy driver not supported for AArch32 build")
@@ -68,6 +79,9 @@ FVP_GIC_SOURCES		:=	drivers/arm/gic/arm_gic.c		\
 				drivers/arm/gic/gic_v3.c		\
 				plat/common/plat_gic.c			\
 				plat/arm/common/arm_gicv3_legacy.c
+
+FVP_DT_PREFIX		:=	fvp-base-gicv2-psci
+
 else
 $(error "Incorrect GIC driver chosen on FVP port")
 endif
@@ -100,7 +114,10 @@ FVP_CPU_LIBS		+=	lib/cpus/aarch64/cortex_a35.S			\
 				lib/cpus/aarch64/cortex_a57.S			\
 				lib/cpus/aarch64/cortex_a72.S			\
 				lib/cpus/aarch64/cortex_a73.S			\
-				lib/cpus/aarch64/cortex_a75.S
+				lib/cpus/aarch64/cortex_a75.S			\
+				lib/cpus/aarch64/cortex_a76.S			\
+				lib/cpus/aarch64/cortex_ares.S			\
+				lib/cpus/aarch64/cortex_deimos.S
 else
 FVP_CPU_LIBS		+=	lib/cpus/aarch32/cortex_a32.S
 endif
@@ -110,7 +127,6 @@ BL1_SOURCES		+=	drivers/io/io_semihosting.c			\
 				lib/semihosting/${ARCH}/semihosting_call.S	\
 				plat/arm/board/fvp/${ARCH}/fvp_helpers.S	\
 				plat/arm/board/fvp/fvp_bl1_setup.c		\
-				plat/arm/board/fvp/fvp_err.c			\
 				plat/arm/board/fvp/fvp_io_storage.c		\
 				plat/arm/board/fvp/fvp_trusted_boot.c		\
 				${FVP_CPU_LIBS}					\
@@ -121,7 +137,6 @@ BL2_SOURCES		+=	drivers/io/io_semihosting.c			\
 				lib/semihosting/semihosting.c			\
 				lib/semihosting/${ARCH}/semihosting_call.S	\
 				plat/arm/board/fvp/fvp_bl2_setup.c		\
-				plat/arm/board/fvp/fvp_err.c			\
 				plat/arm/board/fvp/fvp_io_storage.c		\
 				plat/arm/board/fvp/fvp_trusted_boot.c		\
 				${FVP_SECURITY_SOURCES}
@@ -151,14 +166,59 @@ BL31_SOURCES		+=	drivers/arm/smmu/smmu_v3.c			\
 				${FVP_INTERCONNECT_SOURCES}			\
 				${FVP_SECURITY_SOURCES}
 
+# Add the FDT_SOURCES and options for Dynamic Config (only for Unix env)
+ifdef UNIX_MK
+FVP_HW_CONFIG_DTS	:=	fdts/${FVP_DT_PREFIX}.dts
+FDT_SOURCES		+=	$(addprefix plat/arm/board/fvp/fdts/,	\
+					${PLAT}_tb_fw_config.dts	\
+					${PLAT}_soc_fw_config.dts	\
+					${PLAT}_nt_fw_config.dts	\
+				)
+
+FVP_TB_FW_CONFIG	:=	${BUILD_PLAT}/fdts/${PLAT}_tb_fw_config.dtb
+FVP_SOC_FW_CONFIG	:=	${BUILD_PLAT}/fdts/${PLAT}_soc_fw_config.dtb
+FVP_NT_FW_CONFIG	:=	${BUILD_PLAT}/fdts/${PLAT}_nt_fw_config.dtb
+
+ifeq (${SPD},tspd)
+FDT_SOURCES		+=	plat/arm/board/fvp/fdts/${PLAT}_tsp_fw_config.dts
+FVP_TOS_FW_CONFIG	:=	${BUILD_PLAT}/fdts/${PLAT}_tsp_fw_config.dtb
+
+# Add the TOS_FW_CONFIG to FIP and specify the same to certtool
+$(eval $(call TOOL_ADD_PAYLOAD,${FVP_TOS_FW_CONFIG},--tos-fw-config))
+endif
+
+# Add the TB_FW_CONFIG to FIP and specify the same to certtool
+$(eval $(call TOOL_ADD_PAYLOAD,${FVP_TB_FW_CONFIG},--tb-fw-config))
+# Add the SOC_FW_CONFIG to FIP and specify the same to certtool
+$(eval $(call TOOL_ADD_PAYLOAD,${FVP_SOC_FW_CONFIG},--soc-fw-config))
+# Add the NT_FW_CONFIG to FIP and specify the same to certtool
+$(eval $(call TOOL_ADD_PAYLOAD,${FVP_NT_FW_CONFIG},--nt-fw-config))
+
+FDT_SOURCES		+=	${FVP_HW_CONFIG_DTS}
+$(eval FVP_HW_CONFIG	:=	${BUILD_PLAT}/$(patsubst %.dts,%.dtb,$(FVP_HW_CONFIG_DTS)))
+
+# Add the HW_CONFIG to FIP and specify the same to certtool
+$(eval $(call TOOL_ADD_PAYLOAD,${FVP_HW_CONFIG},--hw-config))
+endif
+
 # Disable the PSCI platform compatibility layer
 ENABLE_PLAT_COMPAT	:= 	0
 
 # Enable Activity Monitor Unit extensions by default
 ENABLE_AMU			:=	1
 
+# Enable dynamic mitigation support by default
+DYNAMIC_WORKAROUND_CVE_2018_3639	:=	1
+
 ifeq (${ENABLE_AMU},1)
-BL31_SOURCES		+= lib/cpus/aarch64/cortex_a75_pubsub.c
+BL31_SOURCES		+=	lib/cpus/aarch64/cortex_a75_pubsub.c	\
+				lib/cpus/aarch64/cortex_ares_pubsub.c	\
+				lib/cpus/aarch64/cpuamu.c		\
+				lib/cpus/aarch64/cpuamu_helpers.S
+endif
+
+ifeq (${RAS_EXTENSION},1)
+BL31_SOURCES		+=	plat/arm/board/fvp/aarch64/fvp_ras.c
 endif
 
 ifneq (${ENABLE_STACK_PROTECTOR},0)
@@ -178,3 +238,11 @@ endif
 
 include plat/arm/board/common/board_common.mk
 include plat/arm/common/arm_common.mk
+
+# FVP being a development platform, enable capability to disable Authentication
+# dynamically if TRUSTED_BOARD_BOOT and LOAD_IMAGE_V2 is set.
+ifeq (${TRUSTED_BOARD_BOOT}, 1)
+    ifeq (${LOAD_IMAGE_V2}, 1)
+        DYN_DISABLE_AUTH	:=	1
+    endif
+endif

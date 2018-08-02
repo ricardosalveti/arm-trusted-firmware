@@ -18,15 +18,17 @@ include lib/psci/psci_lib.mk
 BL31_SOURCES		+=	bl31/bl31_main.c				\
 				bl31/interrupt_mgmt.c				\
 				bl31/aarch64/bl31_entrypoint.S			\
-				bl31/aarch64/runtime_exceptions.S		\
 				bl31/aarch64/crash_reporting.S			\
+				bl31/aarch64/ea_delegate.S			\
+				bl31/aarch64/runtime_exceptions.S		\
 				bl31/bl31_context_mgmt.c			\
 				common/runtime_svc.c				\
+				lib/aarch64/setjmp.S				\
 				plat/common/aarch64/platform_mp_stack.S		\
 				services/arm_arch_svc/arm_arch_svc_setup.c	\
 				services/std_svc/std_svc_setup.c		\
 				${PSCI_LIB_SOURCES}				\
-				${SPM_SOURCES}					\
+				${SPM_SOURCES}
 
 
 ifeq (${ENABLE_PMF}, 1)
@@ -41,7 +43,8 @@ ifeq (${SDEI_SUPPORT},1)
 ifeq (${EL3_EXCEPTION_HANDLING},0)
   $(error EL3_EXCEPTION_HANDLING must be 1 for SDEI support)
 endif
-BL31_SOURCES		+=	services/std_svc/sdei/sdei_event.c	\
+BL31_SOURCES		+=	services/std_svc/sdei/sdei_dispatch.S	\
+				services/std_svc/sdei/sdei_event.c	\
 				services/std_svc/sdei/sdei_intr_mgmt.c	\
 				services/std_svc/sdei/sdei_main.c	\
 				services/std_svc/sdei/sdei_state.c
@@ -61,8 +64,8 @@ BL31_SOURCES		+=	lib/extensions/sve/sve.c
 endif
 
 ifeq (${WORKAROUND_CVE_2017_5715},1)
-BL31_SOURCES		+=	lib/cpus/aarch64/workaround_cve_2017_5715_mmu.S		\
-				lib/cpus/aarch64/workaround_cve_2017_5715_bpiall.S
+BL31_SOURCES		+=	lib/cpus/aarch64/wa_cve_2017_5715_bpiall.S	\
+				lib/cpus/aarch64/wa_cve_2017_5715_mmu.S
 endif
 
 BL31_LINKERFILE		:=	bl31/bl31.ld.S

@@ -12,5 +12,11 @@ Socionext Inc.
 
 Xilinx, Inc.
 
+NXP Semiconductors
+
+Marvell International Ltd.
+
+STMicroelectronics
+
 Individuals
 -----------

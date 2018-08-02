@@ -39,7 +39,8 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
  * Set the build time defaults. We want to do this when doing a JTAG boot
  * or if we can't find any other config data.
  */
-static inline void bl31_set_default_config(void) {
+static inline void bl31_set_default_config(void)
+{
 	bl32_image_ep_info.pc = BL32_BASE;
 	bl32_image_ep_info.spsr = arm_get_spsr_for_bl32_entry();
 	bl33_image_ep_info.pc = plat_get_ns_image_entrypoint();
@@ -115,10 +116,9 @@ static void zynqmp_testing_setup(void)
 }
 #endif
 
-#if ZYNQMP_WARM_RESTART
+#if ZYNQMP_WDT_RESTART
 static interrupt_type_handler_t type_el3_interrupt_table[MAX_INTR_EL3];
 
-/* Register INTR_TYPE_EL3 interrupt handler to specific GIC entrance */
 int request_intr_type_el3(uint32_t id, interrupt_type_handler_t handler)
 {
 	/* Validate 'handler' and 'id' parameters */
@@ -159,18 +159,16 @@ void bl31_platform_setup(void)
 
 void bl31_plat_runtime_setup(void)
 {
-
-#if ZYNQMP_WARM_RESTART
+#if ZYNQMP_WDT_RESTART
 	uint64_t flags = 0;
 	uint64_t rc;
 
 	set_interrupt_rm_flag(flags, NON_SECURE);
 	rc = register_interrupt_type_handler(INTR_TYPE_EL3,
-					rdo_el3_interrupt_handler, flags);
+					     rdo_el3_interrupt_handler, flags);
 	if (rc)
 		panic();
 #endif
-
 }
 
 /*
@@ -181,13 +179,20 @@ void bl31_plat_arch_setup(void)
 	plat_arm_interconnect_init();
 	plat_arm_interconnect_enter_coherency();
 
-	arm_setup_page_tables(BL31_BASE,
-			      BL31_END - BL31_BASE,
-			      BL_CODE_BASE,
-			      BL_CODE_END,
-			      BL_RO_DATA_BASE,
-			      BL_RO_DATA_END,
-			      BL_COHERENT_RAM_BASE,
-			      BL_COHERENT_RAM_END);
+
+	const mmap_region_t bl_regions[] = {
+		MAP_REGION_FLAT(BL31_BASE, BL31_END - BL31_BASE,
+			MT_MEMORY | MT_RW | MT_SECURE),
+		MAP_REGION_FLAT(BL_CODE_BASE, BL_CODE_END - BL_CODE_BASE,
+				MT_CODE | MT_SECURE),
+		MAP_REGION_FLAT(BL_RO_DATA_BASE, BL_RO_DATA_END - BL_RO_DATA_BASE,
+				MT_RO_DATA | MT_SECURE),
+		MAP_REGION_FLAT(BL_COHERENT_RAM_BASE,
+				BL_COHERENT_RAM_END - BL_COHERENT_RAM_BASE,
+				MT_DEVICE | MT_RW | MT_SECURE),
+		{0}
+	};
+
+	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
 	enable_mmu_el3(0);
 }

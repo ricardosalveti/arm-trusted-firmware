@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -20,7 +20,8 @@ BL1_SOURCES		+=	drivers/io/io_fip.c			\
 				plat/common/aarch64/platform_mp_stack.S	\
 				plat/rpi3/aarch64/plat_helpers.S	\
 				plat/rpi3/rpi3_bl1_setup.c		\
-				plat/rpi3/rpi3_io_storage.c
+				plat/rpi3/rpi3_io_storage.c		\
+				plat/rpi3/rpi3_mbox.c
 
 BL2_SOURCES		+=	common/desc_image_load.c		\
 				drivers/io/io_fip.c			\
@@ -54,6 +55,26 @@ else
     TF_CFLAGS_aarch64	+=	-mtune=cortex-a53
 endif
 
+# Platform Makefile target
+# ------------------------
+
+RPI3_BL1_PAD_BIN	:=	${BUILD_PLAT}/bl1_pad.bin
+RPI3_ARMSTUB8_BIN	:=	${BUILD_PLAT}/armstub8.bin
+
+# Add new default target when compiling this platform
+all: armstub
+
+# This target concatenates BL1 and the FIP so that the base addresses match the
+# ones defined in the memory map
+armstub: bl1 fip
+	@echo "  CAT     $@"
+	${Q}cp ${BUILD_PLAT}/bl1.bin ${RPI3_BL1_PAD_BIN}
+	${Q}truncate --size=131072 ${RPI3_BL1_PAD_BIN}
+	${Q}cat ${RPI3_BL1_PAD_BIN} ${BUILD_PLAT}/fip.bin > ${RPI3_ARMSTUB8_BIN}
+	@${ECHO_BLANK_LINE}
+	@echo "Built $@ successfully"
+	@${ECHO_BLANK_LINE}
+
 # Build config flags
 # ------------------
 
@@ -69,8 +90,11 @@ WORKAROUND_CVE_2017_5715	:= 0
 # Disable the PSCI platform compatibility layer by default
 ENABLE_PLAT_COMPAT		:= 0
 
-# Enable reset to BL31 by default
-RESET_TO_BL31			:= 1
+# Disable stack protector by default
+ENABLE_STACK_PROTECTOR	 	:= 0
+
+# Reset to BL31 isn't supported
+RESET_TO_BL31			:= 0
 
 # Have different sections for code and rodata
 SEPARATE_CODE_AND_RODATA	:= 1
@@ -81,11 +105,17 @@ USE_COHERENT_MEM		:= 1
 # Enable new version of image loading
 LOAD_IMAGE_V2			:= 1
 
+# Use multi console API
+MULTI_CONSOLE_API		:= 1
+
 # Platform build flags
 # --------------------
 
 # BL33 images are in AArch64 by default
 RPI3_BL33_IN_AARCH32		:= 0
+
+# Assume that BL33 isn't the Linux kernel by default
+RPI3_DIRECT_LINUX_BOOT		:= 0
 
 # BL32 location
 RPI3_BL32_RAM_LOCATION	:= tdram
@@ -102,14 +132,94 @@ endif
 
 $(eval $(call add_define,RPI3_BL32_RAM_LOCATION_ID))
 $(eval $(call add_define,RPI3_BL33_IN_AARCH32))
+$(eval $(call add_define,RPI3_DIRECT_LINUX_BOOT))
+$(eval $(call add_define,RPI3_PRELOADED_DTB_BASE))
 
 # Verify build config
 # -------------------
+#
+ifneq (${RPI3_DIRECT_LINUX_BOOT}, 0)
+  ifndef RPI3_PRELOADED_DTB_BASE
+    $(error Error: RPI3_PRELOADED_DTB_BASE needed if RPI3_DIRECT_LINUX_BOOT=1)
+  endif
+endif
 
 ifneq (${LOAD_IMAGE_V2}, 1)
   $(error Error: rpi3 needs LOAD_IMAGE_V2=1)
 endif
 
+ifneq (${MULTI_CONSOLE_API}, 1)
+  $(error Error: rpi3 needs MULTI_CONSOLE_API=1)
+endif
+
+ifneq (${RESET_TO_BL31}, 0)
+  $(error Error: rpi3 needs RESET_TO_BL31=0)
+endif
+
 ifeq (${ARCH},aarch32)
   $(error Error: AArch32 not supported on rpi3)
+endif
+
+ifneq ($(ENABLE_STACK_PROTECTOR), 0)
+PLAT_BL_COMMON_SOURCES	+=	plat/rpi3/rpi3_rng.c			\
+				plat/rpi3/rpi3_stack_protector.c
+endif
+
+ifeq (${SPD},opteed)
+BL2_SOURCES	+=							\
+		lib/optee/optee_utils.c
+endif
+
+# Add the build options to pack Trusted OS Extra1 and Trusted OS Extra2 images
+# in the FIP if the platform requires.
+ifneq ($(BL32_EXTRA1),)
+$(eval $(call TOOL_ADD_IMG,BL32_EXTRA1,--tos-fw-extra1))
+endif
+ifneq ($(BL32_EXTRA2),)
+$(eval $(call TOOL_ADD_IMG,BL32_EXTRA2,--tos-fw-extra2))
+endif
+
+ifneq (${TRUSTED_BOARD_BOOT},0)
+
+    include drivers/auth/mbedtls/mbedtls_crypto.mk
+    include drivers/auth/mbedtls/mbedtls_x509.mk
+
+    USE_TBBR_DEFS	:=	1
+
+    AUTH_SOURCES	:=	drivers/auth/auth_mod.c			\
+				drivers/auth/crypto_mod.c		\
+				drivers/auth/img_parser_mod.c		\
+				drivers/auth/tbbr/tbbr_cot.c
+
+    PLAT_INCLUDES	+=	-Iinclude/bl1/tbbr
+
+    BL1_SOURCES		+=	${AUTH_SOURCES}				\
+				bl1/tbbr/tbbr_img_desc.c		\
+				plat/common/tbbr/plat_tbbr.c		\
+				plat/rpi3/rpi3_trusted_boot.c	     	\
+				plat/rpi3/rpi3_rotpk.S
+
+    BL2_SOURCES		+=	${AUTH_SOURCES}				\
+				plat/common/tbbr/plat_tbbr.c		\
+				plat/rpi3/rpi3_trusted_boot.c	     	\
+				plat/rpi3/rpi3_rotpk.S
+
+    ROT_KEY             = $(BUILD_PLAT)/rot_key.pem
+    ROTPK_HASH          = $(BUILD_PLAT)/rotpk_sha256.bin
+
+    $(eval $(call add_define_val,ROTPK_HASH,'"$(ROTPK_HASH)"'))
+
+    $(BUILD_PLAT)/bl1/rpi3_rotpk.o: $(ROTPK_HASH)
+    $(BUILD_PLAT)/bl2/rpi3_rotpk.o: $(ROTPK_HASH)
+
+    certificates: $(ROT_KEY)
+
+    $(ROT_KEY):
+	@echo "  OPENSSL $@"
+	$(Q)openssl genrsa 2048 > $@ 2>/dev/null
+
+    $(ROTPK_HASH): $(ROT_KEY)
+	@echo "  OPENSSL $@"
+	$(Q)openssl rsa -in $< -pubout -outform DER 2>/dev/null |\
+	openssl dgst -sha256 -binary > $@ 2>/dev/null
 endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -22,7 +22,7 @@ static const gicv2_driver_data_t *driver_data;
  * spinlock are used either at boot time (when only a single CPU is active), or
  * when the system is fully coherent.
  */
-spinlock_t gic_lock;
+static spinlock_t gic_lock;
 
 /*******************************************************************************
  * Enable secure interrupts and use FIQs to route them. Disable legacy bypass
@@ -85,10 +85,17 @@ void gicv2_pcpu_distif_init(void)
 				driver_data->interrupt_props_num);
 #if !ERROR_DEPRECATED
 	} else {
+		/*
+		 * Suppress deprecated declaration warnings in compatibility
+		 * function
+		 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 		assert(driver_data->g0_interrupt_array);
 		gicv2_secure_ppi_sgi_setup(driver_data->gicd_base,
 				driver_data->g0_interrupt_num,
 				driver_data->g0_interrupt_array);
+#pragma GCC diagnostic pop
 	}
 #endif
 
@@ -128,12 +135,20 @@ void gicv2_distif_init(void)
 				driver_data->interrupt_props_num);
 #if !ERROR_DEPRECATED
 	} else {
+		/*
+		 * Suppress deprecated declaration warnings in compatibility
+		 * function
+		 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 		assert(driver_data->g0_interrupt_array);
 
 		/* Configure the G0 SPIs */
 		gicv2_secure_spis_configure(driver_data->gicd_base,
 				driver_data->g0_interrupt_num,
 				driver_data->g0_interrupt_array);
+#pragma GCC diagnostic pop
 	}
 #endif
 
@@ -156,8 +171,12 @@ void gicv2_driver_init(const gicv2_driver_data_t *plat_driver_data)
 		/* Interrupt properties array size must be 0 */
 		assert(plat_driver_data->interrupt_props_num == 0);
 
-		/* The platform should provide a list of secure interrupts */
-		assert(plat_driver_data->g0_interrupt_array);
+		/*
+		 * Suppress deprecated declaration warnings in compatibility
+		 * function
+		 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 		/*
 		 * If there are no interrupts of a particular type, then the
@@ -166,10 +185,15 @@ void gicv2_driver_init(const gicv2_driver_data_t *plat_driver_data)
 		assert(plat_driver_data->g0_interrupt_array ?
 				plat_driver_data->g0_interrupt_num :
 				plat_driver_data->g0_interrupt_num == 0);
+#pragma GCC diagnostic pop
+
+		WARN("Using deprecated integer interrupt array in "
+		     "gicv2_driver_data_t\n");
+		WARN("Please migrate to using an interrupt_prop_t array\n");
 	}
 #else
-	assert(plat_driver_data->interrupt_props != NULL);
-	assert(plat_driver_data->interrupt_props_num > 0);
+	assert(plat_driver_data->interrupt_props_num > 0 ?
+			plat_driver_data->interrupt_props != NULL : 1);
 #endif
 
 	/* Ensure that this is a GICv2 system */
@@ -197,9 +221,10 @@ void gicv2_driver_init(const gicv2_driver_data_t *plat_driver_data)
 	 * enabled. When the secondary CPU boots up, it initializes the
 	 * GICC/GICR interface with the caches disabled. Hence flush the
 	 * driver_data to ensure coherency. This is not required if the
-	 * platform has HW_ASSISTED_COHERENCY enabled.
+	 * platform has HW_ASSISTED_COHERENCY or WARMBOOT_ENABLE_DCACHE_EARLY
+	 * enabled.
 	 */
-#if !HW_ASSISTED_COHERENCY
+#if !(HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
 	flush_dcache_range((uintptr_t) &driver_data, sizeof(driver_data));
 	flush_dcache_range((uintptr_t) driver_data, sizeof(*driver_data));
 #endif
@@ -354,7 +379,7 @@ void gicv2_set_pe_target_mask(unsigned int proc_num)
 	if (driver_data->target_masks[proc_num] == 0) {
 		driver_data->target_masks[proc_num] =
 			gicv2_get_cpuif_id(driver_data->gicd_base);
-#if !HW_ASSISTED_COHERENCY
+#if !(HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
 		/*
 		 * PEs only update their own masks. Primary updates it with
 		 * caches on. But because secondaries does it with caches off,
@@ -450,6 +475,7 @@ void gicv2_set_interrupt_type(unsigned int id, unsigned int type)
 		break;
 	default:
 		assert(0);
+		break;
 	}
 	spin_unlock(&gic_lock);
 }

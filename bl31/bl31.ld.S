@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -32,7 +32,7 @@ SECTIONS
         *bl31_entrypoint.o(.text*)
         *(.text*)
         *(.vectors)
-        . = NEXT(PAGE_SIZE);
+        . = ALIGN(PAGE_SIZE);
         __TEXT_END__ = .;
     } >RAM
 
@@ -67,7 +67,7 @@ SECTIONS
         . = ALIGN(8);
 #include <pubsub_events.h>
 
-        . = NEXT(PAGE_SIZE);
+        . = ALIGN(PAGE_SIZE);
         __RODATA_END__ = .;
     } >RAM
 #else
@@ -111,7 +111,7 @@ SECTIONS
          * executable.  No RW data from the next section must creep in.
          * Ensure the rest of the current memory page is unused.
          */
-        . = NEXT(PAGE_SIZE);
+        . = ALIGN(PAGE_SIZE);
         __RO_END__ = .;
     } >RAM
 #endif
@@ -131,7 +131,7 @@ SECTIONS
     spm_shim_exceptions : ALIGN(PAGE_SIZE) {
         __SPM_SHIM_EXCEPTIONS_START__ = .;
         *(.spm_shim_exceptions)
-        . = NEXT(PAGE_SIZE);
+        . = ALIGN(PAGE_SIZE);
         __SPM_SHIM_EXCEPTIONS_END__ = .;
     } >RAM
 #endif
@@ -217,16 +217,10 @@ SECTIONS
     /*
      * The xlat_table section is for full, aligned page tables (4K).
      * Removing them from .bss avoids forcing 4K alignment on
-     * the .bss section and eliminates the unecessary zero init
+     * the .bss section. The tables are initialized to zero by the translation
+     * tables library.
      */
     xlat_table (NOLOAD) : {
-#if ENABLE_SPM
-        __SP_IMAGE_XLAT_TABLES_START__ = .;
-        *secure_partition*.o(xlat_table)
-        /* Make sure that the rest of the page is empty. */
-        . = NEXT(PAGE_SIZE);
-        __SP_IMAGE_XLAT_TABLES_END__ = .;
-#endif
         *(xlat_table)
     } >RAM
 
@@ -252,7 +246,7 @@ SECTIONS
          * as device memory.  No other unexpected data must creep in.
          * Ensure the rest of the current memory page is unused.
          */
-        . = NEXT(PAGE_SIZE);
+        . = ALIGN(PAGE_SIZE);
         __COHERENT_RAM_END__ = .;
     } >RAM
 #endif

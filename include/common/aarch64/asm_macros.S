@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -9,6 +9,20 @@
 #include <arch.h>
 #include <asm_macros_common.S>
 #include <spinlock.h>
+
+/*
+ * TLBI instruction with type specifier that implements the workaround for
+ * errata 813419 of Cortex-A57.
+ */
+#if ERRATA_A57_813419
+#define TLB_INVALIDATE(_type) \
+	tlbi	_type; \
+	dsb	ish; \
+	tlbi	_type
+#else
+#define TLB_INVALIDATE(_type) \
+	tlbi	_type
+#endif
 
 
 	.macro	func_prologue
@@ -69,9 +83,18 @@
 	.section \section_name, "ax"
 	.align 7, 0
 	.type \label, %function
-	.func \label
 	.cfi_startproc
 	\label:
+	.endm
+
+	/*
+	 * Add the bytes until fill the full exception vector, whose size is always
+	 * 32 instructions. If there are more than 32 instructions in the
+	 * exception vector then an error is emitted.
+	 */
+	.macro end_vector_entry label
+	.cfi_endproc
+	.fill	\label + (32 * 4) - .
 	.endm
 
 	/*
@@ -81,11 +104,10 @@
 	 * vector entry as the parameter
 	 */
 	.macro check_vector_size since
-	  .endfunc
-	  .cfi_endproc
-	  .if (. - \since) > (32 * 4)
-	    .error "Vector exceeds 32 instructions"
-	  .endif
+#if ERROR_DEPRECATED
+      .error "check_vector_size must not be used. Use end_vector_entry instead"
+#endif
+	end_vector_entry \since
 	.endm
 
 #if ENABLE_PLAT_COMPAT
@@ -191,5 +213,11 @@
 	\_name:
 	.space	SPINLOCK_ASM_SIZE
 	.endm
+
+#if RAS_EXTENSION
+	.macro esb
+	.inst	0xd503221f
+	.endm
+#endif
 
 #endif /* __ASM_MACROS_S__ */

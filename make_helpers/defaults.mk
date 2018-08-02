@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -30,9 +30,17 @@ BASE_COMMIT			:= origin/master
 # Execute BL2 at EL3
 BL2_AT_EL3			:= 0
 
+# BL2 image is stored in XIP memory, for now, this option is only supported
+# when BL2_AT_EL3 is 1.
+BL2_IN_XIP_MEM			:= 0
+
 # By default, consider that the platform may release several CPUs out of reset.
 # The platform Makefile is free to override this value.
 COLD_BOOT_SINGLE_CPU		:= 0
+
+# Flag to compile in coreboot support code. Exclude by default. The coreboot
+# Makefile system will set this when compiling TF as part of a coreboot image.
+COREBOOT			:= 0
 
 # For Chain of Trust
 CREATE_KEYS			:= 1
@@ -49,6 +57,10 @@ DEBUG				:= 0
 
 # Build platform
 DEFAULT_PLAT			:= fvp
+
+# Enable capability to disable authentication dynamically. Only meant for
+# development platforms.
+DYN_DISABLE_AUTH		:= 0
 
 # Flag to enable Performance Measurement Framework
 ENABLE_PMF			:= 0
@@ -68,6 +80,9 @@ EL3_EXCEPTION_HANDLING		:= 0
 # Build flag to treat usage of deprecated platform and framework APIs as error.
 ERROR_DEPRECATED		:= 0
 
+# Fault injection support
+FAULT_INJECTION_SUPPORT		:= 0
+
 # Byte alignment that each component in FIP is aligned to
 FIP_ALIGN			:= 0
 
@@ -84,6 +99,10 @@ GENERATE_COT			:= 0
 # default, they are for Secure EL1.
 GICV2_G0_FOR_EL3		:= 0
 
+# Route External Aborts to EL3. Disabled by default; External Aborts are handled
+# by lower ELs.
+HANDLE_EA_EL3_FIRST		:= 0
+
 # Whether system coherency is managed in hardware, without explicit software
 # operations.
 HW_ASSISTED_COHERENCY		:= 0
@@ -93,6 +112,10 @@ KEY_ALG				:= rsa
 
 # Flag to enable new version of image loading
 LOAD_IMAGE_V2			:= 0
+
+# Enable use of the console API allowing multiple consoles to be registered
+# at the same time.
+MULTI_CONSOLE_API		:= 0
 
 # NS timer register save and restore
 NS_TIMER_SWITCH			:= 0
@@ -108,6 +131,9 @@ PROGRAMMABLE_RESET_ADDRESS	:= 0
 # Original format.
 PSCI_EXTENDED_STATE_ID		:= 0
 
+# Enable RAS support
+RAS_EXTENSION			:= 0
+
 # By default, BL1 acts as the reset handler, not BL31
 RESET_TO_BL31			:= 0
 
@@ -120,6 +146,9 @@ SDEI_SUPPORT            	:= 0
 # Whether code and read-only data should be put on separate memory pages. The
 # platform Makefile is free to override this value.
 SEPARATE_CODE_AND_RODATA	:= 0
+
+# Default to SMCCC Version 1.X
+SMCCC_MAJOR_VERSION		:= 1
 
 # SPD choice
 SPD				:= none

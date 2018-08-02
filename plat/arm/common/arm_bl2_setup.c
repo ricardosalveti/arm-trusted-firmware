@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,7 +8,6 @@
 #include <arm_def.h>
 #include <assert.h>
 #include <bl_common.h>
-#include <console.h>
 #include <debug.h>
 #include <desc_image_load.h>
 #include <generic_delay_timer.h>
@@ -24,11 +23,22 @@
 /* Data structure which holds the extents of the trusted SRAM for BL2 */
 static meminfo_t bl2_tzram_layout __aligned(CACHE_WRITEBACK_GRANULE);
 
+/*
+ * Check that BL2_BASE is above ARM_TB_FW_CONFIG_LIMIT. This reserved page is
+ * for `meminfo_t` data structure and fw_configs passed from BL1.
+ */
+CASSERT(BL2_BASE >= ARM_TB_FW_CONFIG_LIMIT, assert_bl2_base_overflows);
+
 /* Weak definitions may be overridden in specific ARM standard platform */
-#pragma weak bl2_early_platform_setup
+#pragma weak bl2_early_platform_setup2
 #pragma weak bl2_platform_setup
 #pragma weak bl2_plat_arch_setup
 #pragma weak bl2_plat_sec_mem_layout
+
+#define MAP_BL2_TOTAL		MAP_REGION_FLAT(			\
+					bl2_tzram_layout.total_base,	\
+					bl2_tzram_layout.total_size,	\
+					MT_MEMORY | MT_RW | MT_SECURE)
 
 #if LOAD_IMAGE_V2
 
@@ -155,7 +165,7 @@ void bl2_plat_flush_bl31_params(void)
 struct entry_point_info *bl2_plat_get_bl31_ep_info(void)
 {
 #if DEBUG
-	bl31_params_mem.bl31_ep_info.args.arg1 = ARM_BL31_PLAT_PARAM_VAL;
+	bl31_params_mem.bl31_ep_info.args.arg3 = ARM_BL31_PLAT_PARAM_VAL;
 #endif
 
 	return &bl31_params_mem.bl31_ep_info;
@@ -167,23 +177,40 @@ struct entry_point_info *bl2_plat_get_bl31_ep_info(void)
  * in x0. This memory layout is sitting at the base of the free trusted SRAM.
  * Copy it to a safe location before its reclaimed by later BL2 functionality.
  ******************************************************************************/
-void arm_bl2_early_platform_setup(meminfo_t *mem_layout)
+void arm_bl2_early_platform_setup(uintptr_t tb_fw_config,
+				  struct meminfo *mem_layout)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(PLAT_ARM_BOOT_UART_BASE, PLAT_ARM_BOOT_UART_CLK_IN_HZ,
-			ARM_CONSOLE_BAUDRATE);
+	arm_console_boot_init();
 
 	/* Setup the BL2 memory layout */
 	bl2_tzram_layout = *mem_layout;
 
 	/* Initialise the IO layer and register platform IO devices */
 	plat_arm_io_setup();
+
+#if LOAD_IMAGE_V2
+	if (tb_fw_config != 0U)
+		arm_bl2_set_tb_cfg_addr((void *)tb_fw_config);
+#endif
 }
 
-void bl2_early_platform_setup(meminfo_t *mem_layout)
+void bl2_early_platform_setup2(u_register_t arg0, u_register_t arg1, u_register_t arg2, u_register_t arg3)
 {
-	arm_bl2_early_platform_setup(mem_layout);
+	arm_bl2_early_platform_setup((uintptr_t)arg0, (meminfo_t *)arg1);
+
 	generic_delay_timer_init();
+}
+
+/*
+ * Perform  BL2 preload setup. Currently we initialise the dynamic
+ * configuration here.
+ */
+void bl2_plat_preload_setup(void)
+{
+#if LOAD_IMAGE_V2
+	arm_bl2_dyn_cfg_init();
+#endif
 }
 
 /*
@@ -195,7 +222,7 @@ void arm_bl2_platform_setup(void)
 	plat_arm_security_setup();
 
 #if defined(PLAT_ARM_MEM_PROT_ADDR)
-	arm_nor_psci_do_mem_protect();
+	arm_nor_psci_do_static_mem_protect();
 #endif
 }
 
@@ -210,17 +237,20 @@ void bl2_platform_setup(void)
  ******************************************************************************/
 void arm_bl2_plat_arch_setup(void)
 {
-	arm_setup_page_tables(bl2_tzram_layout.total_base,
-			      bl2_tzram_layout.total_size,
-			      BL_CODE_BASE,
-			      BL_CODE_END,
-			      BL_RO_DATA_BASE,
-			      BL_RO_DATA_END
+
 #if USE_COHERENT_MEM
-			      , BL_COHERENT_RAM_BASE,
-			      BL_COHERENT_RAM_END
+	/* Ensure ARM platforms dont use coherent memory in BL2 */
+	assert((BL_COHERENT_RAM_END - BL_COHERENT_RAM_BASE) == 0U);
 #endif
-			      );
+
+	const mmap_region_t bl_regions[] = {
+		MAP_BL2_TOTAL,
+		ARM_MAP_BL_CODE,
+		ARM_MAP_BL_RO_DATA,
+		{0}
+	};
+
+	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
 
 #ifdef AARCH32
 	enable_mmu_secure(0);
@@ -281,6 +311,9 @@ int arm_bl2_handle_post_image_load(unsigned int image_id)
 		}
 		break;
 #endif
+	default:
+		/* Do nothing in default case */
+		break;
 	}
 
 	return err;

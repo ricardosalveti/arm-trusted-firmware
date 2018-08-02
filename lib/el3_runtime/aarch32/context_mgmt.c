@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -13,7 +13,7 @@
 #include <context_mgmt.h>
 #include <platform.h>
 #include <platform_def.h>
-#include <smcc_helpers.h>
+#include <smccc_helpers.h>
 #include <string.h>
 #include <utils.h>
 
@@ -41,8 +41,7 @@ void cm_init(void)
  * entry_point_info structure.
  *
  * The security state to initialize is determined by the SECURE attribute
- * of the entry_point_info. The function returns a pointer to the initialized
- * context and sets this as the next context to return to.
+ * of the entry_point_info.
  *
  * The EE and ST attributes are used to configure the endianness and secure
  * timer availability for the new execution context.
@@ -51,7 +50,7 @@ void cm_init(void)
  * el3_exit(). For Secure-EL1 cm_prepare_el3_exit() is equivalent to
  * cm_e1_sysreg_context_restore().
  ******************************************************************************/
-static void cm_init_context_common(cpu_context_t *ctx, const entry_point_info_t *ep)
+void cm_setup_context(cpu_context_t *ctx, const entry_point_info_t *ep)
 {
 	unsigned int security_state;
 	uint32_t scr, sctlr;
@@ -149,7 +148,7 @@ void cm_init_context_by_index(unsigned int cpu_idx,
 {
 	cpu_context_t *ctx;
 	ctx = cm_get_context_by_index(cpu_idx, GET_SECURITY_STATE(ep->h.attr));
-	cm_init_context_common(ctx, ep);
+	cm_setup_context(ctx, ep);
 }
 
 /*******************************************************************************
@@ -161,7 +160,7 @@ void cm_init_my_context(const entry_point_info_t *ep)
 {
 	cpu_context_t *ctx;
 	ctx = cm_get_context(GET_SECURITY_STATE(ep->h.attr));
-	cm_init_context_common(ctx, ep);
+	cm_setup_context(ctx, ep);
 }
 
 /*******************************************************************************

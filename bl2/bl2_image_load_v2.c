@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -14,13 +14,14 @@
 #include <platform.h>
 #include <platform_def.h>
 #include <stdint.h>
+#include "bl2_private.h"
 
 
 /*******************************************************************************
  * This function loads SCP_BL2/BL3x images and returns the ep_info for
  * the next executable image.
  ******************************************************************************/
-entry_point_info_t *bl2_load_images(void)
+struct entry_point_info *bl2_load_images(void)
 {
 	bl_params_t *bl2_to_next_bl_params;
 	bl_load_info_t *bl2_load_info;
@@ -52,6 +53,12 @@ entry_point_info_t *bl2_load_images(void)
 				bl2_platform_setup();
 				plat_setup_done = 1;
 			}
+		}
+
+		err = bl2_plat_handle_pre_image_load(bl2_node_info->image_id);
+		if (err) {
+			ERROR("BL2: Failure in pre image load handling (%i)\n", err);
+			plat_error_handler(err);
 		}
 
 		if (!(bl2_node_info->image_info->h.attr & IMAGE_ATTRIB_SKIP_LOADING)) {
@@ -87,8 +94,10 @@ entry_point_info_t *bl2_load_images(void)
 	assert(bl2_to_next_bl_params->h.version >= VERSION_2);
 	assert(bl2_to_next_bl_params->head->ep_info);
 
-	/* Populate arg0 for the next BL image */
-	bl2_to_next_bl_params->head->ep_info->args.arg0 = (u_register_t)bl2_to_next_bl_params;
+	/* Populate arg0 for the next BL image if not already provided */
+	if (bl2_to_next_bl_params->head->ep_info->args.arg0 == (u_register_t)0)
+		bl2_to_next_bl_params->head->ep_info->args.arg0 =
+					(u_register_t)bl2_to_next_bl_params;
 
 	/* Flush the parameters to be passed to next image */
 	plat_flush_next_bl_params();

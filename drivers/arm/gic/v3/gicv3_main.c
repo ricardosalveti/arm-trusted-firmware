@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -21,7 +21,7 @@ static unsigned int gicv2_compat;
  * spinlock are used either at boot time (when only a single CPU is active), or
  * when the system is fully coherent.
  */
-spinlock_t gic_lock;
+static spinlock_t gic_lock;
 
 /*
  * Redistributor power operations are weakly bound so that they can be
@@ -73,6 +73,13 @@ void gicv3_driver_init(const gicv3_driver_data_t *plat_driver_data)
 		assert(plat_driver_data->interrupt_props_num == 0);
 
 		/*
+		 * Suppress deprecated declaration warnings in compatibility
+		 * function
+		 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+		/*
 		 * The platform should provide a list of at least one type of
 		 * interrupt.
 		 */
@@ -89,10 +96,15 @@ void gicv3_driver_init(const gicv3_driver_data_t *plat_driver_data)
 		assert(plat_driver_data->g1s_interrupt_array ?
 				plat_driver_data->g1s_interrupt_num :
 				plat_driver_data->g1s_interrupt_num == 0);
+#pragma GCC diagnostic pop
+
+		WARN("Using deprecated integer interrupt arrays in "
+		     "gicv3_driver_data_t\n");
+		WARN("Please migrate to using interrupt_prop_t arrays\n");
 	}
 #else
-	assert(plat_driver_data->interrupt_props != NULL);
-	assert(plat_driver_data->interrupt_props_num > 0);
+	assert(plat_driver_data->interrupt_props_num > 0 ?
+	       plat_driver_data->interrupt_props != NULL : 1);
 #endif
 
 	/* Check for system register support */
@@ -135,9 +147,10 @@ void gicv3_driver_init(const gicv3_driver_data_t *plat_driver_data)
 	 * enabled. When the secondary CPU boots up, it initializes the
 	 * GICC/GICR interface with the caches disabled. Hence flush the
 	 * driver data to ensure coherency. This is not required if the
-	 * platform has HW_ASSISTED_COHERENCY enabled.
+	 * platform has HW_ASSISTED_COHERENCY or WARMBOOT_ENABLE_DCACHE_EARLY
+	 * enabled.
 	 */
-#if !HW_ASSISTED_COHERENCY
+#if !(HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
 	flush_dcache_range((uintptr_t) &gicv3_driver_data,
 			sizeof(gicv3_driver_data));
 	flush_dcache_range((uintptr_t) gicv3_driver_data,
@@ -178,23 +191,30 @@ void gicv3_distif_init(void)
 			CTLR_ARE_S_BIT | CTLR_ARE_NS_BIT, RWP_TRUE);
 
 	/* Set the default attribute of all SPIs */
-	gicv3_spis_configure_defaults(gicv3_driver_data->gicd_base);
+	gicv3_spis_config_defaults(gicv3_driver_data->gicd_base);
 
 #if !ERROR_DEPRECATED
 	if (gicv3_driver_data->interrupt_props != NULL) {
 #endif
-		bitmap = gicv3_secure_spis_configure_props(
+		bitmap = gicv3_secure_spis_config_props(
 				gicv3_driver_data->gicd_base,
 				gicv3_driver_data->interrupt_props,
 				gicv3_driver_data->interrupt_props_num);
 #if !ERROR_DEPRECATED
 	} else {
+		/*
+		 * Suppress deprecated declaration warnings in compatibility
+		 * function
+		 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 		assert(gicv3_driver_data->g1s_interrupt_array ||
 				gicv3_driver_data->g0_interrupt_array);
 
 		/* Configure the G1S SPIs */
 		if (gicv3_driver_data->g1s_interrupt_array) {
-			gicv3_secure_spis_configure(gicv3_driver_data->gicd_base,
+			gicv3_secure_spis_config(gicv3_driver_data->gicd_base,
 					gicv3_driver_data->g1s_interrupt_num,
 					gicv3_driver_data->g1s_interrupt_array,
 					INTR_GROUP1S);
@@ -203,12 +223,13 @@ void gicv3_distif_init(void)
 
 		/* Configure the G0 SPIs */
 		if (gicv3_driver_data->g0_interrupt_array) {
-			gicv3_secure_spis_configure(gicv3_driver_data->gicd_base,
+			gicv3_secure_spis_config(gicv3_driver_data->gicd_base,
 					gicv3_driver_data->g0_interrupt_num,
 					gicv3_driver_data->g0_interrupt_array,
 					INTR_GROUP0);
 			bitmap |= CTLR_ENABLE_G0_BIT;
 		}
+#pragma GCC diagnostic pop
 	}
 #endif
 
@@ -243,22 +264,29 @@ void gicv3_rdistif_init(unsigned int proc_num)
 	gicr_base = gicv3_driver_data->rdistif_base_addrs[proc_num];
 
 	/* Set the default attribute of all SGIs and PPIs */
-	gicv3_ppi_sgi_configure_defaults(gicr_base);
+	gicv3_ppi_sgi_config_defaults(gicr_base);
 
 #if !ERROR_DEPRECATED
 	if (gicv3_driver_data->interrupt_props != NULL) {
 #endif
-		bitmap = gicv3_secure_ppi_sgi_configure_props(gicr_base,
+		bitmap = gicv3_secure_ppi_sgi_config_props(gicr_base,
 				gicv3_driver_data->interrupt_props,
 				gicv3_driver_data->interrupt_props_num);
 #if !ERROR_DEPRECATED
 	} else {
+		/*
+		 * Suppress deprecated declaration warnings in compatibility
+		 * function
+		 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 		assert(gicv3_driver_data->g1s_interrupt_array ||
 		       gicv3_driver_data->g0_interrupt_array);
 
 		/* Configure the G1S SGIs/PPIs */
 		if (gicv3_driver_data->g1s_interrupt_array) {
-			gicv3_secure_ppi_sgi_configure(gicr_base,
+			gicv3_secure_ppi_sgi_config(gicr_base,
 					gicv3_driver_data->g1s_interrupt_num,
 					gicv3_driver_data->g1s_interrupt_array,
 					INTR_GROUP1S);
@@ -267,12 +295,13 @@ void gicv3_rdistif_init(unsigned int proc_num)
 
 		/* Configure the G0 SGIs/PPIs */
 		if (gicv3_driver_data->g0_interrupt_array) {
-			gicv3_secure_ppi_sgi_configure(gicr_base,
+			gicv3_secure_ppi_sgi_config(gicr_base,
 					gicv3_driver_data->g0_interrupt_num,
 					gicv3_driver_data->g0_interrupt_array,
 					INTR_GROUP0);
 			bitmap |= CTLR_ENABLE_G0_BIT;
 		}
+#pragma GCC diagnostic pop
 	}
 #endif
 
@@ -976,6 +1005,7 @@ void gicv3_set_interrupt_type(unsigned int id, unsigned int proc_num,
 		break;
 	default:
 		assert(0);
+		break;
 	}
 
 	if (id < MIN_SPI_ID) {

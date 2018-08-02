@@ -11,7 +11,7 @@ How to build
 Code Locations
 --------------
 
--  ARM Trusted Firmware:
+-  Trusted Firmware-A:
    `link <https://github.com/ARM-software/arm-trusted-firmware>`__
 
 -  OP-TEE
@@ -65,7 +65,7 @@ Build Procedure
 
        BUILDFLAGS=-DSERIAL_BASE=0xF8015000
 
-   If your hikey hardware is built by LeMarker, nothing to do.
+   If your hikey hardware is built by LeMaker, nothing to do.
 
 -  Build it as debug mode. Create your own build script file or you could refer to **build\_uefi.sh** in l-loader git repository.
 
@@ -76,13 +76,13 @@ Build Procedure
        export UEFI_TOOLS_DIR=${BUILD_PATH}/uefi-tools
        export EDK2_DIR=${BUILD_PATH}/edk2
        EDK2_OUTPUT_DIR=${EDK2_DIR}/Build/HiKey/${BUILD_OPTION}_${AARCH64_TOOLCHAIN}
-       # Build fastboot for ARM Trust Firmware. It's used for recovery mode.
+       # Build fastboot for Trusted Firmware-A. It's used for recovery mode.
        cd ${BUILD_PATH}/atf-fastboot
        CROSS_COMPILE=aarch64-linux-gnu- make PLAT=hikey DEBUG=1
        # Convert DEBUG/RELEASE to debug/release
        FASTBOOT_BUILD_OPTION=$(echo ${BUILD_OPTION} | tr '[A-Z]' '[a-z]')
        cd ${EDK2_DIR}
-       # Build UEFI & ARM Trust Firmware
+       # Build UEFI & Trusted Firmware-A
        ${UEFI_TOOLS_DIR}/uefi-build.sh -b ${BUILD_OPTION} -a ../arm-trusted-firmware -s ../optee_os hikey
 
 -  Generate l-loader.bin and partition table for aosp. The eMMC capacity is either 8GB or 4GB. Just change "aosp-8g" to "linux-8g" for debian.
@@ -91,6 +91,7 @@ Build Procedure
 
        cd ${BUILD_PATH}/l-loader
        ln -sf ${EDK2_OUTPUT_DIR}/FV/bl1.bin
+       ln -sf ${EDK2_OUTPUT_DIR}/FV/bl2.bin
        ln -sf ${BUILD_PATH}/atf-fastboot/build/hikey/${FASTBOOT_BUILD_OPTION}/bl1.bin fastboot.bin
        make hikey PTABLE_LST=aosp-8g
 
@@ -142,17 +143,18 @@ Flash images in recovery mode
 
        $sudo apt-get purge modemmanager
 
--  Run the command to download l-loader.bin into HiKey.
+-  Run the command to download recovery.bin into HiKey.
 
    .. code:: shell
 
-       $sudo python hisi-idt.py -d /dev/ttyUSB1 --img1 l-loader.bin
+       $sudo python hisi-idt.py -d /dev/ttyUSB1 --img1 recovery.bin
 
 -  Update images. All aosp or debian images could be fetched from `link <https://builds.96boards.org/>`__.
 
    .. code:: shell
 
        $sudo fastboot flash ptable prm_ptable.img
+       $sudo fastboot flash loader l-loader.bin
        $sudo fastboot flash fastboot fip.bin
        $sudo fastboot flash boot boot.img
        $sudo fastboot flash cache cache.img

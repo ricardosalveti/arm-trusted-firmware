@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -17,6 +17,12 @@
 
 #define SCMI_PROTO_MSG_ATTR_MSG_LEN		8
 #define SCMI_PROTO_MSG_ATTR_RESP_LEN		12
+
+#define SCMI_AP_CORE_RESET_ADDR_SET_MSG_LEN	16
+#define SCMI_AP_CORE_RESET_ADDR_SET_RESP_LEN	8
+
+#define SCMI_AP_CORE_RESET_ADDR_GET_MSG_LEN	4
+#define SCMI_AP_CORE_RESET_ADDR_GET_RESP_LEN	20
 
 #define SCMI_PWR_STATE_SET_MSG_LEN		16
 #define SCMI_PWR_STATE_SET_RESP_LEN		8
@@ -60,14 +66,14 @@
  * Helper macro to create an SCMI message header given protocol, message id
  * and token.
  */
-#define SCMI_MSG_CREATE(protocol, msg_id, token)				\
-	((((protocol) & SCMI_MSG_PROTO_ID_MASK) << SCMI_MSG_PROTO_ID_SHIFT) |	\
-	(((msg_id) & SCMI_MSG_ID_MASK) << SCMI_MSG_ID_SHIFT) |			\
-	(((token) & SCMI_MSG_TOKEN_MASK) << SCMI_MSG_TOKEN_SHIFT))
+#define SCMI_MSG_CREATE(_protocol, _msg_id, _token)				\
+	((((_protocol) & SCMI_MSG_PROTO_ID_MASK) << SCMI_MSG_PROTO_ID_SHIFT) |	\
+	(((_msg_id) & SCMI_MSG_ID_MASK) << SCMI_MSG_ID_SHIFT) |			\
+	(((_token) & SCMI_MSG_TOKEN_MASK) << SCMI_MSG_TOKEN_SHIFT))
 
 /* Helper macro to get the token from a SCMI message header */
-#define SCMI_MSG_GET_TOKEN(msg)				\
-	(((msg) >> SCMI_MSG_TOKEN_SHIFT) & SCMI_MSG_TOKEN_MASK)
+#define SCMI_MSG_GET_TOKEN(_msg)				\
+	(((_msg) >> SCMI_MSG_TOKEN_SHIFT) & SCMI_MSG_TOKEN_MASK)
 
 /* SCMI Channel Status bit fields */
 #define SCMI_CH_STATUS_RES0_MASK	0xFFFFFFFE
@@ -113,10 +119,9 @@
 		(val3) = mmio_read_32((uintptr_t)&payld_arr[2]);	\
 	} while (0)
 
-/* Helper macro to ring doorbell */
-#define SCMI_RING_DOORBELL(addr, modify_mask, preserve_mask)	do {	\
-		uint32_t db = mmio_read_32(addr) & (preserve_mask);	\
-		mmio_write_32(addr, db | (modify_mask));		\
+#define SCMI_PAYLOAD_RET_VAL4(payld_arr, val1, val2, val3, val4)	do {	\
+		SCMI_PAYLOAD_RET_VAL3(payld_arr, val1, val2, val3);		\
+		(val4) = mmio_read_32((uintptr_t)&payld_arr[3]);		\
 	} while (0)
 
 /*

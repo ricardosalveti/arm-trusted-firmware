@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -190,14 +190,14 @@ typedef struct tsp_context {
 } tsp_context_t;
 
 /* Helper macros to store and retrieve tsp args from tsp_context */
-#define store_tsp_args(tsp_ctx, x1, x2)		do {\
-				tsp_ctx->saved_tsp_args[0] = x1;\
-				tsp_ctx->saved_tsp_args[1] = x2;\
+#define store_tsp_args(_tsp_ctx, _x1, _x2)		do {\
+				_tsp_ctx->saved_tsp_args[0] = _x1;\
+				_tsp_ctx->saved_tsp_args[1] = _x2;\
 			} while (0)
 
-#define get_tsp_args(tsp_ctx, x1, x2)	do {\
-				x1 = tsp_ctx->saved_tsp_args[0];\
-				x2 = tsp_ctx->saved_tsp_args[1];\
+#define get_tsp_args(_tsp_ctx, _x1, _x2)	do {\
+				_x1 = _tsp_ctx->saved_tsp_args[0];\
+				_x2 = _tsp_ctx->saved_tsp_args[1];\
 			} while (0)
 
 /* TSPD power management handlers */
@@ -206,7 +206,7 @@ extern const spd_pm_ops_t tspd_pm;
 /*******************************************************************************
  * Forward declarations
  ******************************************************************************/
-struct tsp_vectors;
+typedef struct tsp_vectors tsp_vectors_t;
 
 /*******************************************************************************
  * Function & Data prototypes
@@ -215,14 +215,16 @@ uint64_t tspd_enter_sp(uint64_t *c_rt_ctx);
 void __dead2 tspd_exit_sp(uint64_t c_rt_ctx, uint64_t ret);
 uint64_t tspd_synchronous_sp_entry(tsp_context_t *tsp_ctx);
 void __dead2 tspd_synchronous_sp_exit(tsp_context_t *tsp_ctx, uint64_t ret);
-void tspd_init_tsp_ep_state(struct entry_point_info *tsp_ep,
+void tspd_init_tsp_ep_state(struct entry_point_info *tsp_entry_point,
 				uint32_t rw,
 				uint64_t pc,
 				tsp_context_t *tsp_ctx);
 int tspd_abort_preempted_smc(tsp_context_t *tsp_ctx);
 
+uint64_t tspd_handle_sp_preemption(void *handle);
+
 extern tsp_context_t tspd_sp_context[TSPD_CORE_COUNT];
-extern struct tsp_vectors *tsp_vectors;
+extern tsp_vectors_t *tsp_vectors;
 #endif /*__ASSEMBLY__*/
 
 #endif /* __TSPD_PRIVATE_H__ */

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2017, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -31,6 +31,13 @@ JUNO_AARCH32_EL3_RUNTIME	:=	0
 $(eval $(call assert_boolean,JUNO_AARCH32_EL3_RUNTIME))
 $(eval $(call add_define,JUNO_AARCH32_EL3_RUNTIME))
 
+# Flag to enable support for TZMP1 on JUNO
+JUNO_TZMP1		:=	0
+$(eval $(call assert_boolean,JUNO_TZMP1))
+ifeq (${JUNO_TZMP1}, 1)
+$(eval $(call add_define,JUNO_TZMP1))
+endif
+
 ifeq (${JUNO_AARCH32_EL3_RUNTIME}, 1)
 # Include BL32 in FIP
 NEED_BL32		:= yes
@@ -49,12 +56,10 @@ BL1_SOURCES		+=	lib/cpus/aarch64/cortex_a53.S		\
 				lib/cpus/aarch64/cortex_a57.S		\
 				lib/cpus/aarch64/cortex_a72.S		\
 				plat/arm/board/juno/juno_bl1_setup.c	\
-				plat/arm/board/juno/juno_err.c		\
 				${JUNO_INTERCONNECT_SOURCES}		\
 				${JUNO_SECURITY_SOURCES}
 
-BL2_SOURCES		+=	plat/arm/board/juno/juno_err.c		\
-				plat/arm/board/juno/juno_bl2_setup.c	\
+BL2_SOURCES		+=	plat/arm/board/juno/juno_bl2_setup.c	\
 				${JUNO_SECURITY_SOURCES}
 
 BL2U_SOURCES		+=	${JUNO_SECURITY_SOURCES}
@@ -101,6 +106,10 @@ ARM_BOARD_OPTIMISE_MEM		:=	1
 
 # Do not enable SVE
 ENABLE_SVE_FOR_NS		:=	0
+
+# Select SCMI/SDS drivers instead of SCPI/BOM driver for communicating with the
+# SCP during power management operations and for SCP RAM Firmware transfer.
+CSS_USE_SCMI_SDS_DRIVER		:=	1
 
 include plat/arm/board/common/board_css.mk
 include plat/arm/common/arm_common.mk

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -14,6 +14,7 @@
  ******************************************************************************/
 
 /* Utility functions */
+void rpi3_console_init(void);
 void rpi3_setup_page_tables(uintptr_t total_base, size_t total_size,
 			    uintptr_t code_start, uintptr_t code_limit,
 			    uintptr_t rodata_start, uintptr_t rodata_limit
@@ -31,5 +32,11 @@ uint32_t rpi3_get_spsr_for_bl33_entry(void);
 
 /* IO storage utility functions */
 void plat_rpi3_io_setup(void);
+
+/* Hardware RNG functions */
+void rpi3_rng_read(void *buf, size_t len);
+
+/* VideoCore firmware commands */
+int rpi3_vc_hardware_get_board_revision(uint32_t *revision);
 
 #endif /*__RPI3_PRIVATE_H__ */

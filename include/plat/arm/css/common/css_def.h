@@ -101,14 +101,6 @@
 						NSRAM_SIZE,	\
 						MT_DEVICE | MT_RW | MT_NS)
 
-#if defined(IMAGE_BL2U)
-#define CSS_MAP_SCP_BL2U		MAP_REGION_FLAT(		\
-						SCP_BL2U_BASE,		\
-						SCP_BL2U_LIMIT		\
-							- SCP_BL2U_BASE,\
-						MT_RW_DATA | MT_SECURE)
-#endif
-
 /* Platform ID address */
 #define SSC_VERSION_OFFSET			0x040
 

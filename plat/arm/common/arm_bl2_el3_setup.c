@@ -3,8 +3,6 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#include <arm_def.h>
-#include <assert.h>
 #include <generic_delay_timer.h>
 #include <plat_arm.h>
 #include <platform.h>
@@ -12,11 +10,6 @@
 #pragma weak bl2_el3_early_platform_setup
 #pragma weak bl2_el3_plat_arch_setup
 #pragma weak bl2_el3_plat_prepare_exit
-
-#define MAP_BL2_EL3_TOTAL	MAP_REGION_FLAT(				\
-					bl2_el3_tzram_layout.total_base,	\
-					bl2_el3_tzram_layout.total_size,	\
-					MT_MEMORY | MT_RW | MT_SECURE)
 
 static meminfo_t bl2_el3_tzram_layout;
 
@@ -67,20 +60,17 @@ void bl2_el3_early_platform_setup(u_register_t arg0 __unused,
  ******************************************************************************/
 void arm_bl2_el3_plat_arch_setup(void)
 {
-
+	arm_setup_page_tables(bl2_el3_tzram_layout.total_base,
+			      bl2_el3_tzram_layout.total_size,
+			      BL_CODE_BASE,
+			      BL_CODE_END,
+			      BL_RO_DATA_BASE,
+			      BL_RO_DATA_END
 #if USE_COHERENT_MEM
-	/* Ensure ARM platforms dont use coherent memory in BL2_AT_EL3 */
-	assert(BL_COHERENT_RAM_END - BL_COHERENT_RAM_BASE == 0U);
+			      , BL_COHERENT_RAM_BASE,
+			      BL_COHERENT_RAM_END
 #endif
-
-	const mmap_region_t bl_regions[] = {
-		MAP_BL2_EL3_TOTAL,
-		ARM_MAP_BL_CODE,
-		ARM_MAP_BL_RO_DATA,
-		{0}
-	};
-
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+			      );
 
 #ifdef AARCH32
 	enable_mmu_secure(0);

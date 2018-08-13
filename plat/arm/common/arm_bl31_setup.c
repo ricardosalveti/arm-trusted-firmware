@@ -37,10 +37,6 @@ CASSERT(BL31_BASE >= ARM_TB_FW_CONFIG_LIMIT, assert_bl31_base_overflows);
 #pragma weak bl31_plat_arch_setup
 #pragma weak bl31_plat_get_next_image_ep_info
 
-#define MAP_BL31_TOTAL	MAP_REGION_FLAT(			\
-					BL31_BASE,			\
-					BL31_END - BL31_BASE,		\
-					MT_MEMORY | MT_RW | MT_SECURE)
 
 /*******************************************************************************
  * Return a pointer to the 'entry_point_info' structure of the next image for the
@@ -284,19 +280,17 @@ void bl31_plat_runtime_setup(void)
  ******************************************************************************/
 void arm_bl31_plat_arch_setup(void)
 {
-
-	const mmap_region_t bl_regions[] = {
-		MAP_BL31_TOTAL,
-		ARM_MAP_BL_CODE,
-		ARM_MAP_BL_RO_DATA,
+	arm_setup_page_tables(BL31_BASE,
+			      BL31_END - BL31_BASE,
+			      BL_CODE_BASE,
+			      BL_CODE_END,
+			      BL_RO_DATA_BASE,
+			      BL_RO_DATA_END
 #if USE_COHERENT_MEM
-		ARM_MAP_BL_COHERENT_RAM,
+			      , BL_COHERENT_RAM_BASE,
+			      BL_COHERENT_RAM_END
 #endif
-		{0}
-	};
-
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
-
+			      );
 	enable_mmu_el3(0);
 }
 

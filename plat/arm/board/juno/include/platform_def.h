@@ -98,7 +98,7 @@
 #endif
 
 #ifdef IMAGE_BL2U
-# define PLAT_ARM_MMAP_ENTRIES		5
+# define PLAT_ARM_MMAP_ENTRIES		4
 # define MAX_XLAT_TABLES		3
 #endif
 

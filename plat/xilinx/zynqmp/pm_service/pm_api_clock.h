@@ -313,7 +313,5 @@ enum pm_ret_status pm_api_clk_set_pll_mode(unsigned int pll,
 					   unsigned int mode);
 enum pm_ret_status pm_api_clk_get_pll_mode(unsigned int pll,
 					   unsigned int *mode);
-enum pm_ret_status pm_api_clk_set_pll_frac_data(unsigned int pll,
-						unsigned int data);
 
 #endif /* _PM_API_CLOCK_H_ */

@@ -95,6 +95,7 @@ enum pm_api_id {
 	/* PLL control API functions */
 	PM_PLL_SET_PARAMETER,
 	PM_PLL_GET_PARAMETER,
+	PM_PLL_SET_MODE,
 	PM_API_MAX
 };
 
@@ -292,6 +293,18 @@ enum pm_pll_param {
 	PM_PLL_PARAM_CP,
 	PM_PLL_PARAM_RES,
 	PM_PLL_PARAM_MAX,
+};
+
+/**
+ * @PM_PLL_MODE_RESET:		PLL is in reset (not locked)
+ * @PM_PLL_MODE_INTEGER:	PLL is locked in integer mode
+ * @PM_PLL_MODE_FRACTIONAL:	PLL is locked in fractional mode
+ */
+enum pm_pll_mode {
+	PM_PLL_MODE_RESET,
+	PM_PLL_MODE_INTEGER,
+	PM_PLL_MODE_FRACTIONAL,
+	PM_PLL_MODE_MAX,
 };
 
 #endif /* _PM_DEFS_H_ */

@@ -180,5 +180,6 @@ enum pm_ret_status pm_pll_set_parameter(enum pm_node_id nid,
 enum pm_ret_status pm_pll_get_parameter(enum pm_node_id nid,
 					enum pm_pll_param param_id,
 					unsigned int *value);
+enum pm_ret_status pm_pll_set_mode(enum pm_node_id nid, enum pm_pll_mode mode);
 
 #endif /* _PM_API_SYS_H_ */

@@ -341,4 +341,11 @@
 /*AFI registers */
 #define  AFIFM6_WRCTRL		(13)
 #define  FABRIC_WIDTH		(3)
+
+/* CSUDMA Module Base Address*/
+#define CSUDMA_BASE		0xFFC80000
+
+/* RSA-CORE Module Base Address*/
+#define RSA_CORE_BASE		0xFFCE0000
+
 #endif /* __ZYNQMP_DEF_H__ */

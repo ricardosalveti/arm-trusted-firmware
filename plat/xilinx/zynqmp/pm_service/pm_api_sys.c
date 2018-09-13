@@ -637,7 +637,11 @@ enum pm_ret_status pm_aes_engine(uint32_t address_high,
  */
 enum pm_ret_status pm_pinctrl_request(unsigned int pin)
 {
-	return PM_RET_SUCCESS;
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD2(payload, PM_PINCTRL_REQUEST, pin);
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
 
 /**
@@ -650,7 +654,11 @@ enum pm_ret_status pm_pinctrl_request(unsigned int pin)
  */
 enum pm_ret_status pm_pinctrl_release(unsigned int pin)
 {
-	return PM_RET_SUCCESS;
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD2(payload, PM_PINCTRL_RELEASE, pin);
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
 
 /**

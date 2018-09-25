@@ -336,35 +336,3 @@ unsigned int plat_get_syscnt_freq2(void)
 	else
 		return mmio_read_32(IOU_SCNTRS_BASEFREQ);
 }
-
-#if ZYNQMP_WARM_RESTART
-#include <gic_common.h>
-#include <gicv2.h>
-
-/*
- * This function returns the type of the highest priority pending interrupt
- * at the Interrupt controller. In the case of GICv2, the Highest Priority
- * Pending interrupt register (`GICC_HPPIR`) is read to determine the id of
- * the pending interrupt. The type of interrupt depends upon the id value
- * as follows.
- *   1. id < PENDING_G1_INTID (1022) is reported as a EL3 interrupt
- *   2. id = PENDING_G1_INTID (1022) is reported as a Non-secure interrupt.
- *   3. id = GIC_SPURIOUS_INTERRUPT (1023) is reported as an invalid interrupt
- *           type.
- */
-uint32_t plat_ic_get_pending_interrupt_type(void)
-{
-	unsigned int id;
-
-	id = gicv2_get_pending_interrupt_type();
-
-	/* Assume that all secure interrupts are S-EL1 interrupts */
-	if (id < PENDING_G1_INTID)
-		return INTR_TYPE_EL3;
-
-	if (id == GIC_SPURIOUS_INTERRUPT)
-		return INTR_TYPE_INVAL;
-
-	return INTR_TYPE_NS;
-}
-#endif

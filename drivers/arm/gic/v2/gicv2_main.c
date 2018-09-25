@@ -324,24 +324,6 @@ unsigned int gicv2_get_interrupt_group(unsigned int id)
 	return gicd_get_igroupr(driver_data->gicd_base, id);
 }
 
-#if ZYNQMP_WARM_RESTART
-/*******************************************************************************
- * This function triggers SGI @id targetting the CPUs specified in @target.
- * @id: ID of the SGI to trigger
- * @target: CPU target mask
- ******************************************************************************/
-void gicv2_trigger_sgi(unsigned int id, unsigned int target)
-{
-	assert(driver_data);
-	assert(driver_data->gicd_base);
-
-	unsigned int val = id;
-	val |= target << SGIR_CPUTARGET_SHIFT;
-
-	gicd_write_sgir(driver_data->gicd_base, val);
-}
-#endif
-
 /*******************************************************************************
  * This function returns the priority of the interrupt the processor is
  * currently servicing.

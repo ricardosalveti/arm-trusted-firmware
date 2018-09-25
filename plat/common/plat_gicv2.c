@@ -20,9 +20,6 @@
 #pragma weak plat_ic_get_interrupt_type
 #pragma weak plat_ic_end_of_interrupt
 #pragma weak plat_interrupt_type_to_line
-#if ZYNQMP_WARM_RESTART
-#pragma weak plat_ic_trigger_sgi
-#endif
 
 #pragma weak plat_ic_get_running_priority
 #pragma weak plat_ic_is_spi
@@ -121,21 +118,6 @@ void plat_ic_end_of_interrupt(uint32_t id)
 {
 	gicv2_end_of_interrupt(id);
 }
-
-#if ZYNQMP_WARM_RESTART
-/*******************************************************************************
- * This function triggers SGI @id targetting the CPUs specified in @target.
- * @id: ID of the SGI to trigger
- * @target: CPU target mask
- ******************************************************************************/
-void plat_ic_trigger_sgi(unsigned int id, unsigned int target)
-{
-	unsigned int val = id;
-
-	val |= target << SGIR_CPUTARGET_SHIFT;
-	gicv2_trigger_sgi(id, target);
-}
-#endif
 
 /*
  * An ARM processor signals interrupt exceptions through the IRQ and FIQ pins.

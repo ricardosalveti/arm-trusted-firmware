@@ -33,10 +33,6 @@
 #define ITARGETSR_SHIFT		2
 #define GIC_TARGET_CPU_MASK	0xff
 
-#if ZYNQMP_WARM_RESTART
-#define SGIR_CPUTARGET_SHIFT	16
-#endif
-
 #define CPENDSGIR_SHIFT		2
 #define SPENDSGIR_SHIFT		CPENDSGIR_SHIFT
 
@@ -194,10 +190,6 @@ void gicv2_set_spi_routing(unsigned int id, int proc_num);
 void gicv2_set_interrupt_pending(unsigned int id);
 void gicv2_clear_interrupt_pending(unsigned int id);
 unsigned int gicv2_set_pmr(unsigned int mask);
-
-#if ZYNQMP_WARM_RESTART
-void gicv2_trigger_sgi(unsigned int id, unsigned int target);
-#endif
 
 #endif /* __ASSEMBLY__ */
 #endif /* __GICV2_H__ */

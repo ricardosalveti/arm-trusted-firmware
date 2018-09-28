@@ -334,8 +334,9 @@
 #define PGGS_BASEADDR		(0xFFD80050U)
 #define PGGS_NUM_REGS		U(4)
 
-/* Warm restart boot health status register and mask */
-#define PM_BOOT_HEALTH_STATUS_REG		(GGS_BASEADDR + 0x10)
+/* PMU GGS4 register 4 is used for warm restart boot health status */
+#define PMU_GLOBAL_GEN_STORAGE4		(GGS_BASEADDR + 0x10)
+/* Warm restart boot health status mask */
 #define PM_BOOT_HEALTH_STATUS_MASK		0x00000001
 
 /*AFI registers */

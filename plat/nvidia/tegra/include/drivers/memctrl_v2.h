@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __MEMCTRLV2_H__
-#define __MEMCTRLV2_H__
+#ifndef MEMCTRL_V2_H
+#define MEMCTRL_V2_H
 
 #include <tegra_def.h>
 
 #ifndef __ASSEMBLY__
 
-#include <sys/types.h>
+#include <stdint.h>
 
 /*******************************************************************************
  * StreamID to indicate no SMMU translations (requests to be steered on the
@@ -475,4 +475,4 @@ tegra_mc_settings_t *tegra_get_mc_settings(void);
 
 #endif /* __ASSMEBLY__ */
 
-#endif /* __MEMCTRLV2_H__ */
+#endif /* MEMCTRL_V2_H */

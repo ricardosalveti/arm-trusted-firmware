@@ -12,6 +12,7 @@
 #include <mcucfg.h>
 #include <mmio.h>
 #include <mtcmos.h>
+#include <mtk_plat_common.h>
 #include <plat_arm.h>
 #include <plat_private.h>
 #include <platform.h>
@@ -85,25 +86,27 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
 
 /*******************************************************************************
  * Perform any BL3-1 early platform setup. Here is an opportunity to copy
- * parameters passed by the calling EL (S-EL1 in BL2 & S-EL3 in BL1) before they
+ * parameters passed by the calling EL (S-EL1 in BL2 & EL3 in BL1) before they
  * are lost (potentially). This needs to be done before the MMU is initialized
  * so that the memory layout can be used while creating page tables.
  * BL2 has flushed this information to memory, so we are guaranteed to pick up
  * good data.
  ******************************************************************************/
-void bl31_early_platform_setup(bl31_params_t *from_bl2,
-			       void *plat_params_from_bl2)
+void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+				u_register_t arg2, u_register_t arg3)
 {
+	struct mtk_bl31_params *arg_from_bl2 = (struct mtk_bl31_params *)arg0;
+
 	console_init(MT8173_UART0_BASE, MT8173_UART_CLOCK, MT8173_BAUDRATE);
 
 	VERBOSE("bl31_setup\n");
 
-	assert(from_bl2 != NULL);
-	assert(from_bl2->h.type == PARAM_BL31);
-	assert(from_bl2->h.version >= VERSION_1);
+	assert(arg_from_bl2 != NULL);
+	assert(arg_from_bl2->h.type == PARAM_BL31);
+	assert(arg_from_bl2->h.version >= VERSION_1);
 
-	bl32_ep_info = *from_bl2->bl32_ep_info;
-	bl33_ep_info = *from_bl2->bl33_ep_info;
+	bl32_ep_info = *arg_from_bl2->bl32_ep_info;
+	bl33_ep_info = *arg_from_bl2->bl33_ep_info;
 }
 
 /*******************************************************************************
@@ -119,11 +122,6 @@ void bl31_platform_setup(void)
 	/* Initialize the gic cpu and distributor interfaces */
 	plat_arm_gic_driver_init();
 	plat_arm_gic_init();
-
-#if ENABLE_PLAT_COMPAT
-	/* Topologies are best known to the platform. */
-	mt_setup_topology();
-#endif
 
 	/* Initialize spm at boot time */
 	spm_boot_init();

@@ -216,7 +216,7 @@ static void psci_set_req_local_pwr_state(unsigned int pwrlvl,
 /******************************************************************************
  * This function initializes the psci_req_local_pwr_states.
  *****************************************************************************/
-void psci_init_req_local_pwr_states(void)
+void __init psci_init_req_local_pwr_states(void)
 {
 	/* Initialize the requested state of all non CPU power domains as OFF */
 	unsigned int pwrlvl;
@@ -267,7 +267,7 @@ static plat_local_state_t *psci_get_req_local_pwr_states(unsigned int pwrlvl,
 static plat_local_state_t get_non_cpu_pd_node_local_state(
 		unsigned int parent_idx)
 {
-#if !(USE_COHERENT_MEM || HW_ASSISTED_COHERENCY)
+#if !(USE_COHERENT_MEM || HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
 	flush_dcache_range(
 			(uintptr_t) &psci_non_cpu_pd_nodes[parent_idx],
 			sizeof(psci_non_cpu_pd_nodes[parent_idx]));
@@ -283,7 +283,7 @@ static void set_non_cpu_pd_node_local_state(unsigned int parent_idx,
 		plat_local_state_t state)
 {
 	psci_non_cpu_pd_nodes[parent_idx].local_state = state;
-#if !(USE_COHERENT_MEM || HW_ASSISTED_COHERENCY)
+#if !(USE_COHERENT_MEM || HW_ASSISTED_COHERENCY || WARMBOOT_ENABLE_DCACHE_EARLY)
 	flush_dcache_range(
 			(uintptr_t) &psci_non_cpu_pd_nodes[parent_idx],
 			sizeof(psci_non_cpu_pd_nodes[parent_idx]));
@@ -938,84 +938,6 @@ int psci_secondaries_brought_up(void)
 	return (n_valid > 1U) ? 1 : 0;
 }
 
-#if ENABLE_PLAT_COMPAT
-/*******************************************************************************
- * PSCI Compatibility helper function to return the 'power_state' parameter of
- * the PSCI CPU SUSPEND request for the current CPU. Returns PSCI_INVALID_DATA
- * if not invoked within CPU_SUSPEND for the current CPU.
- ******************************************************************************/
-int psci_get_suspend_powerstate(void)
-{
-	/* Sanity check to verify that CPU is within CPU_SUSPEND */
-	if (psci_get_aff_info_state() == AFF_STATE_ON &&
-		!is_local_state_run(psci_get_cpu_local_state()))
-		return psci_power_state_compat[plat_my_core_pos()];
-
-	return PSCI_INVALID_DATA;
-}
-
-/*******************************************************************************
- * PSCI Compatibility helper function to return the state id of the current
- * cpu encoded in the 'power_state' parameter. Returns PSCI_INVALID_DATA
- * if not invoked within CPU_SUSPEND for the current CPU.
- ******************************************************************************/
-int psci_get_suspend_stateid(void)
-{
-	unsigned int power_state;
-	power_state = psci_get_suspend_powerstate();
-	if (power_state != PSCI_INVALID_DATA)
-		return psci_get_pstate_id(power_state);
-
-	return PSCI_INVALID_DATA;
-}
-
-/*******************************************************************************
- * PSCI Compatibility helper function to return the state id encoded in the
- * 'power_state' parameter of the CPU specified by 'mpidr'. Returns
- * PSCI_INVALID_DATA if the CPU is not in CPU_SUSPEND.
- ******************************************************************************/
-int psci_get_suspend_stateid_by_mpidr(unsigned long mpidr)
-{
-	int cpu_idx = plat_core_pos_by_mpidr(mpidr);
-
-	if (cpu_idx == -1)
-		return PSCI_INVALID_DATA;
-
-	/* Sanity check to verify that the CPU is in CPU_SUSPEND */
-	if ((psci_get_aff_info_state_by_idx(cpu_idx) == AFF_STATE_ON) &&
-		(!is_local_state_run(psci_get_cpu_local_state_by_idx(cpu_idx))))
-		return psci_get_pstate_id(psci_power_state_compat[cpu_idx]);
-
-	return PSCI_INVALID_DATA;
-}
-
-/*******************************************************************************
- * This function returns highest affinity level which is in OFF
- * state. The affinity instance with which the level is associated is
- * determined by the caller.
- ******************************************************************************/
-unsigned int psci_get_max_phys_off_afflvl(void)
-{
-	psci_power_state_t state_info;
-
-	zeromem(&state_info, sizeof(state_info));
-	psci_get_target_local_pwr_states(PLAT_MAX_PWR_LVL, &state_info);
-
-	return psci_find_target_suspend_lvl(&state_info);
-}
-
-/*******************************************************************************
- * PSCI Compatibility helper function to return target affinity level requested
- * for the CPU_SUSPEND. This function assumes affinity levels correspond to
- * power domain levels on the platform.
- ******************************************************************************/
-int psci_get_suspend_afflvl(void)
-{
-	return psci_get_suspend_pwrlvl();
-}
-
-#endif
-
 /*******************************************************************************
  * Initiate power down sequence, by calling power down operations registered for
  * this CPU.
@@ -1026,21 +948,18 @@ void psci_do_pwrdown_sequence(unsigned int power_level)
 	/*
 	 * With hardware-assisted coherency, the CPU drivers only initiate the
 	 * power down sequence, without performing cache-maintenance operations
-	 * in software. Data caches and MMU remain enabled both before and after
-	 * this call.
+	 * in software. Data caches enabled both before and after this call.
 	 */
 	prepare_cpu_pwr_dwn(power_level);
 #else
 	/*
 	 * Without hardware-assisted coherency, the CPU drivers disable data
-	 * caches and MMU, then perform cache-maintenance operations in
-	 * software.
+	 * caches, then perform cache-maintenance operations in software.
 	 *
-	 * We ought to call prepare_cpu_pwr_dwn() to initiate power down
-	 * sequence. We currently have data caches and MMU enabled, but the
-	 * function will return with data caches and MMU disabled. We must
-	 * ensure that the stack memory is flushed out to memory before we start
-	 * popping from it again.
+	 * This also calls prepare_cpu_pwr_dwn() to initiate power down
+	 * sequence, but that function will return with data caches disabled.
+	 * We must ensure that the stack memory is flushed out to memory before
+	 * we start popping from it again.
 	 */
 	psci_do_pwrdown_cache_maintenance(power_level);
 #endif

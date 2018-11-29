@@ -35,7 +35,7 @@ static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;
 
 /* Weak definitions may be overridden in specific ARM standard platform */
-#pragma weak bl31_early_platform_setup
+#pragma weak bl31_early_platform_setup2
 #pragma weak bl31_platform_setup
 #pragma weak bl31_plat_arch_setup
 #pragma weak bl31_plat_get_next_image_ep_info
@@ -62,19 +62,19 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
 /*****************************************************************************
  * Perform any BL31 early platform setup common to ARM standard platforms.
  * Here is an opportunity to copy parameters passed by the calling EL (S-EL1
- * in BL2 & S-EL3 in BL1) before they are lost (potentially). This needs to be
+ * in BL2 & EL3 in BL1) before they are lost (potentially). This needs to be
  * done before the MMU is initialized so that the memory layout can be used
  * while creating page tables. BL2 has flushed this information to memory, so
  * we are guaranteed to pick up good data.
  *****************************************************************************
  */
-void marvell_bl31_early_platform_setup(bl31_params_t *from_bl2,
-				void *plat_params_from_bl2)
+void marvell_bl31_early_platform_setup(void *from_bl2,
+				       uintptr_t soc_fw_config,
+				       uintptr_t hw_config,
+				       void *plat_params_from_bl2)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(PLAT_MARVELL_BOOT_UART_BASE,
-		     PLAT_MARVELL_BOOT_UART_CLK_IN_HZ,
-		     MARVELL_CONSOLE_BAUDRATE);
+	marvell_console_boot_init();
 
 #if RESET_TO_BL31
 	/* There are no parameters from BL2 if BL31 is a reset vector */
@@ -107,12 +107,6 @@ void marvell_bl31_early_platform_setup(bl31_params_t *from_bl2,
 
 #else
 	/*
-	 * Check params passed from BL2 should not be NULL,
-	 */
-	assert(from_bl2 != NULL);
-	assert(from_bl2->h.type == PARAM_BL31);
-	assert(from_bl2->h.version >= VERSION_1);
-	/*
 	 * In debug builds, we pass a special value in 'plat_params_from_bl2'
 	 * to verify platform parameters from BL2 to BL31.
 	 * In release builds, it's not used.
@@ -121,19 +115,37 @@ void marvell_bl31_early_platform_setup(bl31_params_t *from_bl2,
 		MARVELL_BL31_PLAT_PARAM_VAL);
 
 	/*
-	 * Copy BL32 (if populated by BL2) and BL33 entry point information.
+	 * Check params passed from BL2 should not be NULL,
+	 */
+	bl_params_t *params_from_bl2 = (bl_params_t *)from_bl2;
+	assert(params_from_bl2 != NULL);
+	assert(params_from_bl2->h.type == PARAM_BL_PARAMS);
+	assert(params_from_bl2->h.version >= VERSION_2);
+
+	bl_params_node_t *bl_params = params_from_bl2->head;
+
+	/*
+	 * Copy BL33 and BL32 (if present), entry point information.
 	 * They are stored in Secure RAM, in BL2's address space.
 	 */
-	if (from_bl2->bl32_ep_info)
-		bl32_image_ep_info = *from_bl2->bl32_ep_info;
-	bl33_image_ep_info = *from_bl2->bl33_ep_info;
+	while (bl_params != NULL) {
+		if (bl_params->image_id == BL32_IMAGE_ID)
+			bl32_image_ep_info = *bl_params->ep_info;
+
+		if (bl_params->image_id == BL33_IMAGE_ID)
+			bl33_image_ep_info = *bl_params->ep_info;
+
+		bl_params = bl_params->next_params_info;
+	}
 #endif
 }
 
-void bl31_early_platform_setup(bl31_params_t *from_bl2,
-				void *plat_params_from_bl2)
+void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+				u_register_t arg2, u_register_t arg3)
+
 {
-	marvell_bl31_early_platform_setup(from_bl2, plat_params_from_bl2);
+	marvell_bl31_early_platform_setup((void *)arg0, arg1, arg2,
+					  (void *)arg3);
 
 #ifdef USE_CCI
 	/*
@@ -176,10 +188,10 @@ void marvell_bl31_platform_setup(void)
  */
 void marvell_bl31_plat_runtime_setup(void)
 {
+	console_switch_state(CONSOLE_FLAG_RUNTIME);
+
 	/* Initialize the runtime console */
-	console_init(PLAT_MARVELL_BL31_RUN_UART_BASE,
-		     PLAT_MARVELL_BL31_RUN_UART_CLK_IN_HZ,
-		     MARVELL_CONSOLE_BAUDRATE);
+	marvell_console_runtime_init();
 }
 
 void bl31_platform_setup(void)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -50,12 +50,12 @@ static inline void bl31_set_default_config(void)
 
 /*
  * Perform any BL31 specific platform actions. Here is an opportunity to copy
- * parameters passed by the calling EL (S-EL1 in BL2 & S-EL3 in BL1) before they
+ * parameters passed by the calling EL (S-EL1 in BL2 & EL3 in BL1) before they
  * are lost (potentially). This needs to be done before the MMU is initialized
  * so that the memory layout can be used while creating page tables.
  */
-void bl31_early_platform_setup(bl31_params_t *from_bl2,
-			       void *plat_params_from_bl2)
+void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+				u_register_t arg2, u_register_t arg3)
 {
 	/* Initialize the console to provide early debug support */
 	console_init(ZYNQMP_UART_BASE, zynqmp_get_uart_clk(),
@@ -65,8 +65,8 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 	zynqmp_config_setup();
 
 	/* There are no parameters from BL2 if BL31 is a reset vector */
-	assert(from_bl2 == NULL);
-	assert(plat_params_from_bl2 == NULL);
+	assert(arg0 == 0U);
+	assert(arg1 == 0U);
 
 	/*
 	 * Do initial security configuration to allow DRAM/device access. On
@@ -193,6 +193,6 @@ void bl31_plat_arch_setup(void)
 		{0}
 	};
 
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+	setup_page_tables(bl_regions, plat_arm_get_mmap());
 	enable_mmu_el3(0);
 }

@@ -7,8 +7,8 @@
 
 /* CP110 Marvell SoC driver */
 
-#ifndef __CP110_SETUP_H__
-#define __CP110_SETUP_H__
+#ifndef CP110_SETUP_H
+#define CP110_SETUP_H
 
 #include <mmio.h>
 #include <mvebu_def.h>
@@ -20,6 +20,7 @@
 #define MVEBU_DEVICE_REV_MASK		(0xf << MVEBU_DEVICE_REV_OFFSET)
 #define MVEBU_70X0_DEV_ID		(0x7040)
 #define MVEBU_70X0_CP115_DEV_ID		(0x7045)
+#define MVEBU_3900_DEV_ID		(0x6025)
 #define MVEBU_80X0_DEV_ID		(0x8040)
 #define MVEBU_80X0_CP115_DEV_ID		(0x8045)
 #define MVEBU_CP110_SA_DEV_ID		(0x110)
@@ -50,4 +51,4 @@ static inline uint32_t cp110_rev_id_get(uintptr_t base)
 void cp110_init(uintptr_t cp110_base, uint32_t stream_id);
 void cp110_ble_init(uintptr_t cp110_base);
 
-#endif /* __CP110_SETUP_H__ */
+#endif /* CP110_SETUP_H */

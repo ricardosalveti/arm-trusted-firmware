@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch_helpers.h>
+#include <debug.h>
 #include <hisi_ipc.h>
 #include <hisi_sram_map.h>
 #include <mmio.h>

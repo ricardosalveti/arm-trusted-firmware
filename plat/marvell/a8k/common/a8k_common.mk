@@ -4,7 +4,7 @@
 # SPDX-License-Identifier:     BSD-3-Clause
 # https://spdx.org/licenses
 
-include tools/doimage/doimage.mk
+include tools/marvell/doimage/doimage.mk
 
 PLAT_FAMILY		:= a8k
 PLAT_FAMILY_BASE	:= plat/marvell/$(PLAT_FAMILY)
@@ -25,7 +25,10 @@ $(eval $(call add_define,BL31_CACHE_DISABLE))
 $(eval $(call add_define,PCI_EP_SUPPORT))
 $(eval $(call assert_boolean,PCI_EP_SUPPORT))
 
-DOIMAGEPATH		?=	tools/doimage
+AP_NUM			:= 1
+$(eval $(call add_define,AP_NUM))
+
+DOIMAGEPATH		?=	tools/marvell/doimage
 DOIMAGETOOL		?=	${DOIMAGEPATH}/doimage
 
 ROM_BIN_EXT ?= $(BUILD_PLAT)/ble.bin
@@ -57,9 +60,9 @@ BLE_PORTING_SOURCES	:=	$(PLAT_FAMILY_BASE)/$(PLAT)/board/dram_port.c \
 
 MARVELL_MOCHI_DRV	+=	$(MARVELL_DRV_BASE)/mochi/cp110_setup.c
 
-BLE_SOURCES		:=	$(PLAT_COMMON_BASE)/plat_ble_setup.c		\
+BLE_SOURCES		:=	drivers/mentor/i2c/mi2cv.c			\
+				$(PLAT_COMMON_BASE)/plat_ble_setup.c		\
 				$(MARVELL_MOCHI_DRV)			       \
-				$(MARVELL_DRV_BASE)/i2c/a8k_i2c.c	 	\
 				$(PLAT_COMMON_BASE)/plat_pm.c		 	\
 				$(MARVELL_DRV_BASE)/thermal.c			\
 				$(PLAT_COMMON_BASE)/plat_thermal.c		\
@@ -76,7 +79,8 @@ MARVELL_DRV		:= 	$(MARVELL_DRV_BASE)/io_win.c	\
 				$(MARVELL_DRV_BASE)/amb_adec.c	\
 				$(MARVELL_DRV_BASE)/ccu.c	\
 				$(MARVELL_DRV_BASE)/cache_llc.c	\
-				$(MARVELL_DRV_BASE)/comphy/phy-comphy-cp110.c
+				$(MARVELL_DRV_BASE)/comphy/phy-comphy-cp110.c \
+				$(MARVELL_DRV_BASE)/mc_trustzone/mc_trustzone.c
 
 BL31_PORTING_SOURCES	:=	$(PLAT_FAMILY_BASE)/$(PLAT)/board/marvell_plat_config.c
 
@@ -96,11 +100,6 @@ BL31_SOURCES		+=	lib/cpus/aarch64/cortex_a72.S		       \
 # Add trace functionality for PM
 BL31_SOURCES		+=	$(PLAT_COMMON_BASE)/plat_pm_trace.c
 
-# Disable the PSCI platform compatibility layer (allows porting
-# from Old Platform APIs to the new APIs).
-# It is not needed since Marvell platform already used the new platform APIs.
-ENABLE_PLAT_COMPAT	:= 	0
-
 # Force builds with BL2 image on a80x0 platforms
 ifndef SCP_BL2
  $(error "Error: SCP_BL2 image is mandatory for a8k family")
@@ -110,7 +109,7 @@ endif
 include $(PLAT_COMMON_BASE)/mss/mss_a8k.mk
 
 # BLE (ROM context execution code, AKA binary extension)
-BLE_PATH	?=  ble
+BLE_PATH	?=  $(PLAT_COMMON_BASE)/ble
 
 include ${BLE_PATH}/ble.mk
 $(eval $(call MAKE_BL,e))

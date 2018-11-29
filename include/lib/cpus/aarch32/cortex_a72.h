@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __CORTEX_A72_H__
-#define __CORTEX_A72_H__
+#ifndef CORTEX_A72_H
+#define CORTEX_A72_H
 #include <utils_def.h>
 
 /* Cortex-A72 midr for revision 0 */
@@ -54,16 +54,4 @@
  ******************************************************************************/
 #define CORTEX_A72_L2MERRSR				p15, 3, c15
 
-#if !ERROR_DEPRECATED
-/*
- * These registers were previously wrongly named. Provide previous definitions so
- * as not to break platforms that continue using them.
- */
-#define CORTEX_A72_ACTLR				CORTEX_A72_CPUACTLR
-
-#define CORTEX_A72_ACTLR_DISABLE_L1_DCACHE_HW_PFTCH	CORTEX_A72_CPUACTLR_DISABLE_L1_DCACHE_HW_PFTCH
-#define CORTEX_A72_ACTLR_NO_ALLOC_WBWA			CORTEX_A72_CPUACTLR_NO_ALLOC_WBWA
-#define CORTEX_A72_ACTLR_DCC_AS_DCCI			CORTEX_A72_CPUACTLR_DCC_AS_DCCI
-#endif /* !ERROR_DEPRECATED */
-
-#endif /* __CORTEX_A72_H__ */
+#endif /* CORTEX_A72_H */

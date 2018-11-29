@@ -1,11 +1,15 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef __MTK_PLAT_COMMON_H__
-#define __MTK_PLAT_COMMON_H__
+#ifndef MTK_PLAT_COMMON_H
+#define MTK_PLAT_COMMON_H
+
+#include <bl_common.h>
+#include <param_header.h>
 #include <stdint.h>
+
 /*******************************************************************************
  * Function and variable prototypes
  ******************************************************************************/
@@ -45,6 +49,15 @@ struct mtk_bl_param_t {
 	uint64_t tee_info_addr;
 };
 
+struct mtk_bl31_params {
+       param_header_t h;
+       image_info_t *bl31_image_info;
+       entry_point_info_t *bl32_ep_info;
+       image_info_t *bl32_image_info;
+       entry_point_info_t *bl33_ep_info;
+       image_info_t *bl33_image_info;
+};
+
 /* Declarations for mtk_plat_common.c */
 uint32_t plat_get_spsr_for_bl32_entry(void);
 uint32_t plat_get_spsr_for_bl33_entry(void);
@@ -61,4 +74,4 @@ uint64_t get_kernel_info_r1(void);
 uint64_t get_kernel_info_r2(void);
 
 extern struct atf_arg_t gteearg;
-#endif
+#endif /* MTK_PLAT_COMMON_H */

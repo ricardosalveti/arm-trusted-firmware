@@ -54,7 +54,7 @@ Install the required packages to build TF-A with the following command:
 
     sudo apt-get install device-tree-compiler build-essential gcc make git libssl-dev
 
-TF-A has been tested with `Linaro Release 17.10`_.
+TF-A has been tested with Linaro Release 18.04.
 
 Download and install the AArch32 or AArch64 little-endian GCC cross compiler.
 The `Linaro Release Notes`_ documents which version of the compiler to use for a
@@ -67,14 +67,15 @@ Compiler 6. See instructions below on how to switch the default compiler.
 
 In addition, the following optional packages and tools may be needed:
 
--  ``device-tree-compiler`` package if you need to rebuild the Flattened Device
-   Tree (FDT) source files (``.dts`` files) provided with this software.
+-  ``device-tree-compiler`` (dtc) package if you need to rebuild the Flattened Device
+   Tree (FDT) source files (``.dts`` files) provided with this software. The
+   version of dtc must be 1.4.6 or above.
 
 -  For debugging, Arm `Development Studio 5 (DS-5)`_.
 
 -  To create and modify the diagram files included in the documentation, `Dia`_.
    This tool can be found in most Linux distributions. Inkscape is needed to
-   generate the actual *.png files.
+   generate the actual \*.png files.
 
 Getting the TF-A source code
 ----------------------------
@@ -211,6 +212,10 @@ performed.
 Common build options
 ^^^^^^^^^^^^^^^^^^^^
 
+-  ``AARCH32_INSTRUCTION_SET``: Choose the AArch32 instruction set that the
+   compiler should use. Valid values are T32 and A32. It defaults to T32 due to
+   code having a smaller resulting size.
+
 -  ``AARCH32_SP`` : Choose the AArch32 Secure Payload component to be built as
    as the BL32 image when ``ARCH=aarch32``. The value should be the path to the
    directory containing the SP source, relative to the ``bl32/``; the directory
@@ -228,11 +233,6 @@ Common build options
 -  ``ARM_ARCH_MINOR``: The minor version of Arm Architecture to target when
    compiling TF-A. Its value must be a numeric, and defaults to 0. See also,
    *Armv8 Architecture Extensions* in `Firmware Design`_.
-
--  ``ARM_GIC_ARCH``: Choice of Arm GIC architecture version used by the Arm
-   Legacy GIC driver for implementing the platform GIC API. This API is used
-   by the interrupt management framework. Default is 2 (that is, version 2.0).
-   This build option is deprecated.
 
 -  ``ARM_PLAT_MT``: This flag determines whether the Arm platform layer has to
    cater for the multi-threading ``MT`` bit when accessing MPIDR. When this flag
@@ -329,8 +329,8 @@ Common build options
 
 -  ``DYN_DISABLE_AUTH``: Provides the capability to dynamically disable Trusted
    Board Boot authentication at runtime. This option is meant to be enabled only
-   for development platforms. Both TRUSTED_BOARD_BOOT and LOAD_IMAGE_V2 flags
-   must be set if this flag has to be enabled. 0 is the default.
+   for development platforms. ``TRUSTED_BOARD_BOOT`` flag must be set if this
+   flag has to be enabled. 0 is the default.
 
 -  ``EL3_PAYLOAD_BASE``: This option enables booting an EL3 payload instead of
    the normal boot flow. It must specify the entry point address of the EL3
@@ -349,6 +349,31 @@ Common build options
    independently of ``DEBUG``. It can also be used to hide any auxiliary code
    that is only required for the assertion and does not fit in the assertion
    itself.
+
+-  ``ENABLE_BACKTRACE``: This option controls whether to enables backtrace
+   dumps or not. It is supported in both AArch64 and AArch32. However, in
+   AArch32 the format of the frame records are not defined in the AAPCS and they
+   are defined by the implementation. This implementation of backtrace only
+   supports the format used by GCC when T32 interworking is disabled. For this
+   reason enabling this option in AArch32 will force the compiler to only
+   generate A32 code. This option is enabled by default only in AArch64 debug
+   builds, but this behaviour can be overriden in each platform's Makefile or in
+   the build command line.
+
+-  ``ENABLE_MPAM_FOR_LOWER_ELS``: Boolean option to enable lower ELs to use MPAM
+   feature. MPAM is an optional Armv8.4 extension that enables various memory
+   system components and resources to define partitions; software running at
+   various ELs can assign themselves to desired partition to control their
+   performance aspects.
+
+   When this option is set to ``1``, EL3 allows lower ELs to access their own
+   MPAM registers without trapping into EL3. This option doesn't make use of
+   partitioning in EL3, however. Platform initialisation code should configure
+   and use partitions in EL3 as required. This option defaults to ``0``.
+
+-  ``ENABLE_PIE``: Boolean option to enable Position Independent Executable(PIE)
+   support within generic code in TF-A. This option is currently only supported
+   in BL31. Default is 0.
 
 -  ``ENABLE_PMF``: Boolean option to enable support for optional Performance
    Measurement Framework(PMF). Default is 0.
@@ -369,6 +394,10 @@ Common build options
    extensions. This is an optional architectural feature for AArch64.
    The default is 1 but is automatically disabled when the target architecture
    is AArch32.
+
+-  ``ENABLE_SPM`` : Boolean option to enable the Secure Partition Manager (SPM).
+   Refer to the `Secure Partition Manager Design guide`_ for more details about
+   this feature. Default is 0.
 
 -  ``ENABLE_SVE_FOR_NS``: Boolean option to enable Scalable Vector Extension
    (SVE) for the Non-secure world only. SVE is an optional architectural feature
@@ -484,12 +513,6 @@ Common build options
 -  ``LDFLAGS``: Extra user options appended to the linkers' command line in
    addition to the one set by the build system.
 
--  ``LOAD_IMAGE_V2``: Boolean option to enable support for new version (v2) of
-   image loading, which provides more flexibility and scalability around what
-   images are loaded and executed during boot. Default is 0.
-
-   Note: this flag must be enabled for AArch32 builds.
-
 -  ``LOG_LEVEL``: Chooses the log level, which controls the amount of console log
    output compiled into the build. This should be one of the following:
 
@@ -502,8 +525,8 @@ Common build options
        40 (LOG_LEVEL_INFO)
        50 (LOG_LEVEL_VERBOSE)
 
-   All log output up to and including the log level is compiled into the build.
-   The default value is 40 in debug builds and 20 in release builds.
+   All log output up to and including the selected log level is compiled into
+   the build. The default value is 40 in debug builds and 20 in release builds.
 
 -  ``NON_TRUSTED_WORLD_KEY``: This option is used when ``GENERATE_COT=1``. It
    specifies the file that contains the Non-Trusted World private key in PEM
@@ -688,14 +711,6 @@ Arm development platform specific build options
    sets the TSP location to DRAM and ignores the ``ARM_TSP_RAM_LOCATION`` build
    flag.
 
--  ``ARM_BOARD_OPTIMISE_MEM``: Boolean option to enable or disable optimisation
-   of the memory reserved for each image. This affects the maximum size of each
-   BL image as well as the number of allocated memory regions and translation
-   tables. By default this flag is 0, which means it uses the default
-   unoptimised values for these macros. Arm development platforms that wish to
-   optimise memory usage need to set this flag to 1 and must override the
-   related macros.
-
 -  ``ARM_CONFIG_CNTACR``: boolean option to unlock access to the ``CNTBase<N>``
    frame registers by setting the ``CNTCTLBase.CNTACR<N>`` register bits. The
    frame number ``<N>`` is defined by ``PLAT_ARM_NSTIMER_FRAME_ID``, which should
@@ -713,11 +728,12 @@ Arm development platform specific build options
 -  ``ARM_LINUX_KERNEL_AS_BL33``: The Linux kernel expects registers x0-x3 to
    have specific values at boot. This boolean option allows the Trusted Firmware
    to have a Linux kernel image as BL33 by preparing the registers to these
-   values before jumping to BL33. This option defaults to 0 (disabled). For now,
-   it  only supports AArch64 kernels. ``RESET_TO_BL31`` must be 1 when using it.
-   If this option is set to 1, ``ARM_PRELOADED_DTB_BASE`` must be set to the
-   location of a device tree blob (DTB) already loaded in memory.  The Linux
-   Image address must be specified using the ``PRELOADED_BL33_BASE`` option.
+   values before jumping to BL33. This option defaults to 0 (disabled). For
+   AArch64 ``RESET_TO_BL31`` and for AArch32 ``RESET_TO_SP_MIN`` must be 1 when
+   using it. If this option is set to 1, ``ARM_PRELOADED_DTB_BASE`` must be set
+   to the location of a device tree blob (DTB) already loaded in memory. The
+   Linux Image address must be specified using the ``PRELOADED_BL33_BASE``
+   option.
 
 -  ``ARM_RECOM_STATE_ID_ENC``: The PSCI1.0 specification recommends an encoding
    for the construction of composite state-ID in the power-state parameter.
@@ -814,9 +830,6 @@ Arm FVP platform specific build options
    -  ``FVP_GIC600`` : The GIC600 implementation of GICv3 is selected
    -  ``FVP_GICV2`` : The GICv2 only driver is selected
    -  ``FVP_GICV3`` : The GICv3 only driver is selected (default option)
-   -  ``FVP_GICV3_LEGACY``: The Legacy GICv3 driver is selected (deprecated)
-      Note: If TF-A is compiled with this option on FVPs with GICv3 hardware,
-      then it configures the hardware to run in GICv2 emulation mode
 
 -  ``FVP_USE_SP804_TIMER`` : Use the SP804 timer instead of the Generic Timer
    for functions that wait for an arbitrary time length (udelay and mdelay).
@@ -1055,18 +1068,6 @@ destination. In that case, use -f or --force to continue.
 
 More information about FIP can be found in the `Firmware Design`_ document.
 
-Migrating from fip\_create to fiptool
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The previous version of fiptool was called fip\_create. A compatibility script
-that emulates the basic functionality of the previous fip\_create is provided.
-However, users are strongly encouraged to migrate to fiptool.
-
--  To create a new FIP file, replace "fip\_create" with "fiptool create".
--  To update a FIP file, replace "fip\_create" with "fiptool update".
--  To dump the contents of a FIP file, replace "fip\_create --dump"
-   with "fiptool info".
-
 Building FIP images with support for Trusted Board Boot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1083,7 +1084,7 @@ images with support for these features:
    is important to use a version that is compatible with TF-A and fixes any
    known security vulnerabilities. See `mbed TLS Security Center`_ for more
    information. The latest version of TF-A is tested with tag
-   ``mbedtls-2.10.0``.
+   ``mbedtls-2.12.0``.
 
    The ``drivers/auth/mbedtls/mbedtls_*.mk`` files contain the list of mbed TLS
    source files the modules depend upon.
@@ -1185,12 +1186,12 @@ command:
 
     make PLAT=<platform> [DEBUG=1] [V=1] certtool
 
-For platforms that do not require their own IDs in certificate files,
-the generic 'cert\_create' tool can be built with the following command:
+For platforms that require their own IDs in certificate files, the generic
+'cert\_create' tool can be built with the following command:
 
 ::
 
-    make USE_TBBR_DEFS=1 [DEBUG=1] [V=1] certtool
+    make USE_TBBR_DEFS=0 [DEBUG=1] [V=1] certtool
 
 ``DEBUG=1`` builds the tool in debug mode. ``V=1`` makes the build process more
 verbose. The following command should be used to obtain help about the tool:
@@ -1308,7 +1309,7 @@ section for more info on selecting the right FDT to use.
 
       ::
 
-          make ARCH=aarch64 PLAT=juno LOAD_IMAGE_V2=1 JUNO_AARCH32_EL3_RUNTIME=1 \
+          make ARCH=aarch64 PLAT=juno JUNO_AARCH32_EL3_RUNTIME=1 \
           BL33=<path-to-juno32-oe-uboot>/SOFTWARE/bl33-uboot.bin \
           SCP_BL2=<path-to-juno32-oe-uboot>/SOFTWARE/scp_bl2.bin \
           BL32=<path-to-bl32>/bl32.bin all fip
@@ -1613,26 +1614,28 @@ The latest version of the AArch64 build of TF-A has been tested on the following
 Arm FVPs without shifted affinities, and that do not support threaded CPU cores
 (64-bit host machine only).
 
-NOTE: Unless otherwise stated, the model version is Version 11.2 Build 11.2.33.
+NOTE: Unless otherwise stated, the model version is Version 11.4 Build 37.
 
--  ``Foundation_Platform``
--  ``FVP_Base_AEMv8A-AEMv8A`` (and also Version 9.0, Build 0.8.9005)
+-  ``FVP_Base_Aresx4``
+-  ``FVP_Base_AEMv8A-AEMv8A``
+-  ``FVP_Base_AEMv8A-AEMv8A-AEMv8A-AEMv8A-CCN502``
+-  ``FVP_Base_AEMv8A-AEMv8A``
+-  ``FVP_Base_RevC-2xAEMv8A``
+-  ``FVP_Base_Cortex-A32x4``
 -  ``FVP_Base_Cortex-A35x4``
 -  ``FVP_Base_Cortex-A53x4``
+-  ``FVP_Base_Cortex-A55x4+Cortex-A75x4``
+-  ``FVP_Base_Cortex-A55x4``
 -  ``FVP_Base_Cortex-A57x4-A53x4``
 -  ``FVP_Base_Cortex-A57x4``
 -  ``FVP_Base_Cortex-A72x4-A53x4``
 -  ``FVP_Base_Cortex-A72x4``
 -  ``FVP_Base_Cortex-A73x4-A53x4``
 -  ``FVP_Base_Cortex-A73x4``
-
-Additionally, the AArch64 build was tested on the following Arm FVPs with
-shifted affinities, supporting threaded CPU cores (64-bit host machine only).
-
--  ``FVP_Base_Cortex-A55x4-A75x4`` (Version 0.0, build 0.0.4395)
--  ``FVP_Base_Cortex-A55x4`` (Version 0.0, build 0.0.4395)
--  ``FVP_Base_Cortex-A75x4`` (Version 0.0, build 0.0.4395)
--  ``FVP_Base_RevC-2xAEMv8A``
+-  ``FVP_Base_Cortex-A75x4``
+-  ``FVP_Base_Cortex-A76x4``
+-  ``FVP_CSS_SGI-575`` (Version 11.3 build 40)
+-  ``Foundation_Platform``
 
 The latest version of the AArch32 build of TF-A has been tested on the following
 Arm FVPs without shifted affinities, and that do not support threaded CPU cores
@@ -2044,12 +2047,11 @@ wakeup interrupt from RTC.
 .. _Linaro: `Linaro Release Notes`_
 .. _Linaro Release: `Linaro Release Notes`_
 .. _Linaro Release Notes: https://community.arm.com/dev-platforms/w/docs/226/old-linaro-release-notes
-.. _Linaro Release 17.10: https://community.arm.com/dev-platforms/w/docs/226/old-linaro-release-notes#1710
 .. _Linaro instructions: https://community.arm.com/dev-platforms/w/docs/304/linaro-software-deliverables
 .. _Instructions for using Linaro's deliverables on Juno: https://community.arm.com/dev-platforms/w/docs/303/juno
 .. _Arm Platforms Portal: https://community.arm.com/dev-platforms/
 .. _Development Studio 5 (DS-5): http://www.arm.com/products/tools/software-tools/ds-5/index.php
-.. _Linux master tree: <https://github.com/torvalds/linux/tree/master/>
+.. _Linux master tree: https://github.com/torvalds/linux/tree/master/
 .. _Dia: https://wiki.gnome.org/Apps/Dia/Download
 .. _here: psci-lib-integration-guide.rst
 .. _Trusted Board Boot: trusted-board-boot.rst
@@ -2063,3 +2065,4 @@ wakeup interrupt from RTC.
 .. _FVP models: https://developer.arm.com/products/system-design/fixed-virtual-platforms
 .. _Juno Getting Started Guide: http://infocenter.arm.com/help/topic/com.arm.doc.dui0928e/DUI0928E_juno_arm_development_platform_gsg.pdf
 .. _PSCI: http://infocenter.arm.com/help/topic/com.arm.doc.den0022d/Power_State_Coordination_Interface_PDD_v1_1_DEN0022D.pdf
+.. _Secure Partition Manager Design guide: secure-partition-manager-design.rst

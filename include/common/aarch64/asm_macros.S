@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef __ASM_MACROS_S__
-#define __ASM_MACROS_S__
+#ifndef ASM_MACROS_S
+#define ASM_MACROS_S
 
 #include <arch.h>
 #include <asm_macros_common.S>
@@ -98,36 +98,6 @@
 	.endm
 
 	/*
-	 * This macro verifies that the given vector doesn't exceed the
-	 * architectural limit of 32 instructions. This is meant to be placed
-	 * immediately after the last instruction in the vector. It takes the
-	 * vector entry as the parameter
-	 */
-	.macro check_vector_size since
-#if ERROR_DEPRECATED
-      .error "check_vector_size must not be used. Use end_vector_entry instead"
-#endif
-	end_vector_entry \since
-	.endm
-
-#if ENABLE_PLAT_COMPAT
-	/*
-	 * This macro calculates the base address of an MP stack using the
-	 * platform_get_core_pos() index, the name of the stack storage and
-	 * the size of each stack
-	 * In: X0 = MPIDR of CPU whose stack is wanted
-	 * Out: X0 = physical address of stack base
-	 * Clobber: X30, X1, X2
-	 */
-	.macro get_mp_stack _name, _size
-	bl  platform_get_core_pos
-	ldr x2, =(\_name + \_size)
-	mov x1, #\_size
-	madd x0, x0, x1, x2
-	.endm
-#endif
-
-	/*
 	 * This macro calculates the base address of the current CPU's MP stack
 	 * using the plat_my_core_pos() index, the name of the stack storage
 	 * and the size of each stack
@@ -135,8 +105,9 @@
 	 * Clobber: X30, X1, X2
 	 */
 	.macro get_my_mp_stack _name, _size
-	bl  plat_my_core_pos
-	ldr x2, =(\_name + \_size)
+	bl	plat_my_core_pos
+	adrp	x2, (\_name + \_size)
+	add	x2, x2, :lo12:(\_name + \_size)
 	mov x1, #\_size
 	madd x0, x0, x1, x2
 	.endm
@@ -147,7 +118,8 @@
 	 * Out: X0 = physical address of stack base
 	 */
 	.macro get_up_stack _name, _size
-	ldr x0, =(\_name + \_size)
+	adrp	x0, (\_name + \_size)
+	add	x0, x0, :lo12:(\_name + \_size)
 	.endm
 
 	/*
@@ -220,4 +192,4 @@
 	.endm
 #endif
 
-#endif /* __ASM_MACROS_S__ */
+#endif /* ASM_MACROS_S */

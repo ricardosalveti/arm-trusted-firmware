@@ -19,7 +19,7 @@
  */
 
 /* Size of cacheable stacks */
-#define PLATFORM_STACK_SIZE		0x800
+#define PLATFORM_STACK_SIZE		0x1000
 
 #define FIRMWARE_WELCOME_STR		"Booting Trusted Firmware\n"
 
@@ -49,8 +49,8 @@
  * BL1 specific defines.
  */
 #define BL1_RO_BASE			(0x1AC00000)
-#define BL1_RO_LIMIT			(BL1_RO_BASE + 0x10000)
-#define BL1_RW_BASE			(BL1_RO_LIMIT)		/* 1AC1_0000 */
+#define BL1_RO_LIMIT			(BL1_RO_BASE + 0x20000)
+#define BL1_RW_BASE			(BL1_RO_LIMIT)		/* 1AC2_0000 */
 #define BL1_RW_SIZE			(0x00188000)
 #define BL1_RW_LIMIT			(0x1B000000)
 
@@ -104,7 +104,7 @@
 #define NS_BL1U_SIZE			(0x00100000)
 #define NS_BL1U_LIMIT			(NS_BL1U_BASE + NS_BL1U_SIZE)
 
-#define HIKEY960_NS_IMAGE_OFFSET	(0x1AC18000)	/* offset in l-loader */
+#define HIKEY960_NS_IMAGE_OFFSET	(0x1AC28000)	/* offset in l-loader */
 #define HIKEY960_NS_TMP_OFFSET		(0x1AE00000)
 
 #define SCP_BL2_BASE			(0x89C80000)
@@ -113,7 +113,8 @@
 /*
  * Platform specific page table and MMU setup constants
  */
-#define ADDR_SPACE_SIZE			(1ULL << 32)
+#define PLAT_VIRT_ADDR_SPACE_SIZE   (1ULL << 32)
+#define PLAT_PHY_ADDR_SPACE_SIZE    (1ULL << 32)
 
 #if defined(IMAGE_BL1) || defined(IMAGE_BL31) || defined(IMAGE_BL32)
 #define MAX_XLAT_TABLES			3

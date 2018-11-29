@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -12,7 +12,7 @@
 #include <io/io_fip.h>
 #include <io/io_memmap.h>
 #include <platform_def.h>
-#include <types.h>
+#include <stdint.h>
 #include <utils_def.h>
 #include <xlat_tables_v2.h>
 
@@ -334,22 +334,4 @@ int plat_get_image_source(unsigned int image_id, uintptr_t *dev_handle,
 	init_params = uniphier_io_policies[image_id].init_params;
 
 	return io_dev_init(*dev_handle, init_params);
-}
-
-int uniphier_check_image(unsigned int image_id)
-{
-	uintptr_t dev_handle, image_spec, image_handle;
-	int ret;
-
-	ret = plat_get_image_source(image_id, &dev_handle, &image_spec);
-	if (ret)
-		return ret;
-
-	ret = io_open(dev_handle, image_spec, &image_handle);
-	if (ret)
-		return ret;
-
-	io_close(image_handle);
-
-	return 0;
 }

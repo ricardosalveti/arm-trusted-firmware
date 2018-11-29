@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __SMCCC_HELPERS_H__
-#define __SMCCC_HELPERS_H__
+#ifndef SMCCC_HELPERS_H
+#define SMCCC_HELPERS_H
 
 #include <smccc.h>
 
 #ifndef __ASSEMBLY__
 #include <context.h>
+#include <stdbool.h>
 
 /* Convenience macros to return from SMC handler */
 #define SMC_RET0(_h)	{					\
@@ -77,8 +78,8 @@
 		_x2 = read_ctx_reg(regs, CTX_GPREG_X2);		\
 		_x3 = read_ctx_reg(regs, CTX_GPREG_X3);		\
 		_x4 = read_ctx_reg(regs, CTX_GPREG_X4);		\
-	} while (0)
+	} while (false)
 
 #endif /*__ASSEMBLY__*/
 
-#endif /* __SMCCC_HELPERS_H__ */
+#endif /* SMCCC_HELPERS_H */

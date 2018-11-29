@@ -6,12 +6,11 @@
 
 #include <debug.h>
 #include <mmio.h>
-#include <norflash.h>
 #include <plat_arm.h>
 #include <platform_def.h>
 #include <psci.h>
 #include <utils.h>
-
+#include <v2m_flash.h>
 
 /*
  * DRAM1 is used also to load the NS boot loader. For this reason we
@@ -51,14 +50,14 @@ int arm_psci_read_mem_protect(int *enabled)
  ******************************************************************************/
 int arm_nor_psci_write_mem_protect(int val)
 {
-	int enable = (val != 0) ? 1 : 0;
+	unsigned long enable = (val != 0) ? 1UL : 0UL;
 
 	if (nor_unlock(PLAT_ARM_MEM_PROT_ADDR) != 0) {
 		ERROR("unlocking memory protect variable\n");
 		return -1;
 	}
 
-	if (enable == 1) {
+	if (enable == 1UL) {
 		/*
 		 * If we want to write a value different than 0
 		 * then we have to erase the full block because

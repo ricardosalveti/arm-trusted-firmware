@@ -10,9 +10,11 @@
 #include <platform_def.h>
 
 	.weak	plat_report_exception
+#if !ERROR_DEPRECATED
 	.weak	plat_crash_console_init
 	.weak	plat_crash_console_putc
 	.weak	plat_crash_console_flush
+#endif
 	.weak	plat_reset_handler
 	.weak	plat_disable_acp
 	.weak	bl1_plat_prepare_exit
@@ -24,32 +26,9 @@
 	.weak	plat_handle_double_fault
 	.weak	plat_handle_el3_ea
 
-#if !ENABLE_PLAT_COMPAT
 	.globl	platform_get_core_pos
 
 #define MPIDR_RES_BIT_MASK	0xff000000
-
-	/* ------------------------------------------------------------------
-	 *  int platform_get_core_pos(int mpidr)
-	 *  Returns the CPU index of the CPU specified by mpidr. This is
-	 *  defined when platform compatibility is disabled to enable Trusted
-	 *  Firmware components like SPD using the old  platform API to work.
-	 *  This API is deprecated and it assumes that the mpidr specified is
-	 *  that of a valid and present CPU. Instead, plat_my_core_pos()
-	 *  should be used for CPU index of the current CPU and
-	 *  plat_core_pos_by_mpidr() should be used for CPU index of a
-	 *  CPU specified by its mpidr.
-	 * ------------------------------------------------------------------
-	 */
-func_deprecated platform_get_core_pos
-	bic	x0, x0, #MPIDR_RES_BIT_MASK
-	mrs	x1, mpidr_el1
-	bic	x1, x1, #MPIDR_RES_BIT_MASK
-	cmp	x0, x1
-	beq	plat_my_core_pos
-	b	platform_core_pos_helper
-endfunc_deprecated platform_get_core_pos
-#endif
 
 	/* -----------------------------------------------------
 	 * Placeholder function which should be redefined by
@@ -60,6 +39,7 @@ func plat_report_exception
 	ret
 endfunc plat_report_exception
 
+#if !ERROR_DEPRECATED
 #if MULTI_CONSOLE_API
 	/* -----------------------------------------------------
 	 * int plat_crash_console_init(void)
@@ -132,6 +112,7 @@ func plat_crash_console_flush
 	ret
 endfunc plat_crash_console_flush
 #endif
+#endif /* ERROR_DEPRECATED */
 
 	/* -----------------------------------------------------
 	 * Placeholder function which should be redefined by

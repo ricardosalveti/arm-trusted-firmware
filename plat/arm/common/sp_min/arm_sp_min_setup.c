@@ -5,15 +5,15 @@
  */
 
 #include <assert.h>
+#include <bl_common.h>
 #include <console.h>
 #include <debug.h>
 #include <mmio.h>
+#include <pl011.h>
 #include <plat_arm.h>
 #include <platform.h>
 #include <platform_def.h>
 #include <platform_sp_min.h>
-
-#define BL32_END (uintptr_t)(&__BL32_END__)
 
 static entry_point_info_t bl33_image_ep_info;
 
@@ -62,8 +62,7 @@ void arm_sp_min_early_platform_setup(void *from_bl2, uintptr_t tos_fw_config,
 			uintptr_t hw_config, void *plat_params_from_bl2)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(PLAT_ARM_BOOT_UART_BASE, PLAT_ARM_BOOT_UART_CLK_IN_HZ,
-				ARM_CONSOLE_BAUDRATE);
+	arm_console_boot_init();
 
 #if RESET_TO_SP_MIN
 	/* There are no parameters from BL2 if SP_MIN is a reset vector */
@@ -82,6 +81,19 @@ void arm_sp_min_early_platform_setup(void *from_bl2, uintptr_t tos_fw_config,
 	bl33_image_ep_info.pc = plat_get_ns_image_entrypoint();
 	bl33_image_ep_info.spsr = arm_get_spsr_for_bl33_entry();
 	SET_SECURITY_STATE(bl33_image_ep_info.h.attr, NON_SECURE);
+
+# if ARM_LINUX_KERNEL_AS_BL33
+	/*
+	 * According to the file ``Documentation/arm/Booting`` of the Linux
+	 * kernel tree, Linux expects:
+	 * r0 = 0
+	 * r1 = machine type number, optional in DT-only platforms (~0 if so)
+	 * r2 = Physical address of the device tree blob
+	 */
+	bl33_image_ep_info.args.arg0 = 0U;
+	bl33_image_ep_info.args.arg1 = ~0U;
+	bl33_image_ep_info.args.arg2 = (u_register_t)ARM_PRELOADED_DTB_BASE;
+# endif
 
 #else /* RESET_TO_SP_MIN */
 
@@ -153,8 +165,7 @@ void sp_min_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 void arm_sp_min_plat_runtime_setup(void)
 {
 	/* Initialize the runtime console */
-	console_init(PLAT_ARM_SP_MIN_RUN_UART_BASE,
-		PLAT_ARM_SP_MIN_RUN_UART_CLK_IN_HZ, ARM_CONSOLE_BAUDRATE);
+	arm_console_runtime_init();
 }
 
 /*******************************************************************************
@@ -181,7 +192,7 @@ void sp_min_platform_setup(void)
 
 	/* Enable and initialize the System level generic timer */
 	mmio_write_32(ARM_SYS_CNTCTL_BASE + CNTCR_OFF,
-			CNTCR_FCREQ(0) | CNTCR_EN);
+			CNTCR_FCREQ(0U) | CNTCR_EN);
 
 	/* Allow access to the System counter timer module */
 	arm_configure_sys_timer();
@@ -203,15 +214,14 @@ void sp_min_plat_arch_setup(void)
 {
 	const mmap_region_t bl_regions[] = {
 		MAP_BL_SP_MIN_TOTAL,
-		ARM_MAP_BL_CODE,
-		ARM_MAP_BL_RO_DATA,
+		ARM_MAP_BL_RO,
 #if USE_COHERENT_MEM
 		ARM_MAP_BL_COHERENT_RAM,
 #endif
 		{0}
 	};
 
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+	setup_page_tables(bl_regions, plat_arm_get_mmap());
 
-	enable_mmu_secure(0);
+	enable_mmu_svc_mon(0);
 }

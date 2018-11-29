@@ -57,7 +57,7 @@ uintptr_t get_arm_std_svc_args(unsigned int svc_mask)
 /*******************************************************************************
  * Simple function to initialise all BL31 helper libraries.
  ******************************************************************************/
-void bl31_lib_init(void)
+void __init bl31_lib_init(void)
 {
 	cm_init();
 }
@@ -103,9 +103,13 @@ void bl31_main(void)
 	/*
 	 * If SPD had registerd an init hook, invoke it.
 	 */
-	if (bl32_init) {
+	if (bl32_init != NULL) {
 		INFO("BL31: Initializing BL32\n");
-		(*bl32_init)();
+
+		int32_t rc = (*bl32_init)();
+
+		if (rc == 0)
+			WARN("BL31: BL32 initialization failed\n");
 	}
 	/*
 	 * We are ready to enter the next EL. Prepare entry into the image
@@ -145,7 +149,7 @@ uint32_t bl31_get_next_image_type(void)
  * This function programs EL3 registers and performs other setup to enable entry
  * into the next image after BL31 at the next ERET.
  ******************************************************************************/
-void bl31_prepare_next_image_entry(void)
+void __init bl31_prepare_next_image_entry(void)
 {
 	entry_point_info_t *next_image_info;
 	uint32_t image_type;
@@ -155,9 +159,9 @@ void bl31_prepare_next_image_entry(void)
 	 * Ensure that the build flag to save AArch32 system registers in CPU
 	 * context is not set for AArch64-only platforms.
 	 */
-	if (EL_IMPLEMENTED(1) == EL_IMPL_A64ONLY) {
+	if (el_implemented(1) == EL_IMPL_A64ONLY) {
 		ERROR("EL1 supports AArch64-only. Please set build flag "
-				"CTX_INCLUDE_AARCH32_REGS = 0");
+				"CTX_INCLUDE_AARCH32_REGS = 0\n");
 		panic();
 	}
 #endif
@@ -167,7 +171,7 @@ void bl31_prepare_next_image_entry(void)
 
 	/* Program EL3 registers to enable entry into the next EL */
 	next_image_info = bl31_plat_get_next_image_ep_info(image_type);
-	assert(next_image_info);
+	assert(next_image_info != NULL);
 	assert(image_type == GET_SECURITY_STATE(next_image_info->h.attr));
 
 	INFO("BL31: Preparing for EL3 exit to %s world\n",

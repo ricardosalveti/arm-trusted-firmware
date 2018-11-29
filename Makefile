@@ -7,8 +7,8 @@
 #
 # Trusted Firmware Version
 #
-VERSION_MAJOR			:= 1
-VERSION_MINOR			:= 5
+VERSION_MAJOR			:= 2
+VERSION_MINOR			:= 0
 
 # Default goal is build all images
 .DEFAULT_GOAL			:= all
@@ -45,7 +45,7 @@ CHECKCODE_ARGS		:=	--no-patch
 # Do not check the coding style on imported library files or documentation files
 INC_LIB_DIRS_TO_CHECK	:=	$(sort $(filter-out			\
 					include/lib/libfdt		\
-					include/lib/stdlib,		\
+					include/lib/libc,		\
 					$(wildcard include/lib/*)))
 INC_DIRS_TO_CHECK	:=	$(sort $(filter-out			\
 					include/lib,			\
@@ -53,7 +53,7 @@ INC_DIRS_TO_CHECK	:=	$(sort $(filter-out			\
 LIB_DIRS_TO_CHECK	:=	$(sort $(filter-out			\
 					lib/compiler-rt			\
 					lib/libfdt%			\
-					lib/stdlib,			\
+					lib/libc,			\
 					$(wildcard lib/*)))
 ROOT_DIRS_TO_CHECK	:=	$(sort $(filter-out			\
 					lib				\
@@ -74,11 +74,19 @@ CHECK_PATHS		:=	${ROOT_DIRS_TO_CHECK}			\
 # Verbose flag
 ifeq (${V},0)
         Q:=@
+        ECHO:=@echo
         CHECKCODE_ARGS	+=	--no-summary --terse
 else
         Q:=
+        ECHO:=$(ECHO_QUIET)
 endif
-export Q
+
+ifneq ($(findstring s,$(filter-out --%,$(MAKEFLAGS))),)
+        Q:=@
+        ECHO:=$(ECHO_QUIET)
+endif
+
+export Q ECHO
 
 # Process Debug flag
 $(eval $(call add_define,DEBUG))
@@ -166,13 +174,21 @@ TF_CFLAGS_aarch64	=	-march=armv8-a
 LD			=	$(LINKER)
 endif
 
+ifeq (${AARCH32_INSTRUCTION_SET},A32)
+TF_CFLAGS_aarch32	+=	-marm
+else ifeq (${AARCH32_INSTRUCTION_SET},T32)
+TF_CFLAGS_aarch32	+=	-mthumb
+else
+$(error Error: Unknown AArch32 instruction set ${AARCH32_INSTRUCTION_SET})
+endif
+
 TF_CFLAGS_aarch32	+=	-mno-unaligned-access
 TF_CFLAGS_aarch64	+=	-mgeneral-regs-only -mstrict-align
 
 ASFLAGS_aarch32		=	$(march32-directive)
 ASFLAGS_aarch64		=	-march=armv8-a
 
-CPPFLAGS		=	${DEFINES} ${INCLUDES} -nostdinc		\
+CPPFLAGS		=	${DEFINES} ${INCLUDES} ${MBEDTLS_INC} -nostdinc		\
 				-Wmissing-include-dirs -Werror
 ASFLAGS			+=	$(CPPFLAGS) $(ASFLAGS_$(ARCH))			\
 				-D__ASSEMBLY__ -ffreestanding 			\
@@ -182,11 +198,6 @@ TF_CFLAGS		+=	$(CPPFLAGS) $(TF_CFLAGS_$(ARCH))		\
 				-Os -ffunction-sections -fdata-sections
 
 GCC_V_OUTPUT		:=	$(shell $(CC) -v 2>&1)
-PIE_FOUND		:=	$(findstring --enable-default-pie,${GCC_V_OUTPUT})
-
-ifneq ($(PIE_FOUND),)
-TF_CFLAGS		+=	-fno-PIE
-endif
 
 TF_LDFLAGS		+=	--fatal-warnings -O1
 TF_LDFLAGS		+=	--gc-sections
@@ -198,12 +209,10 @@ DTC_FLAGS		+=	-I dts -O dtb
 # Common sources and include directories
 ################################################################################
 include lib/compiler-rt/compiler-rt.mk
-include lib/stdlib/stdlib.mk
+include lib/libc/libc.mk
 
 BL_COMMON_SOURCES	+=	common/bl_common.c			\
 				common/tf_log.c				\
-				common/tf_printf.c			\
-				common/tf_snprintf.c			\
 				common/${ARCH}/debug.S			\
 				lib/${ARCH}/cache_helpers.S		\
 				lib/${ARCH}/misc_helpers.S		\
@@ -211,8 +220,11 @@ BL_COMMON_SOURCES	+=	common/bl_common.c			\
 				plat/common/plat_log_common.c		\
 				plat/common/${ARCH}/plat_common.c	\
 				plat/common/${ARCH}/platform_helpers.S	\
-				${COMPILER_RT_SRCS}			\
-				${STDLIB_SRCS}
+				${COMPILER_RT_SRCS}
+
+ifeq ($(notdir $(CC)),armclang)
+BL_COMMON_SOURCES	+=	lib/${ARCH}/armclang_printf.S
+endif
 
 INCLUDES		+=	-Iinclude				\
 				-Iinclude/bl1				\
@@ -242,6 +254,7 @@ INCLUDES		+=	-Iinclude				\
 				${SPD_INCLUDES}				\
 				-Iinclude/tools_share
 
+include common/backtrace/backtrace.mk
 
 ################################################################################
 # Generic definitions
@@ -264,7 +277,7 @@ INCLUDE_TBBR_MK		:=	1
 
 ifneq (${SPD},none)
 ifeq (${ARCH},aarch32)
-	$(error "Error: SPD is incompatible with AArch32.")
+        $(error "Error: SPD is incompatible with AArch32.")
 endif
 ifdef EL3_PAYLOAD_BASE
         $(warning "SPD and EL3_PAYLOAD_BASE are incompatible build options.")
@@ -303,17 +316,14 @@ ifeq (${ARM_ARCH_MAJOR},7)
 include make_helpers/armv7-a-cpus.mk
 endif
 
-# Platform compatibility is not supported in AArch32
-ifneq (${ARCH},aarch32)
-# If the platform has not defined ENABLE_PLAT_COMPAT, then enable it by default
-ifndef ENABLE_PLAT_COMPAT
-ENABLE_PLAT_COMPAT := 1
-endif
-
-# Include the platform compatibility helpers for PSCI
-ifneq (${ENABLE_PLAT_COMPAT}, 0)
-include plat/compat/plat_compat.mk
-endif
+ifeq ($(ENABLE_PIE),1)
+    TF_CFLAGS		+=	-fpie
+    TF_LDFLAGS		+=	-pie
+else
+    PIE_FOUND		:=	$(findstring --enable-default-pie,${GCC_V_OUTPUT})
+    ifneq ($(PIE_FOUND),)
+        TF_CFLAGS		+=	-fno-PIE
+    endif
 endif
 
 # Include the CPU specific operations makefile, which provides default
@@ -370,23 +380,10 @@ ifeq (${NEED_BL33},yes)
         endif
 endif
 
-# For AArch32, LOAD_IMAGE_V2 must be enabled.
-ifeq (${ARCH},aarch32)
-    ifeq (${LOAD_IMAGE_V2}, 0)
-        $(error "For AArch32, LOAD_IMAGE_V2 must be enabled.")
-    endif
-endif
-
 # When building for systems with hardware-assisted coherency, there's no need to
 # use USE_COHERENT_MEM. Require that USE_COHERENT_MEM must be set to 0 too.
 ifeq ($(HW_ASSISTED_COHERENCY)-$(USE_COHERENT_MEM),1-1)
 $(error USE_COHERENT_MEM cannot be enabled with HW_ASSISTED_COHERENCY)
-endif
-
-ifneq ($(MULTI_CONSOLE_API), 0)
-    ifeq (${ARCH},aarch32)
-        $(error "Error: MULTI_CONSOLE_API is not supported for AArch32")
-    endif
 endif
 
 #For now, BL2_IN_XIP_MEM is only supported when BL2_AT_EL3 is 1.
@@ -418,13 +415,10 @@ ifeq ($(FAULT_INJECTION_SUPPORT),1)
     endif
 endif
 
-# DYN_DISABLE_AUTH can be set only when TRUSTED_BOARD_BOOT=1 and LOAD_IMAGE_V2=1
+# DYN_DISABLE_AUTH can be set only when TRUSTED_BOARD_BOOT=1
 ifeq ($(DYN_DISABLE_AUTH), 1)
     ifeq (${TRUSTED_BOARD_BOOT}, 0)
         $(error "TRUSTED_BOARD_BOOT must be enabled for DYN_DISABLE_AUTH to be set.")
-    endif
-    ifeq (${LOAD_IMAGE_V2}, 0)
-        $(error "DYN_DISABLE_AUTH is only supported for LOAD_IMAGE_V2.")
     endif
 endif
 
@@ -506,6 +500,9 @@ CRTTOOL			?=	${CRTTOOLPATH}/cert_create${BIN_EXT}
 FIPTOOLPATH		?=	tools/fiptool
 FIPTOOL			?=	${FIPTOOLPATH}/fiptool${BIN_EXT}
 
+# Variables for use with ROMLIB
+ROMLIBPATH		?=	lib/romlib
+
 ################################################################################
 # Include BL specific makefiles
 ################################################################################
@@ -548,7 +545,8 @@ $(eval $(call assert_boolean,DYN_DISABLE_AUTH))
 $(eval $(call assert_boolean,EL3_EXCEPTION_HANDLING))
 $(eval $(call assert_boolean,ENABLE_AMU))
 $(eval $(call assert_boolean,ENABLE_ASSERTIONS))
-$(eval $(call assert_boolean,ENABLE_PLAT_COMPAT))
+$(eval $(call assert_boolean,ENABLE_MPAM_FOR_LOWER_ELS))
+$(eval $(call assert_boolean,ENABLE_PIE))
 $(eval $(call assert_boolean,ENABLE_PMF))
 $(eval $(call assert_boolean,ENABLE_PSCI_STAT))
 $(eval $(call assert_boolean,ENABLE_RUNTIME_INSTRUMENTATION))
@@ -561,7 +559,6 @@ $(eval $(call assert_boolean,GENERATE_COT))
 $(eval $(call assert_boolean,GICV2_G0_FOR_EL3))
 $(eval $(call assert_boolean,HANDLE_EA_EL3_FIRST))
 $(eval $(call assert_boolean,HW_ASSISTED_COHERENCY))
-$(eval $(call assert_boolean,LOAD_IMAGE_V2))
 $(eval $(call assert_boolean,MULTI_CONSOLE_API))
 $(eval $(call assert_boolean,NS_TIMER_SWITCH))
 $(eval $(call assert_boolean,PL011_GENERIC_UART))
@@ -574,6 +571,7 @@ $(eval $(call assert_boolean,SEPARATE_CODE_AND_RODATA))
 $(eval $(call assert_boolean,SPIN_ON_BL1_EXIT))
 $(eval $(call assert_boolean,TRUSTED_BOARD_BOOT))
 $(eval $(call assert_boolean,USE_COHERENT_MEM))
+$(eval $(call assert_boolean,USE_ROMLIB))
 $(eval $(call assert_boolean,USE_TBBR_DEFS))
 $(eval $(call assert_boolean,WARMBOOT_ENABLE_DCACHE_EARLY))
 $(eval $(call assert_boolean,BL2_AT_EL3))
@@ -591,14 +589,14 @@ $(eval $(call assert_numeric,SMCCC_MAJOR_VERSION))
 
 $(eval $(call add_define,ARM_ARCH_MAJOR))
 $(eval $(call add_define,ARM_ARCH_MINOR))
-$(eval $(call add_define,ARM_GIC_ARCH))
 $(eval $(call add_define,COLD_BOOT_SINGLE_CPU))
 $(eval $(call add_define,CTX_INCLUDE_AARCH32_REGS))
 $(eval $(call add_define,CTX_INCLUDE_FPREGS))
 $(eval $(call add_define,EL3_EXCEPTION_HANDLING))
 $(eval $(call add_define,ENABLE_AMU))
 $(eval $(call add_define,ENABLE_ASSERTIONS))
-$(eval $(call add_define,ENABLE_PLAT_COMPAT))
+$(eval $(call add_define,ENABLE_MPAM_FOR_LOWER_ELS))
+$(eval $(call add_define,ENABLE_PIE))
 $(eval $(call add_define,ENABLE_PMF))
 $(eval $(call add_define,ENABLE_PSCI_STAT))
 $(eval $(call add_define,ENABLE_RUNTIME_INSTRUMENTATION))
@@ -610,7 +608,6 @@ $(eval $(call add_define,FAULT_INJECTION_SUPPORT))
 $(eval $(call add_define,GICV2_G0_FOR_EL3))
 $(eval $(call add_define,HANDLE_EA_EL3_FIRST))
 $(eval $(call add_define,HW_ASSISTED_COHERENCY))
-$(eval $(call add_define,LOAD_IMAGE_V2))
 $(eval $(call add_define,LOG_LEVEL))
 $(eval $(call add_define,MULTI_CONSOLE_API))
 $(eval $(call add_define,NS_TIMER_SWITCH))
@@ -621,11 +618,13 @@ $(eval $(call add_define,PSCI_EXTENDED_STATE_ID))
 $(eval $(call add_define,RAS_EXTENSION))
 $(eval $(call add_define,RESET_TO_BL31))
 $(eval $(call add_define,SEPARATE_CODE_AND_RODATA))
+$(eval $(call add_define,RECLAIM_INIT_CODE))
 $(eval $(call add_define,SMCCC_MAJOR_VERSION))
 $(eval $(call add_define,SPD_${SPD}))
 $(eval $(call add_define,SPIN_ON_BL1_EXIT))
 $(eval $(call add_define,TRUSTED_BOARD_BOOT))
 $(eval $(call add_define,USE_COHERENT_MEM))
+$(eval $(call add_define,USE_ROMLIB))
 $(eval $(call add_define,USE_TBBR_DEFS))
 $(eval $(call add_define,WARMBOOT_ENABLE_DCACHE_EARLY))
 $(eval $(call add_define,BL2_AT_EL3))
@@ -669,6 +668,9 @@ msg_start:
 ifeq (${ERROR_DEPRECATED},0)
     CPPFLAGS		+= 	-Wno-error=deprecated-declarations -Wno-error=cpp
 endif
+
+$(eval $(call MAKE_LIB_DIRS))
+$(eval $(call MAKE_LIB,c))
 
 # Expand build macros for the different images
 ifeq (${NEED_BL1},yes)
@@ -734,6 +736,7 @@ clean:
 	$(call SHELL_REMOVE_DIR,${BUILD_PLAT})
 	${Q}${MAKE} --no-print-directory -C ${FIPTOOLPATH} clean
 	${Q}${MAKE} PLAT=${PLAT} --no-print-directory -C ${CRTTOOLPATH} clean
+	${Q}${MAKE} --no-print-directory -C ${ROMLIBPATH} clean
 
 realclean distclean:
 	@echo "  REALCLEAN"
@@ -741,11 +744,12 @@ realclean distclean:
 	$(call SHELL_DELETE_ALL, ${CURDIR}/cscope.*)
 	${Q}${MAKE} --no-print-directory -C ${FIPTOOLPATH} clean
 	${Q}${MAKE} PLAT=${PLAT} --no-print-directory -C ${CRTTOOLPATH} clean
+	${Q}${MAKE} --no-print-directory -C ${ROMLIBPATH} clean
 
 checkcodebase:		locate-checkpatch
 	@echo "  CHECKING STYLE"
 	@if test -d .git ; then						\
-		git ls-files | grep -E -v 'libfdt|stdlib|docs|\.md' |	\
+		git ls-files | grep -E -v 'libfdt|libc|docs|\.md' |	\
 		while read GIT_FILE ;					\
 		do ${CHECKPATCH} ${CHECKCODE_ARGS} -f $$GIT_FILE ;	\
 		done ;							\
@@ -753,7 +757,7 @@ checkcodebase:		locate-checkpatch
 		 find . -type f -not -iwholename "*.git*"		\
 		 -not -iwholename "*build*"				\
 		 -not -iwholename "*libfdt*"				\
-		 -not -iwholename "*stdlib*"				\
+		 -not -iwholename "*libc*"				\
 		 -not -iwholename "*docs*"				\
 		 -not -iwholename "*.md"				\
 		 -exec ${CHECKPATCH} ${CHECKCODE_ARGS} -f {} \; ;	\
@@ -818,6 +822,10 @@ fwu_fip: ${BUILD_PLAT}/${FWU_FIP_NAME}
 .PHONY: ${FIPTOOL}
 ${FIPTOOL}:
 	${Q}${MAKE} CPPFLAGS="-DVERSION='\"${VERSION_STRING}\"'" --no-print-directory -C ${FIPTOOLPATH}
+
+.PHONY: libraries
+romlib.bin: libraries
+	${Q}${MAKE} BUILD_PLAT=${BUILD_PLAT} INCLUDES='${INCLUDES}' DEFINES='${DEFINES}' --no-print-directory -C ${ROMLIBPATH} all
 
 cscope:
 	@echo "  CSCOPE"

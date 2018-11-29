@@ -86,11 +86,14 @@ $(eval $(call assert_boolean,ARM_LINUX_KERNEL_AS_BL33))
 $(eval $(call add_define,ARM_LINUX_KERNEL_AS_BL33))
 
 ifeq (${ARM_LINUX_KERNEL_AS_BL33},1)
-  ifneq (${ARCH},aarch64)
-    $(error "ARM_LINUX_KERNEL_AS_BL33 is only available in AArch64.")
-  endif
-  ifneq (${RESET_TO_BL31},1)
-    $(error "ARM_LINUX_KERNEL_AS_BL33 is only available if RESET_TO_BL31=1.")
+  ifeq (${ARCH},aarch64)
+    ifneq (${RESET_TO_BL31},1)
+      $(error "ARM_LINUX_KERNEL_AS_BL33 is only available if RESET_TO_BL31=1.")
+    endif
+  else
+    ifneq (${RESET_TO_SP_MIN},1)
+      $(error "ARM_LINUX_KERNEL_AS_BL33 is only available if RESET_TO_SP_MIN=1.")
+    endif
   endif
   ifndef PRELOADED_BL33_BASE
     $(error "PRELOADED_BL33_BASE must be set if ARM_LINUX_KERNEL_AS_BL33 is used.")
@@ -122,21 +125,26 @@ ENABLE_PMF			:=	1
 # mapping the former as executable and the latter as execute-never.
 SEPARATE_CODE_AND_RODATA	:=	1
 
-# Enable new version of image loading on ARM platforms
-LOAD_IMAGE_V2			:=	1
-
 # Use the multi console API, which is only available for AArch64 for now
-ifeq (${ARCH}, aarch64)
-  MULTI_CONSOLE_API		:=	1
-endif
-
-# Use generic OID definition (tbbr_oid.h)
-USE_TBBR_DEFS			:=	1
+MULTI_CONSOLE_API		:=	1
 
 # Disable ARM Cryptocell by default
 ARM_CRYPTOCELL_INTEG		:=	0
 $(eval $(call assert_boolean,ARM_CRYPTOCELL_INTEG))
 $(eval $(call add_define,ARM_CRYPTOCELL_INTEG))
+
+# Enable PIE support for RESET_TO_BL31 case
+ifeq (${RESET_TO_BL31},1)
+    ENABLE_PIE			:=	1
+endif
+
+# CryptoCell integration relies on coherent buffers for passing data from
+# the AP CPU to the CryptoCell
+ifeq (${ARM_CRYPTOCELL_INTEG},1)
+    ifeq (${USE_COHERENT_MEM},0)
+        $(error "ARM_CRYPTOCELL_INTEG needs USE_COHERENT_MEM to be set.")
+    endif
+endif
 
 PLAT_INCLUDES		+=	-Iinclude/common/tbbr				\
 				-Iinclude/plat/arm/common
@@ -185,8 +193,7 @@ include lib/libfdt/libfdt.mk
 
 DYN_CFG_SOURCES		+=	plat/arm/common/arm_dyn_cfg.c		\
 				plat/arm/common/arm_dyn_cfg_helpers.c	\
-				common/fdt_wrappers.c			\
-				${LIBFDT_SRCS}
+				common/fdt_wrappers.c
 
 BL1_SOURCES		+=	${DYN_CFG_SOURCES}
 BL2_SOURCES		+=	${DYN_CFG_SOURCES}
@@ -195,7 +202,6 @@ ifeq (${BL2_AT_EL3},1)
 BL2_SOURCES		+=	plat/arm/common/arm_bl2_el3_setup.c
 endif
 
-ifeq (${LOAD_IMAGE_V2},1)
 # Because BL1/BL2 execute in AArch64 mode but BL32 in AArch32 we need to use
 # the AArch32 descriptors.
 ifeq (${JUNO_AARCH32_EL3_RUNTIME},1)
@@ -207,7 +213,6 @@ BL2_SOURCES		+=	plat/arm/common/arm_image_load.c		\
 				common/desc_image_load.c
 ifeq (${SPD},opteed)
 BL2_SOURCES		+=	lib/optee/optee_utils.c
-endif
 endif
 
 BL2U_SOURCES		+=	drivers/delay_timer/delay_timer.c		\
@@ -273,4 +278,15 @@ endif
     $(info Including ${IMG_PARSER_LIB_MK})
     include ${IMG_PARSER_LIB_MK}
 
+endif
+
+# RECLAIM_INIT_CODE can only be set when LOAD_IMAGE_V2=2 and xlat tables v2
+# are used
+ifeq (${RECLAIM_INIT_CODE}, 1)
+    ifeq (${LOAD_IMAGE_V2}, 0)
+        $(error "LOAD_IMAGE_V2 must be enabled to use RECLAIM_INIT_CODE")
+    endif
+    ifeq (${ARM_XLAT_TABLES_LIB_V1}, 1)
+        $(error "To reclaim init code xlat tables v2 must be used")
+    endif
 endif

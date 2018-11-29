@@ -34,6 +34,12 @@
 	MAP_REGION(_adr, _adr, _sz, _attr)
 
 /*
+ * Helper macro to define entries for mmap_region_t. It allows to define 'pa'
+ * and sets 'va' to 0 for each region. To be used with mmap_add_alloc_va().
+ */
+#define MAP_REGION_ALLOC_VA(pa, sz, attr)	MAP_REGION(pa, 0, sz, attr)
+
+/*
  * Helper macro to define an mmap_region_t to map with the desired granularity
  * of translation tables.
  *
@@ -104,10 +110,6 @@
 #define MT_RO_DATA		(MT_MEMORY | MT_RO | MT_EXECUTE_NEVER)
 #define MT_RW_DATA		(MT_MEMORY | MT_RW | MT_EXECUTE_NEVER)
 
-#if !ERROR_DEPRECATED
-typedef unsigned int mmap_attr_t;
-#endif
-
 /*
  * Structure for specifying a single region of memory.
  */
@@ -125,6 +127,7 @@ typedef struct mmap_region {
  * library to detect it at runtime.
  */
 #define EL1_EL0_REGIME		1
+#define EL2_REGIME		2
 #define EL3_REGIME		3
 #define EL_REGIME_INVALID	-1
 
@@ -222,6 +225,21 @@ void mmap_add_region_ctx(xlat_ctx_t *ctx, const mmap_region_t *mm);
 void mmap_add(const mmap_region_t *mm);
 void mmap_add_ctx(xlat_ctx_t *ctx, const mmap_region_t *mm);
 
+/*
+ * Add a region with defined base PA. Returns base VA calculated using the
+ * highest existing region in the mmap array even if it fails to allocate the
+ * region.
+ */
+void mmap_add_region_alloc_va(unsigned long long base_pa, uintptr_t *base_va,
+			      size_t size, unsigned int attr);
+void mmap_add_region_alloc_va_ctx(xlat_ctx_t *ctx, mmap_region_t *mm);
+
+/*
+ * Add an array of static regions with defined base PA, and fill the base VA
+ * field on the array of structs. This function can only be used before
+ * initializing the translation tables. The regions cannot be removed afterwards.
+ */
+void mmap_add_alloc_va(mmap_region_t *mm);
 
 #if PLAT_XLAT_TABLES_DYNAMIC
 /*
@@ -238,6 +256,21 @@ void mmap_add_ctx(xlat_ctx_t *ctx, const mmap_region_t *mm);
 int mmap_add_dynamic_region(unsigned long long base_pa, uintptr_t base_va,
 			    size_t size, unsigned int attr);
 int mmap_add_dynamic_region_ctx(xlat_ctx_t *ctx, mmap_region_t *mm);
+
+/*
+ * Add a dynamic region with defined base PA. Returns base VA calculated using
+ * the highest existing region in the mmap array even if it fails to allocate
+ * the region.
+ *
+ * mmap_add_dynamic_region_alloc_va() returns the allocated VA in 'base_va'.
+ * mmap_add_dynamic_region_alloc_va_ctx() returns it in 'mm->base_va'.
+ *
+ * It returns the same error values as mmap_add_dynamic_region().
+ */
+int mmap_add_dynamic_region_alloc_va(unsigned long long base_pa,
+				     uintptr_t *base_va,
+				     size_t size, unsigned int attr);
+int mmap_add_dynamic_region_alloc_va_ctx(xlat_ctx_t *ctx, mmap_region_t *mm);
 
 /*
  * Remove a region with the specified base VA and size. Only dynamic regions can
@@ -296,14 +329,15 @@ int mmap_remove_dynamic_region_ctx(xlat_ctx_t *ctx,
  * translation tables are not modified by any other code while this function is
  * executing.
  */
-int change_mem_attributes(const xlat_ctx_t *ctx, uintptr_t base_va, size_t size,
-			  uint32_t attr);
+int xlat_change_mem_attributes_ctx(const xlat_ctx_t *ctx, uintptr_t base_va,
+				   size_t size, uint32_t attr);
+int xlat_change_mem_attributes(uintptr_t base_va, size_t size, uint32_t attr);
 
 /*
  * Query the memory attributes of a memory page in a set of translation tables.
  *
  * Return 0 on success, a negative error code on error.
- * On success, the attributes are stored into *attributes.
+ * On success, the attributes are stored into *attr.
  *
  * ctx
  *   Translation context to work on.
@@ -311,11 +345,12 @@ int change_mem_attributes(const xlat_ctx_t *ctx, uintptr_t base_va, size_t size,
  *   Virtual address of the page to get the attributes of.
  *   There are no alignment restrictions on this address. The attributes of the
  *   memory page it lies within are returned.
- * attributes
+ * attr
  *   Output parameter where to store the attributes of the targeted memory page.
  */
-int get_mem_attributes(const xlat_ctx_t *ctx, uintptr_t base_va,
-		       uint32_t *attributes);
+int xlat_get_mem_attributes_ctx(const xlat_ctx_t *ctx, uintptr_t base_va,
+				uint32_t *attr);
+int xlat_get_mem_attributes(uintptr_t base_va, uint32_t *attr);
 
 #endif /*__ASSEMBLY__*/
 #endif /* XLAT_TABLES_V2_H */

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef _PM_IPI_H_
-#define _PM_IPI_H_
+#ifndef PM_IPI_H
+#define PM_IPI_H
 
 #include "pm_common.h"
 
@@ -23,4 +23,4 @@ void pm_ipi_irq_enable(const struct pm_proc *proc);
 void pm_ipi_irq_clear(const struct pm_proc *proc);
 uint32_t pm_ipi_irq_status(const struct pm_proc *proc);
 
-#endif /* _PM_IPI_H_ */
+#endif /* PM_IPI_H */

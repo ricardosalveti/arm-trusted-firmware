@@ -26,6 +26,7 @@ RK_GIC_SOURCES         :=	drivers/arm/gic/common/gic_common.c		\
 
 PLAT_BL_COMMON_SOURCES	:=	lib/xlat_tables/xlat_tables_common.c		\
 				lib/xlat_tables/aarch64/xlat_tables.c		\
+				plat/common/aarch64/crash_console_helpers.S	\
 				plat/common/plat_psci_common.c
 
 BL31_SOURCES		+=	${RK_GIC_SOURCES}				\
@@ -48,7 +49,6 @@ BL31_SOURCES		+=	${RK_GIC_SOURCES}				\
 				${RK_PLAT_SOC}/drivers/soc/soc.c		\
 				${RK_PLAT_SOC}/drivers/ddr/ddr_rk3368.c		\
 
-ENABLE_PLAT_COMPAT	:=	0
 MULTI_CONSOLE_API	:=	1
 
 include lib/coreboot/coreboot.mk

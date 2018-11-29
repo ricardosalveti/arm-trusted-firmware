@@ -394,13 +394,9 @@ On Arm platforms, BL2 performs the following platform initializations:
 Image loading in BL2
 ^^^^^^^^^^^^^^^^^^^^
 
-Image loading scheme in BL2 depends on ``LOAD_IMAGE_V2`` build option. If the
-flag is disabled, the BLxx images are loaded, by calling the respective
-load\_blxx() function from BL2 generic code. If the flag is enabled, the BL2
-generic code loads the images based on the list of loadable images provided
-by the platform. BL2 passes the list of executable images provided by the
-platform to the next handover BL image. By default, this flag is disabled for
-AArch64 and the AArch32 build is supported only if this flag is enabled.
+BL2 generic code loads the images based on the list of loadable images
+provided by the platform. BL2 passes the list of executable images
+provided by the platform to the next handover BL image.
 
 The list of loadable images provided by the platform may also contain
 dynamic configuration files. The files are loaded and can be parsed as
@@ -425,10 +421,7 @@ EL3 Runtime Software image load
 
 BL2 loads the EL3 Runtime Software image from platform storage into a platform-
 specific address in trusted SRAM. If there is not enough memory to load the
-image or image is missing it leads to an assertion failure. If ``LOAD_IMAGE_V2``
-is disabled and if image loads successfully, BL2 updates the amount of trusted
-SRAM used and available for use by EL3 Runtime Software. This information is
-populated at a platform-specific memory address.
+image or image is missing it leads to an assertion failure.
 
 AArch64 BL32 (Secure-EL1 Payload) image load
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1281,47 +1274,22 @@ interrupts on the platform. To this end, the platform is expected to provide the
 GIC driver (either GICv2 or GICv3, as selected by the platform) with the
 interrupt configuration during the driver initialisation.
 
-There are two ways to specify secure interrupt configuration:
+Secure interrupt configuration are specified in an array of secure interrupt
+properties. In this scheme, in both GICv2 and GICv3 driver data structures, the
+``interrupt_props`` member points to an array of interrupt properties. Each
+element of the array specifies the interrupt number and its configuration, viz.
+priority, group, configuration. Each element of the array shall be populated by
+the macro ``INTR_PROP_DESC()``. The macro takes the following arguments:
 
-#. Array of secure interrupt properties: In this scheme, in both GICv2 and GICv3
-   driver data structures, the ``interrupt_props`` member points to an array of
-   interrupt properties. Each element of the array specifies the interrupt
-   number and its configuration, viz. priority, group, configuration. Each
-   element of the array shall be populated by the macro ``INTR_PROP_DESC()``.
-   The macro takes the following arguments:
+- 10-bit interrupt number,
 
-   -  10-bit interrupt number,
+- 8-bit interrupt priority,
 
-   -  8-bit interrupt priority,
+- Interrupt type (one of ``INTR_TYPE_EL3``, ``INTR_TYPE_S_EL1``,
+  ``INTR_TYPE_NS``),
 
-   -  Interrupt type (one of ``INTR_TYPE_EL3``, ``INTR_TYPE_S_EL1``,
-      ``INTR_TYPE_NS``),
-
-   -  Interrupt configuration (either ``GIC_INTR_CFG_LEVEL`` or
-      ``GIC_INTR_CFG_EDGE``).
-
-#. Array of secure interrupts: In this scheme, the GIC driver is provided an
-   array of secure interrupt numbers. The GIC driver, at the time of
-   initialisation, iterates through the array and assigns each interrupt
-   the appropriate group.
-
-   -  For the GICv2 driver, in ``gicv2_driver_data`` structure, the
-      ``g0_interrupt_array`` member of the should point to the array of
-      interrupts to be assigned to *Group 0*, and the ``g0_interrupt_num``
-      member of the should be set to the number of interrupts in the array.
-
-   -  For the GICv3 driver, in ``gicv3_driver_data`` structure:
-
-      -  The ``g0_interrupt_array`` member of the should point to the array of
-         interrupts to be assigned to *Group 0*, and the ``g0_interrupt_num``
-         member of the should be set to the number of interrupts in the array.
-
-      -  The ``g1s_interrupt_array`` member of the should point to the array of
-         interrupts to be assigned to *Group 1 Secure*, and the
-         ``g1s_interrupt_num`` member of the should be set to the number of
-         interrupts in the array.
-
-   **Note that this scheme is deprecated.**
+- Interrupt configuration (either ``GIC_INTR_CFG_LEVEL`` or
+  ``GIC_INTR_CFG_EDGE``).
 
 CPU specific operations framework
 ---------------------------------
@@ -1650,80 +1618,10 @@ Additionally, if the platform memory layout implies some image overlaying like
 on FVP, BL31 and TSP need to know the limit address that their PROGBITS
 sections must not overstep. The platform code must provide those.
 
-When LOAD\_IMAGE\_V2 is disabled, TF-A provides a mechanism to verify at boot
-time that the memory to load a new image is free to prevent overwriting a
-previously loaded image. For this mechanism to work, the platform must specify
-the memory available in the system as regions, where each region consists of
-base address, total size and the free area within it (as defined in the
-``meminfo_t`` structure). TF-A retrieves these memory regions by calling the
-corresponding platform API:
-
--  ``meminfo_t *bl1_plat_sec_mem_layout(void)``
--  ``meminfo_t *bl2_plat_sec_mem_layout(void)``
--  ``void bl2_plat_get_scp_bl2_meminfo(meminfo_t *scp_bl2_meminfo)``
--  ``void bl2_plat_get_bl32_meminfo(meminfo_t *bl32_meminfo)``
--  ``void bl2_plat_get_bl33_meminfo(meminfo_t *bl33_meminfo)``
-
-For example, in the case of BL1 loading BL2, ``bl1_plat_sec_mem_layout()`` will
-return the region defined by the platform where BL1 intends to load BL2. The
-``load_image()`` function will check that the memory where BL2 will be loaded is
-within the specified region and marked as free.
-
-The actual number of regions and their base addresses and sizes is platform
-specific. The platform may return the same region or define a different one for
-each API. However, the overlap verification mechanism applies only to a single
-region. Hence, it is the platform responsibility to guarantee that different
-regions do not overlap, or that if they do, the overlapping images are not
-accessed at the same time. This could be used, for example, to load temporary
-images (e.g. certificates) or firmware images prior to being transfered to its
-corresponding processor (e.g. the SCP BL2 image).
-
-To reduce fragmentation and simplify the tracking of free memory, all the free
-memory within a region is always located in one single buffer defined by its
-base address and size. TF-A implements a top/bottom load approach:
-after a new image is loaded, it checks how much memory remains free above and
-below the image. The smallest area is marked as unavailable, while the larger
-area becomes the new free memory buffer. Platforms should take this behaviour
-into account when defining the base address for each of the images. For example,
-if an image is loaded near the middle of the region, small changes in image size
-could cause a flip between a top load and a bottom load, which may result in an
-unexpected memory layout.
-
-The following diagram is an example of an image loaded in the bottom part of
-the memory region. The region is initially free (nothing has been loaded yet):
-
-::
-
-               Memory region
-               +----------+
-               |          |
-               |          |  <<<<<<<<<<<<<  Free
-               |          |
-               |----------|                 +------------+
-               |  image   |  <<<<<<<<<<<<<  |   image    |
-               |----------|                 +------------+
-               | xxxxxxxx |  <<<<<<<<<<<<<  Marked as unavailable
-               +----------+
-
-And the following diagram is an example of an image loaded in the top part:
-
-::
-
-               Memory region
-               +----------+
-               | xxxxxxxx |  <<<<<<<<<<<<<  Marked as unavailable
-               |----------|                 +------------+
-               |  image   |  <<<<<<<<<<<<<  |   image    |
-               |----------|                 +------------+
-               |          |
-               |          |  <<<<<<<<<<<<<  Free
-               |          |
-               +----------+
-
-When LOAD\_IMAGE\_V2 is enabled, TF-A does not provide any mechanism to verify
-at boot time that the memory to load a new image is free to prevent overwriting
-a previously loaded image. The platform must specify the memory available in
-the system for all the relevant BL images to be loaded.
+TF-A does not provide any mechanism to verify at boot time that the memory
+to load a new image is free to prevent overwriting a previously loaded image.
+The platform must specify the memory available in the system for all the
+relevant BL images to be loaded.
 
 For example, in the case of BL1 loading BL2, ``bl1_plat_sec_mem_layout()`` will
 return the region defined by the platform where BL1 intends to load BL2. The
@@ -1773,43 +1671,6 @@ The following list describes the memory layout on the Arm development platforms:
 
    When BL32 (for AArch64) is loaded into Trusted SRAM, it is loaded below
    BL31.
-
-When LOAD\_IMAGE\_V2 is disabled the memory regions for the overlap detection
-mechanism at boot time are defined as follows (shown per API):
-
--  ``meminfo_t *bl1_plat_sec_mem_layout(void)``
-
-   This region corresponds to the whole Trusted SRAM except for the shared
-   memory at the base. This region is initially free. At boot time, BL1 will
-   mark the BL1(rw) section within this region as occupied. The BL1(rw) section
-   is placed at the top of Trusted SRAM.
-
--  ``meminfo_t *bl2_plat_sec_mem_layout(void)``
-
-   This region corresponds to the whole Trusted SRAM as defined by
-   ``bl1_plat_sec_mem_layout()``, but with the BL1(rw) section marked as
-   occupied. This memory region is used to check that BL2 and BL31 do not
-   overlap with each other. BL2\_BASE and BL1\_RW\_BASE are carefully chosen so
-   that the memory for BL31 is top loaded above BL2.
-
--  ``void bl2_plat_get_scp_bl2_meminfo(meminfo_t *scp_bl2_meminfo)``
-
-   This region is an exact copy of the region defined by
-   ``bl2_plat_sec_mem_layout()``. Being a disconnected copy means that all the
-   changes made to this region by the TF-A will not be propagated. This
-   approach is valid because the SCP BL2 image is loaded temporarily while it
-   is being transferred to the SCP, so this memory is reused afterwards.
-
--  ``void bl2_plat_get_bl32_meminfo(meminfo_t *bl32_meminfo)``
-
-   This region depends on the location of the BL32 image. Currently, Arm
-   platforms support three different locations (detailed below): Trusted SRAM,
-   Trusted DRAM and the TZC-Secured DRAM.
-
--  ``void bl2_plat_get_bl33_meminfo(meminfo_t *bl33_meminfo)``
-
-   This region corresponds to the Non-Secure DDR-DRAM, excluding the
-   TZC-Secured area.
 
 The location of the BL32 image will result in different memory maps. This is
 illustrated for both FVP and Juno in the following diagrams, using the TSP as
@@ -2475,6 +2336,29 @@ implement:
 
    SUBSCRIBE_TO_EVENT(foo, foo_handler);
 
+
+Reclaiming the BL31 initialization code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A significant amount of the code used for the initialization of BL31 is never
+needed again after boot time. In order to reduce the runtime memory
+footprint, the memory used for this code can be reclaimed after initialization
+has finished and be used for runtime data.
+
+The build option ``RECLAIM_INIT_CODE`` can be set to mark this boot time code
+with a ``.text.init.*`` attribute which can be filtered and placed suitably
+within the BL image for later reclaimation by the platform. The platform can
+specify the fiter and the memory region for this init section in BL31 via the
+plat.ld.S linker script. For example, on the FVP, this section is placed
+overlapping the secondary CPU stacks so that after the cold boot is done, this
+memory can be reclaimed for the stacks. The init memory section is initially
+mapped with ``RO``, ``EXECUTE`` attributes. After BL31 initilization has
+completed, the FVP changes the attributes of this section to ``RW``,
+``EXECUTE_NEVER`` allowing it to be used for runtime data. The memory attributes
+are changed within the ``bl31_plat_runtime_setup`` platform hook. The init
+section section can be reclaimed for any data which is accessed after cold
+boot initialization and it is upto the platform to make the decision.
+
 Performance Measurement Framework
 ---------------------------------
 
@@ -2647,6 +2531,12 @@ This Architecture Extension is targeted when ``ARM_ARCH_MAJOR`` == 8 and
    Processing Elements in the same Inner Shareable domain use the same
    translation table entries for a given stage of translation for a particular
    translation regime.
+
+Armv8.3-A
+~~~~~~~~~
+
+-  Pointer Authentication features of Armv8.3-A are unconditionally enabled so
+   that lower ELs are allowed to use them without causing a trap to EL3.
 
 Armv7-A
 ~~~~~~~

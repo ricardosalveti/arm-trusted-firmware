@@ -39,11 +39,6 @@ BL31_SOURCES		+=	plat/arm/css/drivers/scp/css_pm_scmi.c		\
 				plat/arm/css/drivers/mhu/css_mhu_doorbell.c
 endif
 
-ifneq (${RESET_TO_BL31},0)
-  $(error "Using BL31 as the reset vector is not supported on CSS platforms. \
-  Please set RESET_TO_BL31 to 0.")
-endif
-
 # Process CSS_LOAD_SCP_IMAGES flag
 $(eval $(call assert_boolean,CSS_LOAD_SCP_IMAGES))
 $(eval $(call add_define,CSS_LOAD_SCP_IMAGES))
@@ -85,3 +80,12 @@ endif
 # Process CSS_USE_SCMI_SDS_DRIVER flag
 $(eval $(call assert_boolean,CSS_USE_SCMI_SDS_DRIVER))
 $(eval $(call add_define,CSS_USE_SCMI_SDS_DRIVER))
+
+# Process CSS_NON_SECURE_UART flag
+# This undocumented build option is only to enable debug access to the UART
+# from non secure code, which is useful on some platforms.
+# Default (obviously) is off.
+CSS_NON_SECURE_UART		:= 0
+$(eval $(call assert_boolean,CSS_NON_SECURE_UART))
+$(eval $(call add_define,CSS_NON_SECURE_UART))
+

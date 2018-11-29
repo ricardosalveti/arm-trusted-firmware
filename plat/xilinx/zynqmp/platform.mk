@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 override ERRATA_A53_855873 := 1
-override ENABLE_PLAT_COMPAT := 0
 override PROGRAMMABLE_RESET_ADDRESS := 1
 PSCI_EXTENDED_STATE_ID := 1
 A53_DISABLE_NON_TEMPORAL_HINT := 0
@@ -68,7 +67,6 @@ PLAT_BL_COMMON_SOURCES	:=	lib/xlat_tables/xlat_tables_common.c		\
 				drivers/arm/gic/v2/gicv2_main.c			\
 				drivers/arm/gic/v2/gicv2_helpers.c		\
 				drivers/console/aarch64/console.S		\
-				plat/arm/common/aarch64/arm_helpers.S		\
 				plat/arm/common/arm_cci.c			\
 				plat/arm/common/arm_common.c			\
 				plat/arm/common/arm_gicv2.c			\

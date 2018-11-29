@@ -10,6 +10,9 @@
 # poised to handle dependencies, as all build variables would have a default
 # value by then.
 
+# Use T32 by default
+AARCH32_INSTRUCTION_SET		:= T32
+
 # The AArch32 Secure Payload to be built as BL32 image
 AARCH32_SP			:= none
 
@@ -19,10 +22,6 @@ ARCH				:= aarch64
 # ARM Architecture major and minor versions: 8.0 by default.
 ARM_ARCH_MAJOR			:= 8
 ARM_ARCH_MINOR			:= 0
-
-# Determine the version of ARM GIC architecture to use for interrupt management
-# in EL3. The platform port can change this value if needed.
-ARM_GIC_ARCH			:= 2
 
 # Base commit to perform code check on
 BASE_COMMIT			:= origin/master
@@ -61,6 +60,12 @@ DEFAULT_PLAT			:= fvp
 # Enable capability to disable authentication dynamically. Only meant for
 # development platforms.
 DYN_DISABLE_AUTH		:= 0
+
+# Build option to enable MPAM for lower ELs
+ENABLE_MPAM_FOR_LOWER_ELS	:= 0
+
+# Flag to Enable Position Independant support (PIE)
+ENABLE_PIE			:= 0
 
 # Flag to enable Performance Measurement Framework
 ENABLE_PMF			:= 0
@@ -110,9 +115,6 @@ HW_ASSISTED_COHERENCY		:= 0
 # Set the default algorithm for the generation of Trusted Board Boot keys
 KEY_ALG				:= rsa
 
-# Flag to enable new version of image loading
-LOAD_IMAGE_V2			:= 0
-
 # Enable use of the console API allowing multiple consoles to be registered
 # at the same time.
 MULTI_CONSOLE_API		:= 0
@@ -147,6 +149,10 @@ SDEI_SUPPORT            	:= 0
 # platform Makefile is free to override this value.
 SEPARATE_CODE_AND_RODATA	:= 0
 
+# If the BL31 image initialisation code is recalimed after use for the secondary
+# cores stack
+RECLAIM_INIT_CODE		:= 0
+
 # Default to SMCCC Version 1.X
 SMCCC_MAJOR_VERSION		:= 1
 
@@ -163,11 +169,14 @@ SPIN_ON_BL1_EXIT		:= 0
 # Flags to build TF with Trusted Boot support
 TRUSTED_BOARD_BOOT		:= 0
 
-# Build option to choose whether Trusted firmware uses Coherent memory or not.
+# Build option to choose whether Trusted Firmware uses Coherent memory or not.
 USE_COHERENT_MEM		:= 1
 
+# Build option to choose whether Trusted Firmware uses library at ROM
+USE_ROMLIB			:= 0
+
 # Use tbbr_oid.h instead of platform_oid.h
-USE_TBBR_DEFS			= $(ERROR_DEPRECATED)
+USE_TBBR_DEFS			:= 1
 
 # Build verbosity
 V				:= 0

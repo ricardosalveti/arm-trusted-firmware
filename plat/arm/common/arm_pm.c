@@ -6,7 +6,6 @@
 
 #include <arch_helpers.h>
 #include <arm_def.h>
-#include <arm_gic.h>
 #include <assert.h>
 #include <errno.h>
 #include <plat_arm.h>
@@ -30,7 +29,7 @@ int arm_validate_power_state(unsigned int power_state,
 	unsigned int pwr_lvl = psci_get_pstate_pwrlvl(power_state);
 	unsigned int i;
 
-	assert(req_state > 0U);
+	assert(req_state != NULL);
 
 	if (pwr_lvl > PLAT_MAX_PWR_LVL)
 		return PSCI_E_INVALID_PARAMS;
@@ -73,7 +72,7 @@ int arm_validate_power_state(unsigned int power_state,
 	unsigned int state_id;
 	int i;
 
-	assert(req_state);
+	assert(req_state != NULL);
 
 	/*
 	 *  Currently we are using a linear search for finding the matching
@@ -129,7 +128,7 @@ int arm_validate_ns_entrypoint(uintptr_t entrypoint)
 
 int arm_validate_psci_entrypoint(uintptr_t entrypoint)
 {
-	return arm_validate_ns_entrypoint(entrypoint) == 0 ? PSCI_E_SUCCESS :
+	return (arm_validate_ns_entrypoint(entrypoint) == 0) ? PSCI_E_SUCCESS :
 		PSCI_E_INVALID_ADDRESS;
 }
 
@@ -209,7 +208,7 @@ void plat_arm_program_trusted_mailbox(uintptr_t address)
  * The ARM Standard platform definition of platform porting API
  * `plat_setup_psci_ops`.
  ******************************************************************************/
-int plat_setup_psci_ops(uintptr_t sec_entrypoint,
+int __init plat_setup_psci_ops(uintptr_t sec_entrypoint,
 				const plat_psci_ops_t **psci_ops)
 {
 	*psci_ops = plat_arm_psci_override_pm_ops(&plat_arm_psci_pm_ops);

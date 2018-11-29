@@ -3,11 +3,13 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef __COMMON_DEF_H__
-#define __COMMON_DEF_H__
+#ifndef COMMON_DEF_H
+#define COMMON_DEF_H
 
 #include <bl_common.h>
 #include <platform_def.h>
+#include <utils_def.h>
+#include <xlat_tables_defs.h>
 
 /******************************************************************************
  * Required platform porting definitions that are expected to be common to
@@ -30,7 +32,6 @@
  */
 #define FIRMWARE_WELCOME_STR		"Booting Trusted Firmware\n"
 
-#if LOAD_IMAGE_V2
 #define BL2_IMAGE_DESC {				\
 	.image_id = BL2_IMAGE_ID,			\
 	SET_STATIC_PARAM_HEAD(image_info, PARAM_EP,	\
@@ -41,17 +42,6 @@
 		VERSION_2, entry_point_info_t, SECURE | EXECUTABLE),\
 	.ep_info.pc = BL2_BASE,				\
 }
-#else /* LOAD_IMAGE_V2 */
-#define BL2_IMAGE_DESC {				\
-	.image_id = BL2_IMAGE_ID,			\
-	SET_STATIC_PARAM_HEAD(image_info, PARAM_EP,	\
-		VERSION_1, image_info_t, 0),		\
-	.image_info.image_base = BL2_BASE,		\
-	SET_STATIC_PARAM_HEAD(ep_info, PARAM_EP,	\
-		VERSION_1, entry_point_info_t, SECURE | EXECUTABLE),\
-	.ep_info.pc = BL2_BASE,				\
-}
-#endif /* LOAD_IMAGE_V2 */
 
 /*
  * The following constants identify the extents of the code & read-only data
@@ -84,13 +74,14 @@
 #define BL2_RO_DATA_END		round_up(BL2_ROM_END, PAGE_SIZE)
 #endif /* BL2_IN_XIP_MEM */
 #else
-#define BL_RO_DATA_BASE		0
-#define BL_RO_DATA_END		0
+#define BL_RO_DATA_BASE		UL(0)
+#define BL_RO_DATA_END		UL(0)
 #define BL1_CODE_END		round_up(BL1_ROM_END, PAGE_SIZE)
 #if BL2_IN_XIP_MEM
-#define BL2_RO_DATA_BASE	0
-#define BL2_RO_DATA_END		0
+#define BL2_RO_DATA_BASE	UL(0)
+#define BL2_RO_DATA_END		UL(0)
 #define BL2_CODE_END		round_up(BL2_ROM_END, PAGE_SIZE)
 #endif /* BL2_IN_XIP_MEM */
 #endif /* SEPARATE_CODE_AND_RODATA */
-#endif /* __COMMON_DEF_H__ */
+
+#endif /* COMMON_DEF_H */

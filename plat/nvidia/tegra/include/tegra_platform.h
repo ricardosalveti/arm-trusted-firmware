@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __TEGRA_PLATFORM_H__
-#define __TEGRA_PLATFORM_H__
+#ifndef TEGRA_PLATFORM_H
+#define TEGRA_PLATFORM_H
 
-#include <sys/cdefs.h>
+#include <cdefs.h>
 
 /*
  * Tegra chip major/minor version
@@ -31,4 +31,4 @@ uint8_t tegra_platform_is_qt(void);
 uint8_t tegra_platform_is_emulation(void);
 uint8_t tegra_platform_is_fpga(void);
 
-#endif /* __TEGRA_PLATFORM_H__ */
+#endif /* TEGRA_PLATFORM_H */

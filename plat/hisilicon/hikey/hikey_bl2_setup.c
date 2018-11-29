@@ -7,19 +7,20 @@
 #include <arch_helpers.h>
 #include <assert.h>
 #include <bl_common.h>
-#include <console.h>
 #include <debug.h>
+#include <delay_timer.h>
 #include <desc_image_load.h>
 #include <dw_mmc.h>
-#include <emmc.h>
 #include <errno.h>
 #include <hi6220.h>
 #include <hisi_mcu.h>
 #include <hisi_sram_map.h>
+#include <mmc.h>
 #include <mmio.h>
 #ifdef SPD_opteed
 #include <optee_utils.h>
 #endif
+#include <pl011.h>
 #include <platform.h>
 #include <platform_def.h>	/* also includes hikey_def.h and hikey_layout.h*/
 #include <string.h>
@@ -48,6 +49,7 @@
 #define BL2_COHERENT_RAM_LIMIT (unsigned long)(&__COHERENT_RAM_END__)
 
 static meminfo_t bl2_el3_tzram_layout;
+static console_pl011_t console;
 
 enum {
 	BOOT_MODE_RECOVERY = 0,
@@ -99,7 +101,7 @@ uint32_t hikey_get_spsr_for_bl33_entry(void)
 	uint32_t spsr;
 
 	/* Figure out what mode we enter the non-secure world in */
-	mode = EL_IMPLEMENTED(2) ? MODE_EL2 : MODE_EL1;
+	mode = (el_implemented(2) != EL_IMPL_NONE) ? MODE_EL2 : MODE_EL1;
 
 	/*
 	 * TODO: Consider the possibility of specifying the SPSR in
@@ -278,7 +280,8 @@ void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
 				  u_register_t arg3, u_register_t arg4)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(CONSOLE_BASE, PL011_UART_CLK_IN_HZ, PL011_BAUDRATE);
+	console_pl011_register(CONSOLE_BASE, PL011_UART_CLK_IN_HZ,
+			       PL011_BAUDRATE, &console);
 	/*
 	 * Allow BL2 to see the whole Trusted RAM.
 	 */
@@ -299,6 +302,7 @@ void bl2_el3_plat_arch_setup(void)
 void bl2_platform_setup(void)
 {
 	dw_mmc_params_t params;
+	struct mmc_device_info info;
 
 	hikey_sp804_init();
 	hikey_gpio_init();
@@ -328,9 +332,11 @@ void bl2_platform_setup(void)
 	params.desc_base = HIKEY_MMC_DESC_BASE;
 	params.desc_size = 1 << 20;
 	params.clk_rate = 24 * 1000 * 1000;
-	params.bus_width = EMMC_BUS_WIDTH_8;
-	params.flags = EMMC_FLAG_CMD23;
-	dw_mmc_init(&params);
+	params.bus_width = MMC_BUS_WIDTH_8;
+	params.flags = MMC_FLAG_CMD23;
+	info.mmc_dev_type = MMC_IS_EMMC;
+	dw_mmc_init(&params, &info);
+	mdelay(20);
 
 	hikey_io_setup();
 }

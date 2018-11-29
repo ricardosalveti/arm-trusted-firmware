@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __ZYNQMP_DEF_H__
-#define __ZYNQMP_DEF_H__
+#ifndef ZYNQMP_DEF_H
+#define ZYNQMP_DEF_H
 
 #include <common_def.h>
 
@@ -48,7 +48,7 @@
 #define CRL_APB_BOOT_MODE_USER		(CRL_APB_BASE + 0x200)
 #define CRL_APB_RESET_CTRL		(CRL_APB_BASE + 0x218)
 #define CRL_APB_RST_LPD_TOP		(CRL_APB_BASE + 0x23C)
-#define CRL_APB_BOOT_PIN_CTRL		(CRL_APB_BASE + 0x250)
+#define CRL_APB_BOOT_PIN_CTRL		(CRL_APB_BASE + U(0x250))
 #define CRL_APB_CLK_BASE		U(0xFF5E0020)
 
 #define CRL_APB_RPU_AMBA_RESET		(U(1) << 2)
@@ -57,11 +57,11 @@
 #define CRL_APB_RESET_CTRL_SOFT_RESET	(U(1) << 4)
 
 #define CRL_APB_BOOT_MODE_MASK		(U(0xf) << 0)
-#define CRL_APB_BOOT_PIN_MASK		(0xf0f << 0)
-#define CRL_APB_BOOT_DRIVE_PIN_1_SHIFT	9
-#define CRL_APB_BOOT_ENABLE_PIN_1_SHIFT	1
-#define CRL_APB_BOOT_ENABLE_PIN_1	(0x1 << CRL_APB_BOOT_ENABLE_PIN_1_SHIFT)
-#define CRL_APB_BOOT_DRIVE_PIN_1	(0x1 << CRL_APB_BOOT_DRIVE_PIN_1_SHIFT)
+#define CRL_APB_BOOT_PIN_MASK		(U(0xf0f) << 0)
+#define CRL_APB_BOOT_DRIVE_PIN_1_SHIFT	U(9)
+#define CRL_APB_BOOT_ENABLE_PIN_1_SHIFT	U(1)
+#define CRL_APB_BOOT_ENABLE_PIN_1	(U(0x1) << CRL_APB_BOOT_ENABLE_PIN_1_SHIFT)
+#define CRL_APB_BOOT_DRIVE_PIN_1	(U(0x1) << CRL_APB_BOOT_DRIVE_PIN_1_SHIFT)
 #define ZYNQMP_BOOTMODE_JTAG		U(0)
 #define ZYNQMP_ULPI_RESET_VAL_HIGH	(CRL_APB_BOOT_ENABLE_PIN_1 | \
 					 CRL_APB_BOOT_DRIVE_PIN_1)
@@ -145,13 +145,11 @@
 # error "invalid ZYNQMP_CONSOLE"
 #endif
 
-#define PLAT_ARM_CRASH_UART_BASE	ZYNQMP_UART_BASE
+#define ZYNQMP_CRASH_UART_BASE		ZYNQMP_UART_BASE
 /* impossible to call C routine how it is done now - hardcode any value */
-#define	PLAT_ARM_CRASH_UART_CLK_IN_HZ	100000000 /* FIXME */
-
+#define ZYNQMP_CRASH_UART_CLK_IN_HZ	100000000 /* FIXME */
 /* Must be non zero */
-#define ZYNQMP_UART_BAUDRATE	115200
-#define ARM_CONSOLE_BAUDRATE	ZYNQMP_UART_BAUDRATE
+#define ZYNQMP_UART_BAUDRATE		115200
 
 /* Silicon version detection */
 #define ZYNQMP_SILICON_VER_MASK		0xF000
@@ -335,16 +333,16 @@
 #define PGGS_NUM_REGS		U(4)
 
 /* PMU GGS4 register 4 is used for warm restart boot health status */
-#define PMU_GLOBAL_GEN_STORAGE4		(GGS_BASEADDR + 0x10)
+#define PMU_GLOBAL_GEN_STORAGE4		(GGS_BASEADDR + U(0x10))
 /* Warm restart boot health status mask */
-#define PM_BOOT_HEALTH_STATUS_MASK		0x00000001
+#define PM_BOOT_HEALTH_STATUS_MASK		U(0x01)
 /* WDT restart scope shift and mask */
-#define RESTART_SCOPE_SHIFT		(3)
+#define RESTART_SCOPE_SHIFT		U(3)
 #define RESTART_SCOPE_MASK		(0x3U << RESTART_SCOPE_SHIFT)
 
 /*AFI registers */
-#define  AFIFM6_WRCTRL		(13)
-#define  FABRIC_WIDTH		(3)
+#define  AFIFM6_WRCTRL		U(13)
+#define  FABRIC_WIDTH		U(3)
 
 /* CSUDMA Module Base Address*/
 #define CSUDMA_BASE		0xFFC80000

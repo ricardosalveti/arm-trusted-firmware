@@ -52,8 +52,9 @@
 
 #ifndef __ASSEMBLY__
 
+#include <stdbool.h>
 #include <stdint.h>
-#include <sys/types.h>
+#include <string.h>
 
 /*
  * Return the values that the MMU configuration registers must contain for the
@@ -66,19 +67,23 @@ void setup_mmu_cfg(uint64_t *params, unsigned int flags,
 
 #ifdef AARCH32
 /* AArch32 specific translation table API */
-void enable_mmu_secure(unsigned int flags);
+void enable_mmu_svc_mon(unsigned int flags);
+void enable_mmu_hyp(unsigned int flags);
 
-void enable_mmu_direct(unsigned int flags);
+void enable_mmu_direct_svc_mon(unsigned int flags);
+void enable_mmu_direct_hyp(unsigned int flags);
 #else
 /* AArch64 specific translation table APIs */
 void enable_mmu_el1(unsigned int flags);
+void enable_mmu_el2(unsigned int flags);
 void enable_mmu_el3(unsigned int flags);
 
 void enable_mmu_direct_el1(unsigned int flags);
+void enable_mmu_direct_el2(unsigned int flags);
 void enable_mmu_direct_el3(unsigned int flags);
 #endif /* AARCH32 */
 
-int xlat_arch_is_granule_size_supported(size_t size);
+bool xlat_arch_is_granule_size_supported(size_t size);
 size_t xlat_arch_get_max_supported_granule_size(void);
 
 #endif /* __ASSEMBLY__ */

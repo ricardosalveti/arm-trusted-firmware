@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __SQ_COMMON_H__
-#define __SQ_COMMON_H__
+#ifndef SQ_COMMON_H
+#define SQ_COMMON_H
 
-#include <sys/types.h>
+#include <stdint.h>
 #include <xlat_tables_v2.h>
 
 struct draminfo {
@@ -40,4 +40,4 @@ void sq_gic_pcpu_init(void);
 void sq_mmap_setup(uintptr_t total_base, size_t total_size,
 		   const struct mmap_region *mmap);
 
-#endif /* __SQ_COMMON_H__ */
+#endif /* SQ_COMMON_H */

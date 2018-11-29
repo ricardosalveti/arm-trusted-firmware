@@ -3,12 +3,11 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef __DESC_IMAGE_LOAD_H__
-#define __DESC_IMAGE_LOAD_H__
+#ifndef DESC_IMAGE_LOAD_H
+#define DESC_IMAGE_LOAD_H
 
 #include <bl_common.h>
 
-#if LOAD_IMAGE_V2
 /* Following structure is used to store BL ep/image info. */
 typedef struct bl_mem_params_node {
 	unsigned int image_id;
@@ -38,5 +37,4 @@ bl_load_info_t *get_bl_load_info_from_mem_params_desc(void);
 bl_params_t *get_next_bl_params_from_mem_params_desc(void);
 void populate_next_bl_params_config(bl_params_t *bl2_to_next_bl_params);
 
-#endif /* LOAD_IMAGE_V2 */
-#endif /* __DESC_IMAGE_LOAD_H__ */
+#endif /* DESC_IMAGE_LOAD_H */

@@ -10,17 +10,21 @@
 #include <bl_common.h>
 #include <debug.h>
 #include <k3_console.h>
-#include <plat_arm.h>
-#include <platform_def.h>
 #include <k3_gicv3.h>
+#include <platform_def.h>
 #include <string.h>
+#include <ti_sci.h>
+#include <xlat_tables_v2.h>
 
 /* Table of regions to map using the MMU */
-const mmap_region_t plat_arm_mmap[] = {
+const mmap_region_t plat_k3_mmap[] = {
 	MAP_REGION_FLAT(SHARED_RAM_BASE, SHARED_RAM_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(K3_USART_BASE_ADDRESS, K3_USART_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(K3_GICD_BASE, K3_GICD_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(K3_GICR_BASE, K3_GICR_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(SEC_PROXY_RT_BASE, SEC_PROXY_RT_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(SEC_PROXY_SCFG_BASE, SEC_PROXY_SCFG_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(SEC_PROXY_DATA_BASE, SEC_PROXY_DATA_SIZE, MT_DEVICE | MT_RW | MT_SECURE),
 	{ /* sentinel */ }
 };
 
@@ -53,12 +57,12 @@ static uint32_t k3_get_spsr_for_bl33_entry(void)
  * Perform any BL3-1 early platform setup, such as console init and deciding on
  * memory layout.
  ******************************************************************************/
-void bl31_early_platform_setup(bl31_params_t *from_bl2,
-			       void *plat_params_from_bl2)
+void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+				u_register_t arg2, u_register_t arg3)
 {
 	/* There are no parameters from BL2 if BL31 is a reset vector */
-	assert(from_bl2 == NULL);
-	assert(plat_params_from_bl2 == NULL);
+	assert(arg0 == 0U);
+	assert(arg1 == 0U);
 
 	bl31_console_setup();
 
@@ -91,15 +95,8 @@ void bl31_early_platform_setup(bl31_params_t *from_bl2,
 #endif
 }
 
-void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
-				u_register_t arg2, u_register_t arg3)
-{
-	bl31_early_platform_setup((void *)arg0, (void *)arg1);
-}
-
 void bl31_plat_arch_setup(void)
 {
-
 	const mmap_region_t bl_regions[] = {
 		MAP_REGION_FLAT(BL31_BASE, BL31_END - BL31_BASE,
 				MT_MEMORY | MT_RW | MT_SECURE),
@@ -110,7 +107,7 @@ void bl31_plat_arch_setup(void)
 		{0}
 	};
 
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+	setup_page_tables(bl_regions, plat_k3_mmap);
 	enable_mmu_el3(0);
 }
 
@@ -118,6 +115,8 @@ void bl31_platform_setup(void)
 {
 	k3_gic_driver_init(K3_GICD_BASE, K3_GICR_BASE);
 	k3_gic_init();
+
+	ti_sci_init();
 }
 
 void platform_mem_init(void)

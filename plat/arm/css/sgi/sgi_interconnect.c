@@ -6,7 +6,6 @@
 
 #include <arch_helpers.h>
 #include <debug.h>
-#include <sgi_plat_config.h>
 
 /*
  * For SGI575 which support FCM (with automatic interconnect enter/exit),
@@ -17,7 +16,7 @@
 /******************************************************************************
  * Helper function to initialize ARM interconnect driver.
  *****************************************************************************/
-void plat_arm_interconnect_init(void)
+void __init plat_arm_interconnect_init(void)
 {
 }
 

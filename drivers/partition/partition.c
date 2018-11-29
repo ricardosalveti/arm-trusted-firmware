@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -11,6 +11,7 @@
 #include <mbr.h>
 #include <partition.h>
 #include <platform.h>
+#include <stdio.h>
 #include <string.h>
 
 static uint8_t mbr_sector[PARTITION_BLOCK_SIZE];
@@ -29,7 +30,7 @@ static void dump_entries(int num)
 			name[len + j] = ' ';
 		}
 		name[EFI_NAMELEN - 1] = '\0';
-		VERBOSE("%d: %s %lx-%lx\n", i + 1, name, list.list[i].start,
+		VERBOSE("%d: %s %llx-%llx\n", i + 1, name, list.list[i].start,
 			list.list[i].start + list.list[i].length - 4);
 	}
 }

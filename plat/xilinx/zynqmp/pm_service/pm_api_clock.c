@@ -2831,10 +2831,9 @@ enum pm_ret_status pm_clock_pll_set_parent(struct pm_pll *pll,
 }
 
 /**
- * pm_clock_pll_get_parent - Get mux select value of PLL-related clock parent
- * @pll			Target PLL structure
- * @clock_id		Id of the clock
- * @parent_index	parent index (=mux select value)
+ * pm_api_clock_getparent - Get the clock parent for given id
+ * @clock_id	Id of the clock
+ * @parent_idx	parent index
  *
  * This function is used by master to get parent index for PLL-related clock.
  *

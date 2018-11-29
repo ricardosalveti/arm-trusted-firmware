@@ -72,18 +72,22 @@ void arm_bl2u_plat_arch_setup(void)
 
 	const mmap_region_t bl_regions[] = {
 		MAP_BL2U_TOTAL,
-		ARM_MAP_BL_CODE,
-		ARM_MAP_BL_RO_DATA,
+		ARM_MAP_BL_RO,
+#if USE_ROMLIB
+		ARM_MAP_ROMLIB_CODE,
+		ARM_MAP_ROMLIB_DATA,
+#endif
 		{0}
 	};
 
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+	setup_page_tables(bl_regions, plat_arm_get_mmap());
 
 #ifdef AARCH32
-	enable_mmu_secure(0);
+	enable_mmu_svc_mon(0);
 #else
 	enable_mmu_el1(0);
 #endif
+	arm_setup_romlib();
 }
 
 void bl2u_plat_arch_setup(void)

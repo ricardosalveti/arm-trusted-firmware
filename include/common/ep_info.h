@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __EP_INFO_H__
-#define __EP_INFO_H__
+#ifndef EP_INFO_H
+#define EP_INFO_H
 
 #include <param_header.h>
 #include <utils_def.h>
@@ -30,7 +30,7 @@
 #define PARAM_EP_SECURITY_MASK		U(0x1)
 
 /* Secure or Non-secure image */
-#define GET_SECURITY_STATE(x) (x & PARAM_EP_SECURITY_MASK)
+#define GET_SECURITY_STATE(x) ((x) & PARAM_EP_SECURITY_MASK)
 #define SET_SECURITY_STATE(x, security) \
 			((x) = ((x) & ~PARAM_EP_SECURITY_MASK) | (security))
 
@@ -65,7 +65,7 @@
 #ifndef __ASSEMBLY__
 
 #include <cassert.h>
-#include <types.h>
+#include <stdint.h>
 
 typedef struct aapcs64_params {
 	u_register_t arg0;
@@ -132,5 +132,4 @@ CASSERT(sizeof(uintptr_t) ==
 
 #endif /*__ASSEMBLY__*/
 
-#endif /* __EP_INFO_H__ */
-
+#endif /* EP_INFO_H */

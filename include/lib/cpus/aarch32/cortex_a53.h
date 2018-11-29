@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __CORTEX_A53_H__
-#define __CORTEX_A53_H__
+#ifndef CORTEX_A53_H
+#define CORTEX_A53_H
 
 /* Cortex-A53 midr for revision 0 */
 #define CORTEX_A53_MIDR 0x410FD030
@@ -67,16 +67,4 @@
  ******************************************************************************/
 #define CORTEX_A53_L2MERRSR			p15, 3, c15
 
-#if !ERROR_DEPRECATED
-/*
- * These registers were previously wrongly named. Provide previous definitions so
- * as not to break platforms that continue using them.
- */
-#define CORTEX_A53_ACTLR			CORTEX_A53_CPUACTLR
-
-#define CORTEX_A53_ACTLR_ENDCCASCI_SHIFT	CORTEX_A53_CPUACTLR_ENDCCASCI_SHIFT
-#define CORTEX_A53_ACTLR_ENDCCASCI		CORTEX_A53_CPUACTLR_ENDCCASCI
-#define CORTEX_A53_ACTLR_DTAH			CORTEX_A53_CPUACTLR_DTAH
-#endif /* !ERROR_DEPRECATED */
-
-#endif /* __CORTEX_A53_H__ */
+#endif /* CORTEX_A53_H */

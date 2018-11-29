@@ -4,8 +4,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __CORTEX_A57_H__
-#define __CORTEX_A57_H__
+#ifndef CORTEX_A57_H
+#define CORTEX_A57_H
+
 #include <utils_def.h>
 
 /* Cortex-A57 midr for revision 0 */
@@ -79,22 +80,4 @@
  ******************************************************************************/
 #define CORTEX_A57_L2MERRSR			p15, 3, c15
 
-#if !ERROR_DEPRECATED
-/*
- * These registers were previously wrongly named. Provide previous definitions so
- * as not to break platforms that continue using them.
- */
-#define CORTEX_A57_ACTLR			CORTEX_A57_CPUACTLR
-
-#define CORTEX_A57_ACTLR_DIS_LOAD_PASS_DMB	CORTEX_A57_CPUACTLR_DIS_LOAD_PASS_DMB
-#define CORTEX_A57_ACTLR_GRE_NGRE_AS_NGNRE	CORTEX_A57_CPUACTLR_GRE_NGRE_AS_NGNRE
-#define CORTEX_A57_ACTLR_DIS_OVERREAD		CORTEX_A57_CPUACTLR_DIS_OVERREAD
-#define CORTEX_A57_ACTLR_NO_ALLOC_WBWA		CORTEX_A57_CPUACTLR_NO_ALLOC_WBWA
-#define CORTEX_A57_ACTLR_DCC_AS_DCCI		CORTEX_A57_CPUACTLR_DCC_AS_DCCI
-#define CORTEX_A57_ACTLR_FORCE_FPSCR_FLUSH	CORTEX_A57_CPUACTLR_FORCE_FPSCR_FLUSH
-#define CORTEX_A57_ACTLR_DIS_STREAMING		CORTEX_A57_CPUACTLR_DIS_STREAMING
-#define CORTEX_A57_ACTLR_DIS_L1_STREAMING	CORTEX_A57_CPUACTLR_DIS_L1_STREAMING
-#define CORTEX_A57_ACTLR_DIS_INDIRECT_PREDICTOR	CORTEX_A57_CPUACTLR_DIS_INDIRECT_PREDICTOR
-#endif /* !ERROR_DEPRECATED */
-
-#endif /* __CORTEX_A57_H__ */
+#endif /* CORTEX_A57_H */

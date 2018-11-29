@@ -5,8 +5,8 @@
  * https://spdx.org/licenses
  */
 
-#ifndef __BOARD_MARVELL_DEF_H__
-#define __BOARD_MARVELL_DEF_H__
+#ifndef BOARD_MARVELL_DEF_H
+#define BOARD_MARVELL_DEF_H
 
 /*
  * Required platform porting definitions common to all ARM
@@ -14,9 +14,7 @@
  */
 
 /* Size of cacheable stacks */
-#if DEBUG_XLAT_TABLE
-# define PLATFORM_STACK_SIZE 0x800
-#elif IMAGE_BL1
+#if IMAGE_BL1
 #if TRUSTED_BOARD_BOOT
 # define PLATFORM_STACK_SIZE 0x1000
 #else
@@ -76,4 +74,4 @@
 #define PLAT_MARVELL_TRUSTED_SRAM_SIZE	0x80000	/* 512 KB */
 
 
-#endif /* __BOARD_MARVELL_DEF_H__ */
+#endif /* BOARD_MARVELL_DEF_H */

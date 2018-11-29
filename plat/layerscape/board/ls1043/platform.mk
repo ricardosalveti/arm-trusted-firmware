@@ -22,7 +22,6 @@ LS1043_SECURITY_SOURCES 	:=	plat/layerscape/common/ls_tzc380.c	\
 					plat/layerscape/board/ls1043/ls1043_security.c
 
 PLAT_INCLUDES			:=	-Iplat/layerscape/board/ls1043/include   \
-					-Iinclude/plat/arm/common	\
 					-Iplat/layerscape/common/include	\
 					-Iinclude/drivers/arm   \
 					-Iinclude/lib		\
@@ -63,7 +62,6 @@ BL31_SOURCES			+=	plat/layerscape/board/ls1043/ls1043_bl31_setup.c		\
 					${LS1043_SECURITY_SOURCES}
 
 # Disable the PSCI platform compatibility layer
-ENABLE_PLAT_COMPAT		:= 	0
 MULTI_CONSOLE_API		:=	1
 
 # Enable workarounds for selected Cortex-A53 erratas.

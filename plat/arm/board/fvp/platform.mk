@@ -69,19 +69,6 @@ FVP_GIC_SOURCES		:=	drivers/arm/gic/common/gic_common.c	\
 				plat/arm/common/arm_gicv2.c
 
 FVP_DT_PREFIX		:=	fvp-base-gicv2-psci
-
-else ifeq (${FVP_USE_GIC_DRIVER}, FVP_GICV3_LEGACY)
-  ifeq (${ARCH}, aarch32)
-    $(error "GICV3 Legacy driver not supported for AArch32 build")
-  endif
-FVP_GIC_SOURCES		:=	drivers/arm/gic/arm_gic.c		\
-				drivers/arm/gic/gic_v2.c		\
-				drivers/arm/gic/gic_v3.c		\
-				plat/common/plat_gic.c			\
-				plat/arm/common/arm_gicv3_legacy.c
-
-FVP_DT_PREFIX		:=	fvp-base-gicv2-psci
-
 else
 $(error "Incorrect GIC driver chosen on FVP port")
 endif
@@ -134,12 +121,16 @@ BL1_SOURCES		+=	drivers/io/io_semihosting.c			\
 
 
 BL2_SOURCES		+=	drivers/io/io_semihosting.c			\
+				lib/utils/mem_region.c				\
 				lib/semihosting/semihosting.c			\
 				lib/semihosting/${ARCH}/semihosting_call.S	\
 				plat/arm/board/fvp/fvp_bl2_setup.c		\
 				plat/arm/board/fvp/fvp_io_storage.c		\
 				plat/arm/board/fvp/fvp_trusted_boot.c		\
+				plat/arm/common/arm_nor_psci_mem_protect.c	\
 				${FVP_SECURITY_SOURCES}
+
+
 
 ifeq (${BL2_AT_EL3},1)
 BL2_SOURCES		+=	plat/arm/board/fvp/${ARCH}/fvp_helpers.S	\
@@ -156,11 +147,14 @@ BL2U_SOURCES		+=	plat/arm/board/fvp/fvp_bl2u_setup.c		\
 				${FVP_SECURITY_SOURCES}
 
 BL31_SOURCES		+=	drivers/arm/smmu/smmu_v3.c			\
+				drivers/cfi/v2m/v2m_flash.c			\
+				lib/utils/mem_region.c				\
 				plat/arm/board/fvp/fvp_bl31_setup.c		\
 				plat/arm/board/fvp/fvp_pm.c			\
 				plat/arm/board/fvp/fvp_topology.c		\
 				plat/arm/board/fvp/aarch64/fvp_helpers.S	\
 				plat/arm/board/fvp/drivers/pwrc/fvp_pwrc.c	\
+				plat/arm/common/arm_nor_psci_mem_protect.c	\
 				${FVP_CPU_LIBS}					\
 				${FVP_GIC_SOURCES}				\
 				${FVP_INTERCONNECT_SOURCES}			\
@@ -201,14 +195,16 @@ $(eval FVP_HW_CONFIG	:=	${BUILD_PLAT}/$(patsubst %.dts,%.dtb,$(FVP_HW_CONFIG_DTS
 $(eval $(call TOOL_ADD_PAYLOAD,${FVP_HW_CONFIG},--hw-config))
 endif
 
-# Disable the PSCI platform compatibility layer
-ENABLE_PLAT_COMPAT	:= 	0
-
 # Enable Activity Monitor Unit extensions by default
 ENABLE_AMU			:=	1
 
 # Enable dynamic mitigation support by default
 DYNAMIC_WORKAROUND_CVE_2018_3639	:=	1
+
+# Enable reclaiming of BL31 initialisation code for secondary cores stacks for FVP
+ifneq (${RESET_TO_BL31},1)
+RECLAIM_INIT_CODE	:=	1
+endif
 
 ifeq (${ENABLE_AMU},1)
 BL31_SOURCES		+=	lib/cpus/aarch64/cortex_a75_pubsub.c	\
@@ -240,9 +236,7 @@ include plat/arm/board/common/board_common.mk
 include plat/arm/common/arm_common.mk
 
 # FVP being a development platform, enable capability to disable Authentication
-# dynamically if TRUSTED_BOARD_BOOT and LOAD_IMAGE_V2 is set.
+# dynamically if TRUSTED_BOARD_BOOT is set.
 ifeq (${TRUSTED_BOARD_BOOT}, 1)
-    ifeq (${LOAD_IMAGE_V2}, 1)
         DYN_DISABLE_AUTH	:=	1
-    endif
 endif

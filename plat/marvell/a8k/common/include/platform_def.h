@@ -5,8 +5,8 @@
  * https://spdx.org/licenses
  */
 
-#ifndef __PLATFORM_DEF_H__
-#define __PLATFORM_DEF_H__
+#ifndef PLATFORM_DEF_H
+#define PLATFORM_DEF_H
 
 #include <board_marvell_def.h>
 #include <gic_common.h>
@@ -71,14 +71,6 @@
  * PLAT_MARVELL_FIP_BASE	= 0x4120000
  */
 
-/*
- * Since BL33 is loaded by BL2 (and validated by BL31) to DRAM offset 0,
- * it is allowed to load/copy images to 'NULL' pointers
- */
-#if defined(IMAGE_BL2) || defined(IMAGE_BL31)
-#define PLAT_ALLOW_ZERO_ADDR_COPY
-#endif
-
 #define PLAT_MARVELL_SRAM_BASE			0xFFE1C048
 #define PLAT_MARVELL_SRAM_END			0xFFE78000
 
@@ -134,6 +126,8 @@
 	INTR_PROP_DESC(MARVELL_IRQ_SEC_SGI_0, GIC_HIGHEST_SEC_PRIORITY, grp, \
 			GIC_INTR_CFG_LEVEL), \
 	INTR_PROP_DESC(MARVELL_IRQ_SEC_SGI_6, GIC_HIGHEST_SEC_PRIORITY, grp, \
+			GIC_INTR_CFG_LEVEL), \
+	INTR_PROP_DESC(MARVELL_IRQ_PIC0, GIC_HIGHEST_SEC_PRIORITY, grp, \
 			GIC_INTR_CFG_LEVEL)
 
 #define PLAT_MARVELL_G1S_IRQ_PROPS(grp) \
@@ -197,6 +191,11 @@
 #define TRUSTED_DRAM_BASE			PLAT_MARVELL_TRUSTED_DRAM_BASE
 #define TRUSTED_DRAM_SIZE			PLAT_MARVELL_TRUSTED_DRAM_SIZE
 
+#ifdef BL32
 #define BL32_BASE				TRUSTED_DRAM_BASE
+#define BL32_LIMIT				TRUSTED_DRAM_SIZE
+#endif
 
-#endif /* __PLATFORM_DEF_H__ */
+#define MVEBU_PMU_IRQ_WA
+
+#endif /* PLATFORM_DEF_H */

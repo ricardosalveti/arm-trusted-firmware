@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2015-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __PLATFORM_DEF_H__
-#define __PLATFORM_DEF_H__
+#ifndef PLATFORM_DEF_H
+#define PLATFORM_DEF_H
 
 #include <arch.h>
 #include <common_def.h>
@@ -63,6 +63,25 @@
  * secure DRAM. Note that this is all actually DRAM with different names,
  * there is no Secure RAM in the Raspberry Pi 3.
  */
+#if RPI3_USE_UEFI_MAP
+#define SEC_ROM_BASE			ULL(0x00000000)
+#define SEC_ROM_SIZE			ULL(0x00010000)
+
+/* FIP placed after ROM to append it to BL1 with very little padding. */
+#define PLAT_RPI3_FIP_BASE		ULL(0x00020000)
+#define PLAT_RPI3_FIP_MAX_SIZE		ULL(0x00010000)
+
+/* Reserve 2M of secure SRAM and DRAM, starting at 2M */
+#define SEC_SRAM_BASE			ULL(0x00200000)
+#define SEC_SRAM_SIZE			ULL(0x00100000)
+
+#define SEC_DRAM0_BASE			ULL(0x00300000)
+#define SEC_DRAM0_SIZE			ULL(0x00100000)
+
+/* Windows on ARM requires some RAM at 4M */
+#define NS_DRAM0_BASE			ULL(0x00400000)
+#define NS_DRAM0_SIZE			ULL(0x00C00000)
+#else
 #define SEC_ROM_BASE			ULL(0x00000000)
 #define SEC_ROM_SIZE			ULL(0x00020000)
 
@@ -80,6 +99,7 @@
 
 #define NS_DRAM0_BASE			ULL(0x11000000)
 #define NS_DRAM0_SIZE			ULL(0x01000000)
+#endif /* RPI3_USE_UEFI_MAP */
 
 /*
  * BL33 entrypoint.
@@ -215,7 +235,8 @@
 /*
  * Other memory-related defines.
  */
-#define ADDR_SPACE_SIZE			(ULL(1) << 32)
+#define PLAT_PHY_ADDR_SPACE_SIZE	(ULL(1) << 32)
+#define PLAT_VIRT_ADDR_SPACE_SIZE	(ULL(1) << 32)
 
 #define MAX_MMAP_REGIONS		8
 #define MAX_XLAT_TABLES			4
@@ -235,4 +256,4 @@
  */
 #define SYS_COUNTER_FREQ_IN_TICKS	ULL(19200000)
 
-#endif /* __PLATFORM_DEF_H__ */
+#endif /* PLATFORM_DEF_H */

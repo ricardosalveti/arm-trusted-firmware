@@ -5,8 +5,8 @@
  * https://spdx.org/licenses
  */
 
-#ifndef __MARVELL_DEF_H__
-#define __MARVELL_DEF_H__
+#ifndef MARVELL_DEF_H
+#define MARVELL_DEF_H
 
 #include <arch.h>
 #include <common_def.h>
@@ -63,6 +63,7 @@
 #define MARVELL_DRAM_END		(MARVELL_DRAM_BASE + \
 					 MARVELL_DRAM_SIZE - 1)
 
+#define MARVELL_IRQ_PIC0		28
 #define MARVELL_IRQ_SEC_PHY_TIMER	29
 
 #define MARVELL_IRQ_SEC_SGI_0		8
@@ -177,4 +178,4 @@
 					 MARVELL_BL_RAM_SIZE)
 
 
-#endif /* __MARVELL_DEF_H__ */
+#endif /* MARVELL_DEF_H */

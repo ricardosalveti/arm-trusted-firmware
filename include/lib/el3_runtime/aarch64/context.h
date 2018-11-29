@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __CONTEXT_H__
-#define __CONTEXT_H__
+#ifndef CONTEXT_H
+#define CONTEXT_H
 
 #include <utils_def.h>
 
@@ -241,9 +241,9 @@ DEFINE_REG_STRUCT(cve_2018_3639, CTX_CVE_2018_3639_ALL);
  * Macros to access members of any of the above structures using their
  * offsets
  */
-#define read_ctx_reg(ctx, offset)	((ctx)->_regs[offset >> DWORD_SHIFT])
-#define write_ctx_reg(ctx, offset, val)	(((ctx)->_regs[offset >> DWORD_SHIFT]) \
-					 = val)
+#define read_ctx_reg(ctx, offset)	((ctx)->_regs[(offset) >> DWORD_SHIFT])
+#define write_ctx_reg(ctx, offset, val)	(((ctx)->_regs[(offset) >> DWORD_SHIFT]) \
+					 = (uint64_t) (val))
 
 /*
  * Top-level context structure which is used by EL3 firmware to
@@ -347,4 +347,4 @@ void fpregs_context_restore(fp_regs_t *regs);
 
 #endif /* __ASSEMBLY__ */
 
-#endif /* __CONTEXT_H__ */
+#endif /* CONTEXT_H */

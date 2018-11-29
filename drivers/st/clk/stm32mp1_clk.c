@@ -17,6 +17,7 @@
 #include <mmio.h>
 #include <platform.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stm32mp1_clk.h>
 #include <stm32mp1_clkfunc.h>
 #include <stm32mp1_dt.h>
@@ -1322,7 +1323,7 @@ int stm32mp1_clk_init(void)
 	int ret, len;
 	enum stm32mp1_pll_id i;
 	bool lse_css = false;
-	const uint32_t *pkcs_cell;
+	const fdt32_t *pkcs_cell;
 
 	/* Check status field to disable security */
 	if (!fdt_get_rcc_secure_status()) {
@@ -1344,7 +1345,7 @@ int stm32mp1_clk_init(void)
 	for (i = (enum stm32mp1_pll_id)0; i < _PLL_NB; i++) {
 		char name[12];
 
-		sprintf(name, "st,pll@%d", i);
+		snprintf(name, sizeof(name), "st,pll@%d", i);
 		plloff[i] = fdt_rcc_subnode_offset(name);
 
 		if (!fdt_check_node(plloff[i])) {
@@ -1528,7 +1529,7 @@ int stm32mp1_clk_init(void)
 		priv->pkcs_usb_value = 0;
 
 		for (j = 0; j < ((uint32_t)len / sizeof(uint32_t)); j++) {
-			uint32_t pkcs = (uint32_t)fdt32_to_cpu(pkcs_cell[j]);
+			uint32_t pkcs = fdt32_to_cpu(pkcs_cell[j]);
 
 			if (pkcs == (uint32_t)CLK_CKPER_DISABLED) {
 				ckper_disabled = true;

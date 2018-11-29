@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -58,15 +58,15 @@ static uintptr_t arm_sip_handler(unsigned int smc_fid,
 
 		/* Validate supplied entry point */
 		pc = (u_register_t) ((x1 << 32) | (uint32_t) x2);
-		if (arm_validate_ns_entrypoint(pc))
+		if (arm_validate_ns_entrypoint(pc) != 0)
 			SMC_RET1(handle, STATE_SW_E_PARAM);
 
 		/*
 		 * Pointers used in execution state switch are all 32 bits wide
 		 */
-		return arm_execution_state_switch(smc_fid, (uint32_t) x1,
-				(uint32_t) x2, (uint32_t) x3, (uint32_t) x4,
-				handle);
+		return (uintptr_t) arm_execution_state_switch(smc_fid,
+				(uint32_t) x1, (uint32_t) x2, (uint32_t) x3,
+				(uint32_t) x4, handle);
 		}
 
 	case ARM_SIP_SVC_CALL_COUNT:

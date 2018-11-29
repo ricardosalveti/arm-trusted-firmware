@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,7 +7,8 @@
 #include <arch_helpers.h>
 #include <bl_common.h>
 #include <platform_def.h>
-#include <arm_xlat_tables.h>
+#include <xlat_tables_v2.h>
+
 #include "qemu_private.h"
 
 #define MAP_DEVICE0	MAP_REGION_FLAT(DEVICE0_BASE,			\
@@ -131,7 +132,7 @@ static const mmap_region_t plat_qemu_mmap[] = {
 
 /* Define EL1 and EL3 variants of the function initialising the MMU */
 #ifdef AARCH32
-DEFINE_CONFIGURE_MMU_EL(secure)
+DEFINE_CONFIGURE_MMU_EL(svc_mon)
 #else
 DEFINE_CONFIGURE_MMU_EL(el1)
 DEFINE_CONFIGURE_MMU_EL(el3)

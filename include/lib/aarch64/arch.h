@@ -35,12 +35,14 @@
 #define MPIDR_AFF1_SHIFT	U(8)
 #define MPIDR_AFF2_SHIFT	U(16)
 #define MPIDR_AFF3_SHIFT	U(32)
+#define MPIDR_AFF_SHIFT(_n)	MPIDR_AFF##_n##_SHIFT
 #define MPIDR_AFFINITY_MASK	ULL(0xff00ffffff)
 #define MPIDR_AFFLVL_SHIFT	U(3)
-#define MPIDR_AFFLVL0		U(0x0)
-#define MPIDR_AFFLVL1		U(0x1)
-#define MPIDR_AFFLVL2		U(0x2)
-#define MPIDR_AFFLVL3		U(0x3)
+#define MPIDR_AFFLVL0		ULL(0x0)
+#define MPIDR_AFFLVL1		ULL(0x1)
+#define MPIDR_AFFLVL2		ULL(0x2)
+#define MPIDR_AFFLVL3		ULL(0x3)
+#define MPIDR_AFFLVL(_n)	MPIDR_AFFLVL##_n
 #define MPIDR_AFFLVL0_VAL(mpidr) \
 		(((mpidr) >> MPIDR_AFF0_SHIFT) & MPIDR_AFFLVL_MASK)
 #define MPIDR_AFFLVL1_VAL(mpidr) \
@@ -56,28 +58,42 @@
  */
 #define MPIDR_MAX_AFFLVL	U(2)
 
-/* Constant to highlight the assumption that MPIDR allocation starts from 0 */
-#define FIRST_MPIDR		ULL(0)
+#define MPID_MASK		(MPIDR_MT_MASK				 | \
+				 (MPIDR_AFFLVL_MASK << MPIDR_AFF3_SHIFT) | \
+				 (MPIDR_AFFLVL_MASK << MPIDR_AFF2_SHIFT) | \
+				 (MPIDR_AFFLVL_MASK << MPIDR_AFF1_SHIFT) | \
+				 (MPIDR_AFFLVL_MASK << MPIDR_AFF0_SHIFT))
+
+#define MPIDR_AFF_ID(mpid, n)					\
+	(((mpid) >> MPIDR_AFF_SHIFT(n)) & MPIDR_AFFLVL_MASK)
+
+/*
+ * An invalid MPID. This value can be used by functions that return an MPID to
+ * indicate an error.
+ */
+#define INVALID_MPID		U(0xFFFFFFFF)
 
 /*******************************************************************************
  * Definitions for CPU system register interface to GICv3
  ******************************************************************************/
-#define ICC_SRE_EL1     S3_0_C12_C12_5
-#define ICC_SRE_EL2     S3_4_C12_C9_5
-#define ICC_SRE_EL3     S3_6_C12_C12_5
-#define ICC_CTLR_EL1    S3_0_C12_C12_4
-#define ICC_CTLR_EL3    S3_6_C12_C12_4
-#define ICC_PMR_EL1     S3_0_C4_C6_0
-#define ICC_RPR_EL1     S3_0_C12_C11_3
-#define ICC_IGRPEN1_EL3 S3_6_c12_c12_7
-#define ICC_IGRPEN0_EL1 S3_0_c12_c12_6
-#define ICC_HPPIR0_EL1  S3_0_c12_c8_2
-#define ICC_HPPIR1_EL1  S3_0_c12_c12_2
-#define ICC_IAR0_EL1    S3_0_c12_c8_0
-#define ICC_IAR1_EL1    S3_0_c12_c12_0
-#define ICC_EOIR0_EL1   S3_0_c12_c8_1
-#define ICC_EOIR1_EL1   S3_0_c12_c12_1
-#define ICC_SGI0R_EL1	S3_0_c12_c11_7
+#define ICC_IGRPEN1_EL1		S3_0_C12_C12_7
+#define ICC_SGI1R		S3_0_C12_C11_5
+#define ICC_SRE_EL1		S3_0_C12_C12_5
+#define ICC_SRE_EL2		S3_4_C12_C9_5
+#define ICC_SRE_EL3		S3_6_C12_C12_5
+#define ICC_CTLR_EL1		S3_0_C12_C12_4
+#define ICC_CTLR_EL3		S3_6_C12_C12_4
+#define ICC_PMR_EL1		S3_0_C4_C6_0
+#define ICC_RPR_EL1		S3_0_C12_C11_3
+#define ICC_IGRPEN1_EL3		S3_6_c12_c12_7
+#define ICC_IGRPEN0_EL1		S3_0_c12_c12_6
+#define ICC_HPPIR0_EL1		S3_0_c12_c8_2
+#define ICC_HPPIR1_EL1		S3_0_c12_c12_2
+#define ICC_IAR0_EL1		S3_0_c12_c8_0
+#define ICC_IAR1_EL1		S3_0_c12_c12_0
+#define ICC_EOIR0_EL1		S3_0_c12_c8_1
+#define ICC_EOIR1_EL1		S3_0_c12_c12_1
+#define ICC_SGI0R_EL1		S3_0_c12_c11_7
 
 /*******************************************************************************
  * Generic timer memory mapped registers & offsets
@@ -117,6 +133,8 @@
 #define ID_AA64PFR0_SVE_SHIFT	U(32)
 #define ID_AA64PFR0_SVE_MASK	ULL(0xf)
 #define ID_AA64PFR0_SVE_LENGTH	U(4)
+#define ID_AA64PFR0_MPAM_SHIFT	U(40)
+#define ID_AA64PFR0_MPAM_MASK	ULL(0xf)
 #define ID_AA64PFR0_CSV2_SHIFT	U(56)
 #define ID_AA64PFR0_CSV2_MASK	ULL(0xf)
 #define ID_AA64PFR0_CSV2_LENGTH	U(4)
@@ -137,6 +155,25 @@
 /* ID_AA64MMFR0_EL1 definitions */
 #define ID_AA64MMFR0_EL1_PARANGE_SHIFT	U(0)
 #define ID_AA64MMFR0_EL1_PARANGE_MASK	ULL(0xf)
+
+/* ID_AA64ISAR1_EL1 definitions */
+#define ID_AA64ISAR1_GPI_SHIFT	U(28)
+#define ID_AA64ISAR1_GPI_WIDTH	U(4)
+#define ID_AA64ISAR1_GPA_SHIFT	U(24)
+#define ID_AA64ISAR1_GPA_WIDTH	U(4)
+#define ID_AA64ISAR1_API_SHIFT	U(8)
+#define ID_AA64ISAR1_API_WIDTH	U(4)
+#define ID_AA64ISAR1_APA_SHIFT	U(4)
+#define ID_AA64ISAR1_APA_WIDTH	U(4)
+
+#define ID_AA64ISAR1_GPI_MASK \
+	(((ULL(1) << ID_AA64ISAR1_GPI_WIDTH) - ULL(1)) << ID_AA64ISAR1_GPI_SHIFT)
+#define ID_AA64ISAR1_GPA_MASK \
+	(((ULL(1) << ID_AA64ISAR1_GPA_WIDTH) - ULL(1)) << ID_AA64ISAR1_GPA_SHIFT)
+#define ID_AA64ISAR1_API_MASK \
+	(((ULL(1) << ID_AA64ISAR1_API_WIDTH) - ULL(1)) << ID_AA64ISAR1_API_SHIFT)
+#define ID_AA64ISAR1_APA_MASK \
+	(((ULL(1) << ID_AA64ISAR1_APA_WIDTH) - ULL(1)) << ID_AA64ISAR1_APA_SHIFT)
 
 #define PARANGE_0000	U(32)
 #define PARANGE_0001	U(36)
@@ -216,6 +253,8 @@
 /* SCR definitions */
 #define SCR_RES1_BITS		((U(1) << 4) | (U(1) << 5))
 #define SCR_FIEN_BIT		(U(1) << 21)
+#define SCR_API_BIT		(U(1) << 17)
+#define SCR_APK_BIT		(U(1) << 16)
 #define SCR_TWE_BIT		(U(1) << 13)
 #define SCR_TWI_BIT		(U(1) << 12)
 #define SCR_ST_BIT		(U(1) << 11)
@@ -242,10 +281,6 @@
 #define MDCR_TDA_BIT		(U(1) << 9)
 #define MDCR_TPM_BIT		(U(1) << 6)
 #define MDCR_EL3_RESET_VAL	U(0x0)
-
-#if !ERROR_DEPRECATED
-#define MDCR_DEF_VAL		(MDCR_SDD_BIT | MDCR_SPD32(MDCR_SPD32_DISABLE))
-#endif
 
 /* MDCR_EL2 definitions */
 #define MDCR_EL2_TPMS		(U(1) << 14)
@@ -276,6 +311,9 @@
 #define VTTBR_BADDR_SHIFT	U(0)
 
 /* HCR definitions */
+#define HCR_API_BIT		(ULL(1) << 41)
+#define HCR_APK_BIT		(ULL(1) << 40)
+#define HCR_TGE_BIT		(ULL(1) << 27)
 #define HCR_RW_SHIFT		U(31)
 #define HCR_RW_BIT		(ULL(1) << HCR_RW_SHIFT)
 #define HCR_AMO_BIT		(ULL(1) << 5)
@@ -349,6 +387,8 @@
 #define DISABLE_ALL_EXCEPTIONS \
 		(DAIF_FIQ_BIT | DAIF_IRQ_BIT | DAIF_ABT_BIT | DAIF_DBG_BIT)
 
+#define DISABLE_INTERRUPTS	(DAIF_FIQ_BIT | DAIF_IRQ_BIT)
+
 /*
  * RMR_EL3 definitions
  */
@@ -358,13 +398,15 @@
 /*
  * HI-VECTOR address for AArch32 state
  */
-#define HI_VECTOR_BASE	U(0xFFFF0000)
+#define HI_VECTOR_BASE		U(0xFFFF0000)
 
 /*
  * TCR defintions
  */
-#define TCR_EL3_RES1		((U(1) << 31) | (U(1) << 23))
+#define TCR_EL3_RES1		((ULL(1) << 31) | (ULL(1) << 23))
+#define TCR_EL2_RES1		((ULL(1) << 31) | (ULL(1) << 23))
 #define TCR_EL1_IPS_SHIFT	U(32)
+#define TCR_EL2_PS_SHIFT	U(16)
 #define TCR_EL3_PS_SHIFT	U(16)
 
 #define TCR_TxSZ_MIN		ULL(16)
@@ -567,10 +609,17 @@
 #define CNTACR_RWPT_SHIFT	U(0x5)
 
 /*******************************************************************************
- * Definitions of register offsets in the CNTBaseN Frame of the
+ * Definitions of register offsets and fields in the CNTBaseN Frame of the
  * system level implementation of the Generic Timer.
  ******************************************************************************/
-#define CNTBASE_CNTFRQ		U(0x10)
+/* Physical Count register. */
+#define CNTPCT_LO		U(0x0)
+/* Counter Frequency register. */
+#define CNTBASEN_CNTFRQ		U(0x10)
+/* Physical Timer CompareValue register. */
+#define CNTP_CVAL_LO		U(0x20)
+/* Physical Timer Control register. */
+#define CNTP_CTL		U(0x2c)
 
 /* PMCR_EL0 definitions */
 #define PMCR_EL0_RESET_VAL	U(0x0)
@@ -656,6 +705,14 @@
 #define PMBLIMITR_EL1		S3_0_C9_C10_0
 
 /*******************************************************************************
+ * Definitions for system register interface to MPAM
+ ******************************************************************************/
+#define MPAMIDR_EL1		S3_0_C10_C4_4
+#define MPAM2_EL2		S3_4_C10_C5_0
+#define MPAMHCR_EL2		S3_4_C10_C4_0
+#define MPAM3_EL3		S3_6_C10_C5_0
+
+/*******************************************************************************
  * Definitions for system register interface to AMU for ARMv8.4 onwards
  ******************************************************************************/
 #define AMCR_EL0		S3_3_C13_C2_0
@@ -720,6 +777,11 @@
 #define AMCGCR_EL0_CG1NC_LENGTH	U(8)
 #define AMCGCR_EL0_CG1NC_MASK	U(0xff)
 
+/* MPAM register definitions */
+#define MPAM3_EL3_MPAMEN_BIT		(ULL(1) << 63)
+
+#define MPAMIDR_HAS_HCR_BIT		(ULL(1) << 17)
+
 /*******************************************************************************
  * RAS system registers
  *******************************************************************************/
@@ -736,7 +798,22 @@
 #define ERXCTLR_EL1		S3_0_C5_C4_1
 #define ERXSTATUS_EL1		S3_0_C5_C4_2
 #define ERXADDR_EL1		S3_0_C5_C4_3
-#define ERXMISC0_EL1		S3_0_C5_C4_4
-#define ERXMISC1_EL1		S3_0_C5_C4_5
+#define ERXPFGF_EL1		S3_0_C5_C4_4
+#define ERXPFGCTL_EL1		S3_0_C5_C4_5
+#define ERXPFGCDN_EL1		S3_0_C5_C4_6
+#define ERXMISC0_EL1		S3_0_C5_C5_0
+#define ERXMISC1_EL1		S3_0_C5_C5_1
+
+#define ERXCTLR_ED_BIT		(U(1) << 0)
+#define ERXCTLR_UE_BIT		(U(1) << 4)
+
+#define ERXPFGCTL_UC_BIT	(U(1) << 1)
+#define ERXPFGCTL_UEU_BIT	(U(1) << 2)
+#define ERXPFGCTL_CDEN_BIT	(U(1) << 31)
+
+/*******************************************************************************
+ * Armv8.3 Pointer Authentication Registers
+ *******************************************************************************/
+#define APGAKeyLo_EL1		S3_0_C2_C3_0
 
 #endif /* ARCH_H */

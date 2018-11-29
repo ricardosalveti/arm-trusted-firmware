@@ -1,15 +1,16 @@
 /*
- * Copyright (c) 2016-2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __ARCH_HELPERS_H__
-#define __ARCH_HELPERS_H__
+#ifndef ARCH_HELPERS_H
+#define ARCH_HELPERS_H
 
-#include <arch.h>	/* for additional register definitions */
+#include <arch.h>
+#include <cdefs.h>
 #include <stdint.h>
-#include <sys/types.h>
+#include <string.h>
 
 /**********************************************************************
  * Macros which create inline functions to read or write CPU system
@@ -32,13 +33,8 @@ static inline u_register_t read_ ## _name(void)				\
 
 /*
  *  The undocumented %Q and %R extended asm are used to implemented the below
- *  64 bit `mrrc` and `mcrr` instructions. It works only on Little Endian
- *  systems for GCC versions < 4.6. Above GCC 4.6, both Little Endian and
- *  Big Endian systems generate the right instruction encoding.
+ *  64 bit `mrrc` and `mcrr` instructions.
  */
-#if !(__clang__ || __GNUC__ > (4) || __GNUC__ == (4) && __GNUC_MINOR__ >= (6))
-#error "clang or GCC 4.6 or above is required to build AArch32 Trusted Firmware"
-#endif
 
 #define _DEFINE_COPROCR_WRITE_FUNC_64(_name, coproc, opc1, CRm)		\
 static inline void write64_## _name(uint64_t v)				\
@@ -77,6 +73,10 @@ static inline void write_ ## _name(const u_register_t v)		\
 #define DEFINE_COPROCR_READ_FUNC(_name, ...) 				\
 	_DEFINE_COPROCR_READ_FUNC(_name, __VA_ARGS__)
 
+/* Define write function for coproc register */
+#define DEFINE_COPROCR_WRITE_FUNC(_name, ...) 				\
+	_DEFINE_COPROCR_WRITE_FUNC(_name, __VA_ARGS__)
+
 /* Define read & write function for coproc register */
 #define DEFINE_COPROCR_RW_FUNCS(_name, ...) 				\
 	_DEFINE_COPROCR_READ_FUNC(_name, __VA_ARGS__)			\
@@ -85,6 +85,10 @@ static inline void write_ ## _name(const u_register_t v)		\
 /* Define 64 bit read function for coproc register */
 #define DEFINE_COPROCR_READ_FUNC_64(_name, ...) 			\
 	_DEFINE_COPROCR_READ_FUNC_64(_name, __VA_ARGS__)
+
+/* Define 64 bit write function for coproc register */
+#define DEFINE_COPROCR_WRITE_FUNC_64(_name, ...) 			\
+	_DEFINE_COPROCR_WRITE_FUNC_64(_name, __VA_ARGS__)
 
 /* Define 64 bit read & write function for coproc register */
 #define DEFINE_COPROCR_RW_FUNCS_64(_name, ...) 				\
@@ -100,46 +104,23 @@ static inline void write_ ## _name(const u_register_t v)		\
  * Macros to create inline functions for tlbi operations
  *********************************************************************/
 
-#if ERRATA_A57_813419
-/*
- * Define function for TLBI instruction with type specifier that
- * implements the workaround for errata 813419 of Cortex-A57
- */
-#define _DEFINE_TLBIOP_FUNC(_op, coproc, opc1, CRn, CRm, opc2)		\
-static inline void tlbi##_op(void)					\
-{									\
-	u_register_t v = 0;						\
-	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
-	__asm__ volatile ("dsb ish");\
-	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
-}
-
-#define _DEFINE_TLBIOP_PARAM_FUNC(_op, coproc, opc1, CRn, CRm, opc2)	\
-static inline void tlbi##_op(u_register_t v)				\
-{									\
-	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
-	__asm__ volatile ("dsb ish");\
-	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
-}
-#else
 #define _DEFINE_TLBIOP_FUNC(_op, coproc, opc1, CRn, CRm, opc2)		\
 static inline void tlbi##_op(void)					\
 {									\
 	u_register_t v = 0;						\
 	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
 }
-
-#define _DEFINE_TLBIOP_PARAM_FUNC(_op, coproc, opc1, CRn, CRm, opc2)	\
-static inline void tlbi##_op(u_register_t v)				\
-{									\
-	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
-}
-#endif /* ERRATA_A57_813419 */
 
 #define _DEFINE_BPIOP_FUNC(_op, coproc, opc1, CRn, CRm, opc2)		\
 static inline void bpi##_op(void)					\
 {									\
 	u_register_t v = 0;						\
+	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
+}
+
+#define _DEFINE_TLBIOP_PARAM_FUNC(_op, coproc, opc1, CRn, CRm, opc2)	\
+static inline void tlbi##_op(u_register_t v)				\
+{									\
 	__asm__ volatile ("mcr "#coproc","#opc1",%0,"#CRn","#CRm","#opc2 : : "r" (v));\
 }
 
@@ -209,7 +190,12 @@ DEFINE_SYSOP_FUNC(sev)
 DEFINE_SYSOP_TYPE_FUNC(dsb, sy)
 DEFINE_SYSOP_TYPE_FUNC(dmb, sy)
 DEFINE_SYSOP_TYPE_FUNC(dmb, st)
+
+/* dmb ld is not valid for armv7/thumb machines */
+#if ARM_ARCH_MAJOR != 7
 DEFINE_SYSOP_TYPE_FUNC(dmb, ld)
+#endif
+
 DEFINE_SYSOP_TYPE_FUNC(dsb, ish)
 DEFINE_SYSOP_TYPE_FUNC(dsb, ishst)
 DEFINE_SYSOP_TYPE_FUNC(dmb, ish)
@@ -244,10 +230,13 @@ DEFINE_COPROCR_RW_FUNCS(cntfrq, CNTFRQ)
 DEFINE_COPROCR_RW_FUNCS(cnthctl, CNTHCTL)
 DEFINE_COPROCR_RW_FUNCS(mair0, MAIR0)
 DEFINE_COPROCR_RW_FUNCS(mair1, MAIR1)
+DEFINE_COPROCR_RW_FUNCS(hmair0, HMAIR0)
 DEFINE_COPROCR_RW_FUNCS(ttbcr, TTBCR)
+DEFINE_COPROCR_RW_FUNCS(htcr, HTCR)
 DEFINE_COPROCR_RW_FUNCS(ttbr0, TTBR0)
 DEFINE_COPROCR_RW_FUNCS_64(ttbr0, TTBR0_64)
 DEFINE_COPROCR_RW_FUNCS(ttbr1, TTBR1)
+DEFINE_COPROCR_RW_FUNCS_64(httbr, HTTBR_64)
 DEFINE_COPROCR_RW_FUNCS(vpidr, VPIDR)
 DEFINE_COPROCR_RW_FUNCS(vmpidr, VMPIDR)
 DEFINE_COPROCR_RW_FUNCS_64(vttbr, VTTBR_64)
@@ -255,6 +244,9 @@ DEFINE_COPROCR_RW_FUNCS_64(ttbr1, TTBR1_64)
 DEFINE_COPROCR_RW_FUNCS_64(cntvoff, CNTVOFF_64)
 DEFINE_COPROCR_RW_FUNCS(csselr, CSSELR)
 DEFINE_COPROCR_RW_FUNCS(hstr, HSTR)
+DEFINE_COPROCR_RW_FUNCS(cnthp_ctl_el2, CNTHP_CTL)
+DEFINE_COPROCR_RW_FUNCS(cnthp_tval_el2, CNTHP_TVAL)
+DEFINE_COPROCR_RW_FUNCS_64(cnthp_cval_el2, CNTHP_CVAL_64)
 
 DEFINE_COPROCR_RW_FUNCS(icc_sre_el1, ICC_SRE)
 DEFINE_COPROCR_RW_FUNCS(icc_sre_el2, ICC_HSRE)
@@ -262,6 +254,7 @@ DEFINE_COPROCR_RW_FUNCS(icc_sre_el3, ICC_MSRE)
 DEFINE_COPROCR_RW_FUNCS(icc_pmr_el1, ICC_PMR)
 DEFINE_COPROCR_RW_FUNCS(icc_rpr_el1, ICC_RPR)
 DEFINE_COPROCR_RW_FUNCS(icc_igrpen1_el3, ICC_MGRPEN1)
+DEFINE_COPROCR_RW_FUNCS(icc_igrpen1_el1, ICC_IGRPEN1)
 DEFINE_COPROCR_RW_FUNCS(icc_igrpen0_el1, ICC_IGRPEN0)
 DEFINE_COPROCR_RW_FUNCS(icc_hppir0_el1, ICC_HPPIR0)
 DEFINE_COPROCR_RW_FUNCS(icc_hppir1_el1, ICC_HPPIR1)
@@ -270,10 +263,18 @@ DEFINE_COPROCR_RW_FUNCS(icc_iar1_el1, ICC_IAR1)
 DEFINE_COPROCR_RW_FUNCS(icc_eoir0_el1, ICC_EOIR0)
 DEFINE_COPROCR_RW_FUNCS(icc_eoir1_el1, ICC_EOIR1)
 DEFINE_COPROCR_RW_FUNCS_64(icc_sgi0r_el1, ICC_SGI0R_EL1_64)
+DEFINE_COPROCR_WRITE_FUNC_64(icc_sgi1r, ICC_SGI1R_EL1_64)
 
 DEFINE_COPROCR_RW_FUNCS(hdcr, HDCR)
 DEFINE_COPROCR_RW_FUNCS(cnthp_ctl, CNTHP_CTL)
 DEFINE_COPROCR_READ_FUNC(pmcr, PMCR)
+
+/*
+ * Address translation
+ */
+DEFINE_COPROCR_WRITE_FUNC(ats1cpr, ATS1CPR)
+DEFINE_COPROCR_WRITE_FUNC(ats1hr, ATS1HR)
+DEFINE_COPROCR_RW_FUNCS_64(par, PAR_64)
 
 DEFINE_COPROCR_RW_FUNCS(nsacr, NSACR)
 
@@ -300,6 +301,7 @@ DEFINE_TLBIOP_FUNC(allis, TLBIALLIS)
 DEFINE_TLBIOP_PARAM_FUNC(mva, TLBIMVA)
 DEFINE_TLBIOP_PARAM_FUNC(mvaa, TLBIMVAA)
 DEFINE_TLBIOP_PARAM_FUNC(mvaais, TLBIMVAAIS)
+DEFINE_TLBIOP_PARAM_FUNC(mvahis, TLBIMVAHIS)
 
 /*
  * BPI operation prototypes.
@@ -317,15 +319,33 @@ DEFINE_DCOP_PARAM_FUNC(cvac, DCCMVAC)
 #define dsb()			dsbsy()
 #define dmb()			dmbsy()
 
+/* dmb ld is not valid for armv7/thumb machines, so alias it to dmb */
+#if ARM_ARCH_MAJOR == 7
+#define	dmbld()			dmb()
+#endif
+
 #define IS_IN_SECURE() \
 	(GET_NS_BIT(read_scr()) == 0)
 
- /*
-  * If EL3 is AArch32, then secure PL1 and monitor mode correspond to EL3
-  */
+#define IS_IN_HYP()	(GET_M32(read_cpsr()) == MODE32_hyp)
+#define IS_IN_SVC()	(GET_M32(read_cpsr()) == MODE32_svc)
+#define IS_IN_MON()	(GET_M32(read_cpsr()) == MODE32_mon)
+#define IS_IN_EL2()	IS_IN_HYP()
+/* If EL3 is AArch32, then secure PL1 and monitor mode correspond to EL3 */
 #define IS_IN_EL3() \
 	((GET_M32(read_cpsr()) == MODE32_mon) ||	\
 		(IS_IN_SECURE() && (GET_M32(read_cpsr()) != MODE32_usr)))
+
+static inline unsigned int get_current_el(void)
+{
+	if (IS_IN_EL3()) {
+		return 3U;
+	} else if (IS_IN_EL2()) {
+		return 2U;
+	} else {
+		return 1U;
+	}
+}
 
 /* Macros for compatibility with AArch64 system registers */
 #define read_mpidr_el1()	read_mpidr()
@@ -347,7 +367,15 @@ DEFINE_DCOP_PARAM_FUNC(cvac, DCCMVAC)
 
 #define read_ctr_el0()		read_ctr()
 
-#define write_icc_sgi0r_el1(_v) \
-		write64_icc_sgi0r_el1(_v)
+#define write_icc_sgi0r_el1(_v)	write64_icc_sgi0r_el1(_v)
 
-#endif /* __ARCH_HELPERS_H__ */
+#define read_daif()		read_cpsr()
+#define write_daif(flags)	write_cpsr(flags)
+
+#define read_cnthp_cval_el2()	read64_cnthp_cval_el2()
+#define write_cnthp_cval_el2(v)	write64_cnthp_cval_el2(v)
+
+#define read_amcntenset0_el0()	read_amcntenset0()
+#define read_amcntenset1_el0()	read_amcntenset1()
+
+#endif /* ARCH_HELPERS_H */

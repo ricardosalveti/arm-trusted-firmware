@@ -25,9 +25,6 @@ endif
 
 include lib/libfdt/libfdt.mk
 
-# Enable new version of image loading on QEMU platforms
-LOAD_IMAGE_V2		:=	1
-
 ifeq ($(NEED_BL32),yes)
 $(eval $(call add_define,QEMU_LOAD_BL32))
 endif
@@ -41,31 +38,17 @@ ifeq (${ARM_ARCH_MAJOR},8)
 PLAT_INCLUDES		+=	-Iinclude/plat/arm/common/${ARCH}
 endif
 
-# Use translation tables library v2 by default
-ARM_XLAT_TABLES_LIB_V1		:=	0
-$(eval $(call assert_boolean,ARM_XLAT_TABLES_LIB_V1))
-$(eval $(call add_define,ARM_XLAT_TABLES_LIB_V1))
-
-
 PLAT_BL_COMMON_SOURCES	:=	plat/qemu/qemu_common.c			  \
 				plat/qemu/qemu_console.c		  \
 				drivers/arm/pl011/${ARCH}/pl011_console.S \
 
-ifeq (${ARM_XLAT_TABLES_LIB_V1}, 1)
-PLAT_BL_COMMON_SOURCES	+=	lib/xlat_tables/xlat_tables_common.c		\
-				lib/xlat_tables/${ARCH}/xlat_tables.c
-else
 include lib/xlat_tables_v2/xlat_tables.mk
-
 PLAT_BL_COMMON_SOURCES	+=	${XLAT_TABLES_LIB_SRCS}
-endif
 
 ifneq (${TRUSTED_BOARD_BOOT},0)
 
     include drivers/auth/mbedtls/mbedtls_crypto.mk
     include drivers/auth/mbedtls/mbedtls_x509.mk
-
-    USE_TBBR_DEFS	:=	1
 
     AUTH_SOURCES	:=	drivers/auth/auth_mod.c			\
 				drivers/auth/crypto_mod.c		\
@@ -133,12 +116,10 @@ BL2_SOURCES		+=	drivers/io/io_semihosting.c		\
 				plat/qemu/${ARCH}/plat_helpers.S	\
 				plat/qemu/qemu_bl2_setup.c		\
 				plat/qemu/dt.c				\
-				$(LIBFDT_SRCS)
-ifeq (${LOAD_IMAGE_V2},1)
-BL2_SOURCES		+=	plat/qemu/qemu_bl2_mem_params_desc.c	\
+				plat/qemu/qemu_bl2_mem_params_desc.c	\
 				plat/qemu/qemu_image_load.c		\
 				common/desc_image_load.c
-endif
+
 ifeq ($(add-lib-optee),yes)
 BL2_SOURCES		+=	lib/optee/optee_utils.c
 endif
@@ -179,9 +160,6 @@ endif
 ifeq ($(ARCH),aarch64)
 MULTI_CONSOLE_API	:= 1
 endif
-
-# Disable the PSCI platform compatibility layer
-ENABLE_PLAT_COMPAT	:= 	0
 
 BL32_RAM_LOCATION	:=	tdram
 ifeq (${BL32_RAM_LOCATION}, tsram)

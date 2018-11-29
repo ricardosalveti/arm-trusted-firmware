@@ -7,6 +7,7 @@
 #include <arch.h>
 #include <bl_common.h>
 #include <el3_common_macros.S>
+#include <platform_def.h>
 #include <pmf_asm_macros.S>
 #include <runtime_instr.h>
 #include <xlat_mmu_helpers.h>
@@ -73,6 +74,18 @@ func bl31_entrypoint
 	mov	x22, 0
 	mov	x23, 0
 #endif /* RESET_TO_BL31 */
+
+	/* --------------------------------------------------------------------
+	 * If PIE is enabled, fixup the Global descriptor Table and dynamic
+	 * relocations
+	 * --------------------------------------------------------------------
+	 */
+#if ENABLE_PIE
+	mov_imm	x0, BL31_BASE
+	mov_imm	x1, BL31_LIMIT
+	bl	fixup_gdt_reloc
+#endif /* ENABLE_PIE */
+
 	/* ---------------------------------------------
 	 * Perform platform specific early arch. setup
 	 * ---------------------------------------------
@@ -124,7 +137,7 @@ func bl31_warm_entrypoint
 	 * timestamp collection will need to do cache maintenance prior
 	 * to timestamp update.
 	 */
-	pmf_calc_timestamp_addr rt_instr_svc RT_INSTR_EXIT_HW_LOW_PWR
+	pmf_calc_timestamp_addr rt_instr_svc, RT_INSTR_EXIT_HW_LOW_PWR
 	mrs	x1, cntpct_el0
 	str	x1, [x0]
 #endif
@@ -180,7 +193,7 @@ func bl31_warm_entrypoint
 	bl	psci_warmboot_entrypoint
 
 #if ENABLE_RUNTIME_INSTRUMENTATION
-	pmf_calc_timestamp_addr rt_instr_svc RT_INSTR_EXIT_PSCI
+	pmf_calc_timestamp_addr rt_instr_svc, RT_INSTR_EXIT_PSCI
 	mov	x19, x0
 
 	/*

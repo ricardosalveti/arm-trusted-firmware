@@ -9,7 +9,11 @@
 #include <bl_common.h>
 #include <debug.h>
 #include <errno.h>
+#if TRUSTED_BOARD_BOOT
+#include <mbedtls_config.h>
+#endif
 #include <platform.h>
+#include <xlat_tables_compat.h>
 
 /*
  * The following platform functions are weakly defined. The Platforms
@@ -21,6 +25,7 @@
 #pragma weak bl2_plat_handle_pre_image_load
 #pragma weak bl2_plat_handle_post_image_load
 #pragma weak plat_try_next_boot_source
+#pragma weak plat_get_mbedtls_heap
 
 void bl2_el3_plat_prepare_exit(void)
 {
@@ -36,7 +41,6 @@ void bl2_plat_preload_setup(void)
 {
 }
 
-#if LOAD_IMAGE_V2
 int bl2_plat_handle_pre_image_load(unsigned int image_id)
 {
 	return 0;
@@ -46,23 +50,63 @@ int bl2_plat_handle_post_image_load(unsigned int image_id)
 {
 	return 0;
 }
-#endif
 
 int plat_try_next_boot_source(void)
 {
 	return 0;
 }
 
-#if !ERROR_DEPRECATED
-#pragma weak bl2_early_platform_setup2
+#if TRUSTED_BOARD_BOOT
+/*
+ * The following default implementation of the function simply returns the
+ * by-default allocated heap.
+ */
+int plat_get_mbedtls_heap(void **heap_addr, size_t *heap_size)
+{
+	static unsigned char heap[TF_MBEDTLS_HEAP_SIZE];
+
+	assert(heap_addr != NULL);
+	assert(heap_size != NULL);
+
+	*heap_addr = heap;
+	*heap_size = sizeof(heap);
+	return 0;
+}
+#endif /* TRUSTED_BOARD_BOOT */
 
 /*
- * The following platform API implementation that allow compatibility for
- * the older platform APIs.
+ * Set up the page tables for the generic and platform-specific memory regions.
+ * The size of the Trusted SRAM seen by the BL image must be specified as well
+ * as an array specifying the generic memory regions which can be;
+ * - Code section;
+ * - Read-only data section;
+ * - Init code section, if applicable
+ * - Coherent memory region, if applicable.
  */
-void bl2_early_platform_setup2(u_register_t arg0, u_register_t arg1,
-			u_register_t arg2, u_register_t arg3)
+
+void __init setup_page_tables(const mmap_region_t *bl_regions,
+			      const mmap_region_t *plat_regions)
 {
-	bl2_early_platform_setup((void *)arg1);
-}
+#if LOG_LEVEL >= LOG_LEVEL_VERBOSE
+	const mmap_region_t *regions = bl_regions;
+
+	while (regions->size != 0U) {
+		VERBOSE("Region: 0x%lx - 0x%lx has attributes 0x%x\n",
+				regions->base_va,
+				regions->base_va + regions->size,
+				regions->attr);
+		regions++;
+	}
 #endif
+	/*
+	 * Map the Trusted SRAM with appropriate memory attributes.
+	 * Subsequent mappings will adjust the attributes for specific regions.
+	 */
+	mmap_add(bl_regions);
+
+	/* Now (re-)map the platform-specific memory regions */
+	mmap_add(plat_regions);
+
+	/* Create the page tables to reflect the above mappings */
+	init_xlat_tables();
+}

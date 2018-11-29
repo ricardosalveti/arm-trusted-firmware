@@ -3,21 +3,21 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#ifndef __PLAT_ARM_H__
-#define __PLAT_ARM_H__
+#ifndef PLAT_ARM_H
+#define PLAT_ARM_H
 
-#include <arm_xlat_tables.h>
 #include <bakery_lock.h>
 #include <cassert.h>
 #include <cpu_data.h>
 #include <stdint.h>
+#include <spinlock.h>
 #include <tzc_common.h>
 #include <utils_def.h>
+#include <xlat_tables_compat.h>
 
 /*******************************************************************************
  * Forward declarations
  ******************************************************************************/
-struct bl31_params;
 struct meminfo;
 struct image_info;
 struct bl_params;
@@ -25,7 +25,7 @@ struct bl_params;
 typedef struct arm_tzc_regions_info {
 	unsigned long long base;
 	unsigned long long end;
-	tzc_region_attributes_t sec_attr;
+	unsigned int sec_attr;
 	unsigned int nsaid_permissions;
 } arm_tzc_regions_info_t;
 
@@ -66,11 +66,7 @@ typedef struct arm_tzc_regions_info {
 		<= MAX_MMAP_REGIONS,					  \
 		assert_max_mmap_regions);
 
-/*
- * Utility functions common to ARM standard platforms
- */
-void arm_setup_page_tables(const mmap_region_t bl_regions[],
-			   const mmap_region_t plat_regions[]);
+void arm_setup_romlib(void);
 
 #if defined(IMAGE_BL31) || (defined(AARCH32) && defined(IMAGE_BL32))
 /*
@@ -79,6 +75,14 @@ void arm_setup_page_tables(const mmap_region_t bl_regions[],
  */
 #define ARM_INSTANTIATE_LOCK	static DEFINE_BAKERY_LOCK(arm_lock)
 #define ARM_LOCK_GET_INSTANCE	(&arm_lock)
+
+#if !HW_ASSISTED_COHERENCY
+#define ARM_SCMI_INSTANTIATE_LOCK	DEFINE_BAKERY_LOCK(arm_scmi_lock)
+#else
+#define ARM_SCMI_INSTANTIATE_LOCK	spinlock_t arm_scmi_lock
+#endif
+#define ARM_SCMI_LOCK_GET_INSTANCE	(&arm_scmi_lock)
+
 /*
  * These are wrapper macros to the Coherent Memory Bakery Lock API.
  */
@@ -195,13 +199,8 @@ void arm_bl2u_platform_setup(void);
 void arm_bl2u_plat_arch_setup(void);
 
 /* BL31 utility functions */
-#if LOAD_IMAGE_V2
 void arm_bl31_early_platform_setup(void *from_bl2, uintptr_t soc_fw_config,
 				uintptr_t hw_config, void *plat_params_from_bl2);
-#else
-void arm_bl31_early_platform_setup(struct bl31_params *from_bl2, uintptr_t soc_fw_config,
-				uintptr_t hw_config, void *plat_params_from_bl2);
-#endif /* LOAD_IMAGE_V2 */
 void arm_bl31_platform_setup(void);
 void arm_bl31_plat_runtime_setup(void);
 void arm_bl31_plat_arch_setup(void);
@@ -221,6 +220,14 @@ int arm_io_is_toc_valid(void);
 void arm_load_tb_fw_config(void);
 void arm_bl2_set_tb_cfg_addr(void *dtb);
 void arm_bl2_dyn_cfg_init(void);
+void arm_bl1_set_mbedtls_heap(void);
+int arm_get_mbedtls_heap(void **heap_addr, size_t *heap_size);
+
+/*
+ * Free the memory storing initialization code only used during an images boot
+ * time so it can be reclaimed for runtime data
+ */
+void arm_free_init_memory(void);
 
 /*
  * Mandatory functions required in ARM standard platforms
@@ -241,18 +248,18 @@ void plat_arm_interconnect_init(void);
 void plat_arm_interconnect_enter_coherency(void);
 void plat_arm_interconnect_exit_coherency(void);
 void plat_arm_program_trusted_mailbox(uintptr_t address);
+int plat_arm_bl1_fwu_needed(void);
+void plat_arm_error_handler(int err);
 
 #if ARM_PLAT_MT
 unsigned int plat_arm_get_cpu_pe_count(u_register_t mpidr);
 #endif
 
-#if LOAD_IMAGE_V2
 /*
  * This function is called after loading SCP_BL2 image and it is used to perform
  * any platform-specific actions required to handle the SCP firmware.
  */
 int plat_arm_bl2_handle_scp_bl2(struct image_info *scp_bl2_image_info);
-#endif
 
 /*
  * Optional functions required in ARM standard platforms
@@ -285,4 +292,4 @@ extern plat_psci_ops_t plat_arm_psci_pm_ops;
 extern const mmap_region_t plat_arm_mmap[];
 extern const unsigned int arm_pm_idle_states[];
 
-#endif /* __PLAT_ARM_H__ */
+#endif /* PLAT_ARM_H */

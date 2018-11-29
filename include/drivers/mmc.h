@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef __MMC_H__
-#define __MMC_H__
+#ifndef MMC_H
+#define MMC_H
 
 #include <stdint.h>
 #include <utils_def.h>
@@ -36,7 +36,21 @@
 #define OCR_VDD_MIN_2V0			GENMASK(14, 8)
 #define OCR_VDD_MIN_1V7			BIT(7)
 
-#define MMC_RESPONSE_R(_x)		U(_x)
+#define MMC_RSP_48			BIT(0)
+#define MMC_RSP_136			BIT(1)		/* 136 bit response */
+#define MMC_RSP_CRC			BIT(2)		/* expect valid crc */
+#define MMC_RSP_CMD_IDX			BIT(3)		/* response contains cmd idx */
+#define MMC_RSP_BUSY			BIT(4)		/* device may be busy */
+
+/* JEDEC 4.51 chapter 6.12 */
+#define MMC_RESPONSE_R1			(MMC_RSP_48 | MMC_RSP_CMD_IDX | MMC_RSP_CRC)
+#define MMC_RESPONSE_R1B		(MMC_RESPONSE_R1 | MMC_RSP_BUSY)
+#define MMC_RESPONSE_R2			(MMC_RSP_48 | MMC_RSP_136 | MMC_RSP_CRC)
+#define MMC_RESPONSE_R3			(MMC_RSP_48)
+#define MMC_RESPONSE_R4			(MMC_RSP_48)
+#define MMC_RESPONSE_R5			(MMC_RSP_48 | MMC_RSP_CRC | MMC_RSP_CMD_IDX)
+#define MMC_RESPONSE_R6			(MMC_RSP_48 | MMC_RSP_CRC | MMC_RSP_CMD_IDX)
+#define MMC_RESPONSE_R7			(MMC_RSP_48 | MMC_RSP_CRC | MMC_RSP_CMD_IDX)
 
 /* Value randomly chosen for eMMC RCA, it should be > 1 */
 #define MMC_FIX_RCA			6
@@ -208,15 +222,14 @@ struct mmc_device_info {
 	enum mmc_device_type	mmc_dev_type;	/* Type of MMC */
 };
 
-size_t mmc_read_blocks(unsigned int lba, uintptr_t buf, size_t size);
-size_t mmc_write_blocks(unsigned int lba, const uintptr_t buf, size_t size);
-size_t mmc_erase_blocks(unsigned int lba, size_t size);
-size_t mmc_rpmb_read_blocks(unsigned int lba, uintptr_t buf, size_t size);
-size_t mmc_rpmb_write_blocks(unsigned int lba, const uintptr_t buf,
-			     size_t size);
-size_t mmc_rpmb_erase_blocks(unsigned int lba, size_t size);
+size_t mmc_read_blocks(int lba, uintptr_t buf, size_t size);
+size_t mmc_write_blocks(int lba, const uintptr_t buf, size_t size);
+size_t mmc_erase_blocks(int lba, size_t size);
+size_t mmc_rpmb_read_blocks(int lba, uintptr_t buf, size_t size);
+size_t mmc_rpmb_write_blocks(int lba, const uintptr_t buf, size_t size);
+size_t mmc_rpmb_erase_blocks(int lba, size_t size);
 int mmc_init(const struct mmc_ops *ops_ptr, unsigned int clk,
 	     unsigned int width, unsigned int flags,
 	     struct mmc_device_info *device_info);
 
-#endif	/* __MMC_H__ */
+#endif /* MMC_H */

@@ -6,6 +6,7 @@
 #include <arch.h>
 #include <asm_macros.S>
 #include <assert_macros.S>
+#define USE_FINISH_CONSOLE_REG_2
 #include <console_macros.S>
 #include <pl011.h>
 
@@ -85,8 +86,9 @@ endfunc console_pl011_core_init
 	.globl console_pl011_register
 
 	/* -----------------------------------------------
-	 * int console_pl011_register(console_pl011_t *console,
-		uintptr_t base, uint32_t clk, uint32_t baud)
+	 * int console_pl011_register(uintptr_t baseaddr,
+	 *     uint32_t clock, uint32_t baud,
+	 *     console_pl011_t *console);
 	 * Function to initialize and register a new PL011
 	 * console. Storage passed in for the console struct
 	 * *must* be persistent (i.e. not from the stack).
@@ -109,7 +111,7 @@ func console_pl011_register
 
 	mov	x0, x6
 	mov	x30, x7
-	finish_console_register pl011
+	finish_console_register pl011 putc=1, getc=1, flush=1
 
 register_fail:
 	ret	x7

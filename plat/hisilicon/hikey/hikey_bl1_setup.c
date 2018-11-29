@@ -7,15 +7,15 @@
 #include <arch_helpers.h>
 #include <assert.h>
 #include <bl_common.h>
-#include <console.h>
 #include <debug.h>
 #include <dw_mmc.h>
-#include <emmc.h>
 #include <errno.h>
 #include <hi6220.h>
 #include <hikey_def.h>
 #include <hikey_layout.h>
+#include <mmc.h>
 #include <mmio.h>
+#include <pl011.h>
 #include <platform.h>
 #include <string.h>
 #include <tbbr/tbbr_img_desc.h>
@@ -25,6 +25,7 @@
 
 /* Data structure which holds the extents of the trusted RAM for BL1 */
 static meminfo_t bl1_tzram_layout;
+static console_pl011_t console;
 
 enum {
 	BOOT_NORMAL = 0,
@@ -37,35 +38,14 @@ meminfo_t *bl1_plat_sec_mem_layout(void)
 	return &bl1_tzram_layout;
 }
 
-/*******************************************************************************
- * Function that takes a memory layout into which BL2 has been loaded and
- * populates a new memory layout for BL2 that ensures that BL1's data sections
- * resident in secure RAM are not visible to BL2.
- ******************************************************************************/
-void bl1_init_bl2_mem_layout(const meminfo_t *bl1_mem_layout,
-			     meminfo_t *bl2_mem_layout)
-{
-
-	assert(bl1_mem_layout != NULL);
-	assert(bl2_mem_layout != NULL);
-
-	/*
-	 * Cannot remove BL1 RW data from the scope of memory visible to BL2
-	 * like arm platforms because they overlap in hikey
-	 */
-	bl2_mem_layout->total_base = BL2_BASE;
-	bl2_mem_layout->total_size = BL32_SRAM_LIMIT - BL2_BASE;
-
-	flush_dcache_range((unsigned long)bl2_mem_layout, sizeof(meminfo_t));
-}
-
 /*
  * Perform any BL1 specific platform actions.
  */
 void bl1_early_platform_setup(void)
 {
 	/* Initialize the console to provide early debug support */
-	console_init(CONSOLE_BASE, PL011_UART_CLK_IN_HZ, PL011_BAUDRATE);
+	console_pl011_register(CONSOLE_BASE, PL011_UART_CLK_IN_HZ,
+			       PL011_BAUDRATE, &console);
 
 	/* Allow BL1 to see the whole Trusted RAM */
 	bl1_tzram_layout.total_base = BL1_RW_BASE;
@@ -97,6 +77,7 @@ void bl1_plat_arch_setup(void)
 void bl1_platform_setup(void)
 {
 	dw_mmc_params_t params;
+	struct mmc_device_info info;
 
 	assert((HIKEY_BL1_MMC_DESC_BASE >= SRAM_BASE) &&
 	       ((SRAM_BASE + SRAM_SIZE) >=
@@ -115,9 +96,10 @@ void bl1_platform_setup(void)
 	params.desc_base = HIKEY_BL1_MMC_DESC_BASE;
 	params.desc_size = 1 << 20;
 	params.clk_rate = 24 * 1000 * 1000;
-	params.bus_width = EMMC_BUS_WIDTH_8;
-	params.flags = EMMC_FLAG_CMD23;
-	dw_mmc_init(&params);
+	params.bus_width = MMC_BUS_WIDTH_8;
+	params.flags = MMC_FLAG_CMD23;
+	info.mmc_dev_type = MMC_IS_EMMC;
+	dw_mmc_init(&params, &info);
 
 	hikey_io_setup();
 }

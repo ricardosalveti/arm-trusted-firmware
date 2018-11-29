@@ -5,14 +5,15 @@
  */
 
 #include <assert.h>
+#include <bl_common.h>
 #include <console.h>
-#include <mmio.h>
 #include <gicv2.h>
+#include <interrupt_props.h>
+#include <mmio.h>
+
 #include "ls_16550.h"
 #include "plat_ls.h"
 #include "soc.h"
-
-#define BL31_END (uintptr_t)(&__BL31_END__)
 
 /*
  * Placeholder variables for copying the arguments that have been passed to
@@ -21,15 +22,16 @@
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;
 
-const unsigned int g0_interrupt_array1[] = {
-	9
+static const interrupt_prop_t g0_interrupt_props[] = {
+	INTR_PROP_DESC(9, GIC_HIGHEST_SEC_PRIORITY,
+		       GICV2_INTR_GROUP0, GIC_INTR_CFG_LEVEL),
 };
 
 gicv2_driver_data_t ls_gic_data = {
 	.gicd_base = GICD_BASE,
 	.gicc_base = GICC_BASE,
-	.g0_interrupt_num = ARRAY_SIZE(g0_interrupt_array1),
-	.g0_interrupt_array = g0_interrupt_array1,
+	.interrupt_props = g0_interrupt_props,
+	.interrupt_props_num = ARRAY_SIZE(g0_interrupt_props),
 };
 
 
@@ -56,7 +58,7 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
 /*******************************************************************************
  * Perform any BL31 early platform setup common to Layerscape platforms.
  * Here is an opportunity to copy parameters passed by the calling EL (S-EL1
- * in BL2 & S-EL3 in BL1) before they are lost (potentially). This needs to be
+ * in BL2 & EL3 in BL1) before they are lost (potentially). This needs to be
  * done before the MMU is initialized so that the memory layout can be used
  * while creating page tables. BL2 has flushed this information to memory, so
  * we are guaranteed to pick up good data.
@@ -168,7 +170,7 @@ void ls_bl31_platform_setup(void)
 
 	/* Enable and initialize the System level generic timer */
 	mmio_write_32(LS1043_SYS_CNTCTL_BASE + CNTCR_OFF,
-			CNTCR_FCREQ(0) | CNTCR_EN);
+			CNTCR_FCREQ(0U) | CNTCR_EN);
 
 	VERBOSE("Leave arm_bl31_platform_setup\n");
 }

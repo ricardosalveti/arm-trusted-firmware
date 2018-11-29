@@ -4,8 +4,8 @@
  * SPDX-License-Identifier:     BSD-3-Clause
  * https://spdx.org/licenses
  */
-#ifndef _ARO_H_
-#define _ARO_H_
+#ifndef ARO_H
+#define ARO_H
 
 enum hws_freq {
 	CPU_FREQ_2000,
@@ -29,6 +29,7 @@ enum cpu_clock_freq_mode {
 	CPU_1800_DDR_1050_RCLK_1050 = 0x7,
 	CPU_1600_DDR_900_RCLK_900   = 0x0B,
 	CPU_1600_DDR_1050_RCLK_1050 = 0x0D,
+	CPU_1600_DDR_1200_RCLK_1200 = 0x0D,
 	CPU_1600_DDR_900_RCLK_900_2 = 0x0E,
 	CPU_1000_DDR_650_RCLK_650   = 0x13,
 	CPU_1300_DDR_800_RCLK_800   = 0x14,
@@ -43,4 +44,4 @@ enum cpu_clock_freq_mode {
 
 int init_aro(void);
 
-#endif /* _ARO_H_ */
+#endif /* ARO_H */

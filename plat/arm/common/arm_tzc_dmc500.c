@@ -7,6 +7,7 @@
 #include <arm_def.h>
 #include <assert.h>
 #include <debug.h>
+#include <plat_arm.h>
 #include <platform_def.h>
 #include <tzc_dmc500.h>
 
@@ -19,7 +20,7 @@ void arm_tzc_dmc500_setup(tzc_dmc500_driver_data_t *plat_driver_data,
 			const arm_tzc_regions_info_t *tzc_regions)
 {
 #ifndef EL3_PAYLOAD_BASE
-	int region_index = 1;
+	unsigned int region_index = 1U;
 	const arm_tzc_regions_info_t *p;
 	const arm_tzc_regions_info_t init_tzc_regions[] = {
 		ARM_TZC_REGIONS_DEF,
@@ -49,7 +50,7 @@ void arm_tzc_dmc500_setup(tzc_dmc500_driver_data_t *plat_driver_data,
 		region_index++;
 	}
 
-	INFO("Total %d regions set.\n", region_index);
+	INFO("Total %u regions set.\n", region_index);
 
 #else
 	/* Allow secure access only to DRAM for EL3 payloads */

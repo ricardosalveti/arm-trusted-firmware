@@ -156,11 +156,12 @@ endfunc denver_disable_ext_debug
 	 * ----------------------------------------------------
 	 */
 func denver_enable_dco
-	mrs	x0, mpidr_el1
-	and	x0, x0, #0xF
+	mov	x3, x30
+	bl	plat_my_core_pos
 	mov	x1, #1
 	lsl	x1, x1, x0
 	msr	s3_0_c15_c0_2, x1
+	mov	x30, x3
 	ret
 endfunc denver_enable_dco
 
@@ -170,9 +171,10 @@ endfunc denver_enable_dco
 	 */
 func denver_disable_dco
 
+	mov	x3, x30
+
 	/* turn off background work */
-	mrs	x0, mpidr_el1
-	and	x0, x0, #0xF
+	bl	plat_my_core_pos
 	mov	x1, #1
 	lsl	x1, x1, x0
 	lsl	x2, x1, #16
@@ -186,8 +188,37 @@ func denver_disable_dco
 	and	x2, x2, x1
 	cbnz	x2, 1b
 
+	mov	x30, x3
 	ret
 endfunc denver_disable_dco
+
+func check_errata_cve_2017_5715
+	mov	x0, #ERRATA_MISSING
+#if WORKAROUND_CVE_2017_5715
+	/*
+	 * Check if the CPU supports the special instruction
+	 * required to flush the indirect branch predictor and
+	 * RSB. Support for this operation can be determined by
+	 * comparing bits 19:16 of ID_AFR0_EL1 with 0b0001.
+	 */
+	mrs	x1, id_afr0_el1
+	mov	x2, #0x10000
+	and	x1, x1, x2
+	cbz	x1, 1f
+	mov	x0, #ERRATA_APPLIES
+1:
+#endif
+	ret
+endfunc check_errata_cve_2017_5715
+
+func check_errata_cve_2018_3639
+#if WORKAROUND_CVE_2018_3639
+	mov	x0, #ERRATA_APPLIES
+#else
+	mov	x0, #ERRATA_MISSING
+#endif
+	ret
+endfunc check_errata_cve_2018_3639
 
 	/* -------------------------------------------------
 	 * The CPU Ops reset function for Denver.
@@ -213,6 +244,34 @@ func denver_reset_func
 	csel	x0, x1, x2, ne
 	msr	vbar_el3, x0
 #endif
+
+#if WORKAROUND_CVE_2018_3639
+	/*
+	 * Denver CPUs with DENVER_MIDR_PN3 or earlier, use different
+	 * bits in the ACTLR_EL3 register to disable speculative
+	 * store buffer and memory disambiguation.
+	 */
+	mrs	x0, midr_el1
+	mov_imm	x1, DENVER_MIDR_PN4
+	cmp	x0, x1
+	mrs	x0, actlr_el3
+	mov	x1, #(DENVER_CPU_DIS_MD_EL3 | DENVER_CPU_DIS_SSB_EL3)
+	mov	x2, #(DENVER_PN4_CPU_DIS_MD_EL3 | DENVER_PN4_CPU_DIS_SSB_EL3)
+	csel	x3, x1, x2, ne
+	orr	x0, x0, x3
+	msr	actlr_el3, x0
+	isb
+	dsb	sy
+#endif
+
+	/* ----------------------------------------------------
+	 * Reset ACTLR.PMSTATE to C1 state
+	 * ----------------------------------------------------
+	 */
+	mrs	x0, actlr_el1
+	bic	x0, x0, #DENVER_CPU_PMSTATE_MASK
+	orr	x0, x0, #DENVER_CPU_PMSTATE_C1
+	msr	actlr_el1, x0
 
 	/* ----------------------------------------------------
 	 * Enable dynamic code optimizer (DCO)
@@ -248,6 +307,28 @@ func denver_cluster_pwr_dwn
 	ret
 endfunc denver_cluster_pwr_dwn
 
+#if REPORT_ERRATA
+	/*
+	 * Errata printing function for Denver. Must follow AAPCS.
+	 */
+func denver_errata_report
+	stp	x8, x30, [sp, #-16]!
+
+	bl	cpu_get_rev_var
+	mov	x8, x0
+
+	/*
+	 * Report all errata. The revision-variant information is passed to
+	 * checking functions of each errata.
+	 */
+	report_errata WORKAROUND_CVE_2017_5715, denver, cve_2017_5715
+	report_errata WORKAROUND_CVE_2018_3639, denver, cve_2018_3639
+
+	ldp	x8, x30, [sp], #16
+	ret
+endfunc denver_errata_report
+#endif
+
 	/* ---------------------------------------------
 	 * This function provides Denver specific
 	 * register information for crash reporting.
@@ -267,27 +348,37 @@ func denver_cpu_reg_dump
 	ret
 endfunc denver_cpu_reg_dump
 
-declare_cpu_ops denver, DENVER_MIDR_PN0, \
+declare_cpu_ops_wa denver, DENVER_MIDR_PN0, \
 	denver_reset_func, \
+	check_errata_cve_2017_5715, \
+	CPU_NO_EXTRA2_FUNC, \
 	denver_core_pwr_dwn, \
 	denver_cluster_pwr_dwn
 
-declare_cpu_ops denver, DENVER_MIDR_PN1, \
+declare_cpu_ops_wa denver, DENVER_MIDR_PN1, \
 	denver_reset_func, \
+	check_errata_cve_2017_5715, \
+	CPU_NO_EXTRA2_FUNC, \
 	denver_core_pwr_dwn, \
 	denver_cluster_pwr_dwn
 
-declare_cpu_ops denver, DENVER_MIDR_PN2, \
+declare_cpu_ops_wa denver, DENVER_MIDR_PN2, \
 	denver_reset_func, \
+	check_errata_cve_2017_5715, \
+	CPU_NO_EXTRA2_FUNC, \
 	denver_core_pwr_dwn, \
 	denver_cluster_pwr_dwn
 
-declare_cpu_ops denver, DENVER_MIDR_PN3, \
+declare_cpu_ops_wa denver, DENVER_MIDR_PN3, \
 	denver_reset_func, \
+	check_errata_cve_2017_5715, \
+	CPU_NO_EXTRA2_FUNC, \
 	denver_core_pwr_dwn, \
 	denver_cluster_pwr_dwn
 
-declare_cpu_ops denver, DENVER_MIDR_PN4, \
+declare_cpu_ops_wa denver, DENVER_MIDR_PN4, \
 	denver_reset_func, \
+	check_errata_cve_2017_5715, \
+	CPU_NO_EXTRA2_FUNC, \
 	denver_core_pwr_dwn, \
 	denver_cluster_pwr_dwn

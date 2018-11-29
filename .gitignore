@@ -11,7 +11,10 @@ build/
 
 # Ignore build products from tools
 tools/**/*.o
-tools/fip_create/
+tools/renesas/rcar_layout_create/*.bin
+tools/renesas/rcar_layout_create/*.srec
+tools/renesas/rcar_layout_create/*.map
+tools/renesas/rcar_layout_create/*.elf
 tools/fiptool/fiptool
 tools/fiptool/fiptool.exe
 tools/cert_create/src/*.o

@@ -6,7 +6,6 @@
 
 #include <arch.h>
 #include <arm_def.h>
-#include <arm_xlat_tables.h>
 #include <assert.h>
 #include <bl1.h>
 #include <bl_common.h>
@@ -15,6 +14,8 @@
 #include <platform_def.h>
 #include <sp805.h>
 #include <utils.h>
+#include <xlat_tables_compat.h>
+
 #include "../../../bl1/bl1_private.h"
 
 /* Weak definitions may be overridden in specific ARM standard platform */
@@ -23,20 +24,33 @@
 #pragma weak bl1_platform_setup
 #pragma weak bl1_plat_sec_mem_layout
 #pragma weak bl1_plat_prepare_exit
+#pragma weak bl1_plat_get_next_image_id
+#pragma weak plat_arm_bl1_fwu_needed
 
 #define MAP_BL1_TOTAL		MAP_REGION_FLAT(			\
 					bl1_tzram_layout.total_base,	\
 					bl1_tzram_layout.total_size,	\
 					MT_MEMORY | MT_RW | MT_SECURE)
-#define MAP_BL1_CODE		MAP_REGION_FLAT(			\
+/*
+ * If SEPARATE_CODE_AND_RODATA=1 we define a region for each section
+ * otherwise one region is defined containing both
+ */
+#if SEPARATE_CODE_AND_RODATA
+#define MAP_BL1_RO		MAP_REGION_FLAT(			\
 					BL_CODE_BASE,			\
 					BL1_CODE_END - BL_CODE_BASE,	\
-					MT_CODE | MT_SECURE)
-#define MAP_BL1_RO_DATA		MAP_REGION_FLAT(			\
+					MT_CODE | MT_SECURE),		\
+				MAP_REGION_FLAT(			\
 					BL1_RO_DATA_BASE,		\
 					BL1_RO_DATA_END			\
 						- BL_RO_DATA_BASE,	\
 					MT_RO_DATA | MT_SECURE)
+#else
+#define MAP_BL1_RO		MAP_REGION_FLAT(			\
+					BL_CODE_BASE,			\
+					BL1_CODE_END - BL_CODE_BASE,	\
+					MT_CODE | MT_SECURE)
+#endif
 
 /* Data structure which holds the extents of the trusted SRAM for BL1*/
 static meminfo_t bl1_tzram_layout;
@@ -63,16 +77,6 @@ void arm_bl1_early_platform_setup(void)
 	/* Allow BL1 to see the whole Trusted RAM */
 	bl1_tzram_layout.total_base = ARM_BL_RAM_BASE;
 	bl1_tzram_layout.total_size = ARM_BL_RAM_SIZE;
-
-#if !LOAD_IMAGE_V2
-	/* Calculate how much RAM BL1 is using and how much remains free */
-	bl1_tzram_layout.free_base = ARM_BL_RAM_BASE;
-	bl1_tzram_layout.free_size = ARM_BL_RAM_SIZE;
-	reserve_mem(&bl1_tzram_layout.free_base,
-		    &bl1_tzram_layout.free_size,
-		    BL1_RAM_BASE,
-		    BL1_RAM_LIMIT - BL1_RAM_BASE);
-#endif /* LOAD_IMAGE_V2 */
 }
 
 void bl1_early_platform_setup(void)
@@ -98,24 +102,35 @@ void bl1_early_platform_setup(void)
  *****************************************************************************/
 void arm_bl1_plat_arch_setup(void)
 {
-#if USE_COHERENT_MEM
-	/* ARM platforms dont use coherent memory in BL1 */
+#if USE_COHERENT_MEM && !ARM_CRYPTOCELL_INTEG
+	/*
+	 * Ensure ARM platforms don't use coherent memory in BL1 unless
+	 * cryptocell integration is enabled.
+	 */
 	assert((BL_COHERENT_RAM_END - BL_COHERENT_RAM_BASE) == 0U);
 #endif
 
 	const mmap_region_t bl_regions[] = {
 		MAP_BL1_TOTAL,
-		MAP_BL1_CODE,
-		MAP_BL1_RO_DATA,
+		MAP_BL1_RO,
+#if USE_ROMLIB
+		ARM_MAP_ROMLIB_CODE,
+		ARM_MAP_ROMLIB_DATA,
+#endif
+#if ARM_CRYPTOCELL_INTEG
+		ARM_MAP_BL_COHERENT_RAM,
+#endif
 		{0}
 	};
 
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+	setup_page_tables(bl_regions, plat_arm_get_mmap());
 #ifdef AARCH32
-	enable_mmu_secure(0);
+	enable_mmu_svc_mon(0);
 #else
 	enable_mmu_el3(0);
 #endif /* AARCH32 */
+
+	arm_setup_romlib();
 }
 
 void bl1_plat_arch_setup(void)
@@ -131,9 +146,12 @@ void arm_bl1_platform_setup(void)
 {
 	/* Initialise the IO layer and register platform IO devices */
 	plat_arm_io_setup();
-#if LOAD_IMAGE_V2
 	arm_load_tb_fw_config();
-#endif
+#if TRUSTED_BOARD_BOOT
+	/* Share the Mbed TLS heap info with other images */
+	arm_bl1_set_mbedtls_heap();
+#endif /* TRUSTED_BOARD_BOOT */
+
 	/*
 	 * Allow access to the System counter timer module and program
 	 * counter frequency for non secure images during FWU
@@ -166,13 +184,22 @@ void bl1_plat_prepare_exit(entry_point_info_t *ep_info)
 #endif
 }
 
+/*
+ * On Arm platforms, the FWU process is triggered when the FIP image has
+ * been tampered with.
+ */
+int plat_arm_bl1_fwu_needed(void)
+{
+	return (arm_io_is_toc_valid() != 1);
+}
+
 /*******************************************************************************
  * The following function checks if Firmware update is needed,
  * by checking if TOC in FIP image is valid or not.
  ******************************************************************************/
 unsigned int bl1_plat_get_next_image_id(void)
 {
-	if (!arm_io_is_toc_valid())
+	if (plat_arm_bl1_fwu_needed() != 0)
 		return NS_BL1U_IMAGE_ID;
 
 	return BL2_IMAGE_ID;

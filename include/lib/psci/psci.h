@@ -10,9 +10,6 @@
 #include <bakery_lock.h>
 #include <bl_common.h>
 #include <platform_def.h>	/* for PLAT_NUM_PWR_DOMAINS */
-#if ENABLE_PLAT_COMPAT
-#include <psci_compat.h>
-#endif
 #include <psci_lib.h>		/* To maintain compatibility for SPDs */
 #include <utils_def.h>
 
@@ -171,7 +168,6 @@
 #ifndef __ASSEMBLY__
 
 #include <stdint.h>
-#include <types.h>
 
 /* Function to help build the psci capabilities bitfield */
 
@@ -306,10 +302,10 @@ typedef struct plat_psci_ops {
 	void (*pwr_domain_on_finish)(const psci_power_state_t *target_state);
 	void (*pwr_domain_suspend_finish)(
 				const psci_power_state_t *target_state);
-	void (*pwr_domain_pwr_down_wfi)(
-				const psci_power_state_t *target_state) __dead2;
-	void (*system_off)(void) __dead2;
-	void (*system_reset)(void) __dead2;
+	void __dead2 (*pwr_domain_pwr_down_wfi)(
+				const psci_power_state_t *target_state);
+	void __dead2 (*system_off)(void);
+	void __dead2 (*system_reset)(void);
 	int (*validate_power_state)(unsigned int power_state,
 				    psci_power_state_t *req_state);
 	int (*validate_ns_entrypoint)(uintptr_t ns_entrypoint);
@@ -350,12 +346,6 @@ int psci_node_hw_state(u_register_t target_cpu,
 int psci_features(unsigned int psci_fid);
 void __dead2 psci_power_down_wfi(void);
 void psci_arch_setup(void);
-
-/*
- * The below API is deprecated. This is now replaced by bl31_warmboot_entry in
- * AArch64.
- */
-void psci_entrypoint(void) __deprecated;
 
 #endif /*__ASSEMBLY__*/
 

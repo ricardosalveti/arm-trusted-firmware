@@ -81,11 +81,10 @@ void tsp_plat_arch_setup(void)
 
 	const mmap_region_t bl_regions[] = {
 		MAP_BL_TSP_TOTAL,
-		ARM_MAP_BL_CODE,
-		ARM_MAP_BL_RO_DATA,
+		ARM_MAP_BL_RO,
 		{0}
 	};
 
-	arm_setup_page_tables(bl_regions, plat_arm_get_mmap());
+	setup_page_tables(bl_regions, plat_arm_get_mmap());
 	enable_mmu_el1(0);
 }

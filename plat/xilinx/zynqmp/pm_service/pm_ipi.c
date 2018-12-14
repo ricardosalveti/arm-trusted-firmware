@@ -7,10 +7,10 @@
 #include <arch_helpers.h>
 #include <bakery_lock.h>
 #include <mmio.h>
+#include <plat_ipi.h>
 #include <plat_private.h>
 #include <platform.h>
 #include <arch_helpers.h>
-#include "../zynqmp_ipi.h"
 #include "pm_ipi.h"
 
 /* IPI message buffers */

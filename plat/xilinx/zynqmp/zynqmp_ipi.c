@@ -12,10 +12,10 @@
 #include <debug.h>
 #include <errno.h>
 #include <mmio.h>
+#include <plat_ipi.h>
 #include <plat_private.h>
 #include <runtime_svc.h>
 #include <string.h>
-#include "zynqmp_ipi.h"
 
 /*********************************************************************
  * Macros definitions

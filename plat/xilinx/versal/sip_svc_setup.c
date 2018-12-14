@@ -6,9 +6,11 @@
 
 /* Top level SMC handler for SiP calls. Dispatch PM calls to PM SMC handler. */
 
+#include "pm_svc_main.h"
 #include <common/debug.h>
 #include <common/runtime_svc.h>
 #include <tools_share/uuid.h>
+#include <plat_ipi.h>
 
 /* SMC function IDs for SiP Service queries */
 #define VERSAL_SIP_SVC_CALL_COUNT	0x8200ff00
@@ -36,6 +38,12 @@ DEFINE_SVC_UUID2(versal_sip_uuid,
  */
 static int32_t sip_svc_setup(void)
 {
+	/* Configure IPI data for versal */
+	versal_ipi_config_table_init();
+
+	/* PM implementation as SiP Service */
+	pm_setup();
+
 	return 0;
 }
 

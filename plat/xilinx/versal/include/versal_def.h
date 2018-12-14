@@ -106,4 +106,9 @@
 
 #define FPD_APU_CONFIG_0_VINITHI_SHIFT	8
 
+/* IPI registers and bitfields */
+#define IPI0_REG_BASE		0xFF330000
+#define IPI0_TRIG_BIT		(1 << 2)
+#define PMC_IPI_TRIG_BIT	(1 << 1)
+
 #endif /* VERSAL_DEF_H */

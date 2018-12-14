@@ -11,8 +11,8 @@
 #include <debug.h>
 #include <errno.h>
 #include <plat_arm.h>
+#include <plat_private.h>
 #include <platform.h>
-#include "zynqmp_private.h"
 
 #define BL31_END (unsigned long)(&__BL31_END__)
 

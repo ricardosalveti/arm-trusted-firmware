@@ -10,8 +10,8 @@
  */
 
 #include <errno.h>
+#include <plat_private.h>
 #include <runtime_svc.h>
-#include "../zynqmp_private.h"
 #include "pm_api_sys.h"
 #include "pm_client.h"
 #include "pm_ipi.h"

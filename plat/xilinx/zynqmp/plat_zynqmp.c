@@ -5,7 +5,7 @@
  */
 
 #include <platform.h>
-#include "zynqmp_private.h"
+#include <plat_private.h>
 
 int plat_core_pos_by_mpidr(u_register_t mpidr)
 {

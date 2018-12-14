@@ -7,11 +7,11 @@
 #include <debug.h>
 #include <generic_delay_timer.h>
 #include <mmio.h>
+#include <plat_private.h>
 #include <platform.h>
 #include <stdbool.h>
 #include <string.h>
 #include <xlat_tables.h>
-#include "../zynqmp_private.h"
 #include "pm_api_sys.h"
 
 /*

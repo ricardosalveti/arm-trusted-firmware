@@ -11,11 +11,11 @@
 #include <gicv2.h>
 #include <mmio.h>
 #include <plat_arm.h>
+#include <plat_private.h>
 #include <platform.h>
 #include <psci.h>
 #include "pm_api_sys.h"
 #include "pm_client.h"
-#include "zynqmp_private.h"
 
 uintptr_t zynqmp_sec_entry;
 

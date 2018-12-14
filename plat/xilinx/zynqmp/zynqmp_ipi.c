@@ -11,6 +11,7 @@
 #include <bakery_lock.h>
 #include <debug.h>
 #include <errno.h>
+#include <ipi.h>
 #include <mmio.h>
 #include <plat_ipi.h>
 #include <plat_private.h>
@@ -43,19 +44,8 @@
 #define IPI_IS_SECURE(I) ((zynqmp_ipi_table[(I)].secure_only & \
 			   IPI_SECURE_MASK) ? 1 : 0)
 
-/*********************************************************************
- * Struct definitions
- ********************************************************************/
-
-/* structure to maintain IPI configuration information */
-struct zynqmp_ipi_config {
-	unsigned int ipi_bit_mask;
-	unsigned int ipi_reg_base;
-	unsigned char secure_only;
-};
-
 /* ZynqMP ipi configuration table */
-const static struct zynqmp_ipi_config zynqmp_ipi_table[] = {
+const static struct ipi_config zynqmp_ipi_table[] = {
 	/* APU IPI */
 	{
 		.ipi_bit_mask = 0x1,

@@ -6,9 +6,9 @@
 
 #include <debug.h>
 #include <mmio.h>
+#include <plat_private.h>
 #include <platform.h>
 #include <psci.h>
-#include "versal_private.h"
 
 static uintptr_t versal_sec_entry;
 

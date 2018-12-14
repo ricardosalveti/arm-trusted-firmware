@@ -10,10 +10,10 @@
 #include <console.h>
 #include <debug.h>
 #include <errno.h>
+#include <plat_private.h>
 #include <platform.h>
 #include <pl011.h>
 #include <xlat_tables.h>
-#include "versal_private.h"
 
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;

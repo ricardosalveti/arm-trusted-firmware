@@ -7,10 +7,10 @@
 #include <debug.h>
 #include <generic_delay_timer.h>
 #include <mmio.h>
+#include <plat_private.h>
 #include <platform.h>
 #include <xlat_tables.h>
 #include "../versal_def.h"
-#include "../versal_private.h"
 
 /*
  * Table of regions to map using the MMU.

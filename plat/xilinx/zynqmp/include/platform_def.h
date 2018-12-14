@@ -11,7 +11,7 @@
 #include <gic_common.h>
 #include <interrupt_props.h>
 #include <utils_def.h>
-#include "../zynqmp_def.h"
+#include "zynqmp_def.h"
 
 /*******************************************************************************
  * Generic platform constants

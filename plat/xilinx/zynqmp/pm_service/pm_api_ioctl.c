@@ -12,13 +12,13 @@
 #include <delay_timer.h>
 #include <mmio.h>
 #include <platform.h>
+#include <zynqmp_def.h>
 #include "pm_api_clock.h"
 #include "pm_api_ioctl.h"
 #include "pm_api_sys.h"
 #include "pm_client.h"
 #include "pm_common.h"
 #include "pm_ipi.h"
-#include "../zynqmp_def.h"
 
 /**
  * pm_ioctl_get_rpu_oper_mode () - Get current RPU operation mode

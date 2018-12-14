@@ -11,6 +11,7 @@
 #include <bakery_lock.h>
 #include <debug.h>
 #include <errno.h>
+#include <ipi.h>
 #include <mmio.h>
 #include <plat_ipi.h>
 #include <plat_private.h>

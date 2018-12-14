@@ -15,7 +15,7 @@
 #include <lib/xlat_tables/xlat_tables.h>
 #include <plat/common/platform.h>
 
-#include "versal_private.h"
+#include <plat_private.h>
 
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;

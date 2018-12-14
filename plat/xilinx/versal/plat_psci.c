@@ -9,7 +9,7 @@
 #include <lib/psci/psci.h>
 #include <plat/common/platform.h>
 
-#include "versal_private.h"
+#include <plat_private.h>
 
 static uintptr_t versal_sec_entry;
 

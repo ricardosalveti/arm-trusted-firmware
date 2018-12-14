@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <plat_private.h>
 #include <platform_def.h>
 
 #include <common/interrupt_props.h>
@@ -11,7 +12,6 @@
 #include <lib/utils.h>
 #include <plat/common/platform.h>
 
-#include "versal_private.h"
 
 /******************************************************************************
  * The following functions are defined as weak to allow a platform to override

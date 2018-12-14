@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef VERSAL_PRIVATE_H
-#define VERSAL_PRIVATE_H
+#ifndef PLAT_PRIVATE_H
+#define PLAT_PRIVATE_H
 
 #include <lib/xlat_tables/xlat_tables.h>
 
@@ -21,4 +21,4 @@ void plat_versal_gic_pcpu_init(void);
 
 unsigned int versal_calc_core_pos(u_register_t mpidr);
 
-#endif /* VERSAL_PRIVATE_H */
+#endif /* PLAT_PRIVATE_H */

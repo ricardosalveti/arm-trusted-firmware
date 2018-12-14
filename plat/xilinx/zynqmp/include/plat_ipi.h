@@ -9,6 +9,7 @@
 #ifndef PLAT_IPI_H
 #define PLAT_IPI_H
 
+#include <ipi.h>
 #include <stdint.h>
 
 /*********************************************************************
@@ -42,6 +43,12 @@
 /*********************************************************************
  * IPI APIs declarations
  ********************************************************************/
+/* Configure IPI table for zynqmp */
+void zynqmp_ipi_config_table_init(void);
+
+/* Initialize IPI configuration table */
+void ipi_config_table_init(const struct ipi_config *ipi_table,
+			   uint32_t total_ipi);
 
 /* Validate IPI mailbox access */
 int ipi_mb_validate(uint32_t local, uint32_t remote, unsigned int is_secure);

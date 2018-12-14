@@ -42,6 +42,9 @@ static int32_t sip_svc_setup(void)
 {
 	int32_t ret;
 
+	/* Configure IPI data for ZynqMP */
+	zynqmp_ipi_config_table_init();
+
 	/* PM implementation as SiP Service */
 	ret = pm_setup();
 

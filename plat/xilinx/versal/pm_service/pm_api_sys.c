@@ -155,3 +155,78 @@ enum pm_ret_status pm_req_suspend(uint32_t target, uint8_t ack,
 	else
 		return pm_ipi_send(primary_proc, payload);
 }
+
+/**
+ * pm_request_device() - Request a device
+ * @device_id		Device ID
+ * @capabilities	Requested capabilities for the device
+ * @latency		Requested maximum latency
+ * @qos			Required Quality of Service
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_request_device(uint32_t device_id, uint32_t capabilities,
+				     uint32_t latency, uint32_t qos)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMC */
+	PM_PACK_PAYLOAD6(payload, PM_REQUEST_DEVICE, XPM_SUBSYSID_APU,
+			 device_id, capabilities, latency, qos);
+
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+}
+
+/**
+ * pm_release_device() - Release a device
+ * @device_id		Device ID
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_release_device(uint32_t device_id)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMC */
+	PM_PACK_PAYLOAD2(payload, PM_RELEASE_DEVICE, device_id);
+
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+}
+
+/**
+ * pm_set_requirement() - Set requirement for the device
+ * @device_id		Device ID
+ * @capabilities	Requested capabilities for the device
+ * @latency		Requested maximum latency
+ * @qos			Required Quality of Service
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_set_requirement(uint32_t device_id, uint32_t capabilities,
+				      uint32_t latency, uint32_t qos)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMC */
+	PM_PACK_PAYLOAD5(payload, PM_SET_REQUIREMENT, device_id, capabilities,
+			 latency, qos);
+
+	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+}
+
+/**
+ * pm_get_device_status() - Get device's status
+ * @device_id		Device ID
+ * @response		Buffer to store device status response
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_get_device_status(uint32_t device_id, uint32_t *response)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMC */
+	PM_PACK_PAYLOAD2(payload, PM_GET_DEVICE_STATUS, device_id);
+
+	return pm_ipi_send_sync(primary_proc, payload, response, 3);
+}

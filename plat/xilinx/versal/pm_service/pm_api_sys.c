@@ -9,6 +9,7 @@
  * IPI interrupts
  */
 
+#include <platform.h>
 #include <pm_common.h>
 #include <pm_ipi.h>
 #include "pm_api_sys.h"
@@ -26,6 +27,31 @@
 	pl[0] = (uint32_t)((uint32_t)((arg0) & 0xFF) | (PLM_MODULE_ID << 8)); \
 }
 
+#define PM_PACK_PAYLOAD2(pl, arg0, arg1) {	\
+	pl[1] = (uint32_t)(arg1);		\
+	PM_PACK_PAYLOAD1(pl, arg0);		\
+}
+
+#define PM_PACK_PAYLOAD3(pl, arg0, arg1, arg2) {	\
+	pl[2] = (uint32_t)(arg2);			\
+	PM_PACK_PAYLOAD2(pl, arg0, arg1);		\
+}
+
+#define PM_PACK_PAYLOAD4(pl, arg0, arg1, arg2, arg3) {	\
+	pl[3] = (uint32_t)(arg3);			\
+	PM_PACK_PAYLOAD3(pl, arg0, arg1, arg2);		\
+}
+
+#define PM_PACK_PAYLOAD5(pl, arg0, arg1, arg2, arg3, arg4) {	\
+	pl[4] = (uint32_t)(arg4);				\
+	PM_PACK_PAYLOAD4(pl, arg0, arg1, arg2, arg3);		\
+}
+
+#define PM_PACK_PAYLOAD6(pl, arg0, arg1, arg2, arg3, arg4, arg5) {	\
+	pl[5] = (uint32_t)(arg5);					\
+	PM_PACK_PAYLOAD5(pl, arg0, arg1, arg2, arg3, arg4);		\
+}
+
 /* PM API functions */
 
 /**
@@ -41,4 +67,91 @@ enum pm_ret_status pm_get_api_version(unsigned int *version)
 	/* Send request to the PMC */
 	PM_PACK_PAYLOAD1(payload, PM_GET_API_VERSION);
 	return pm_ipi_send_sync(primary_proc, payload, version, 1);
+}
+
+/**
+ * pm_self_suspend() - PM call for processor to suspend itself
+ * @nid		Node id of the processor or subsystem
+ * @latency	Requested maximum wakeup latency (not supported)
+ * @state	Requested state
+ * @address	Resume address
+ *
+ * This is a blocking call, it will return only once PMU has responded.
+ * On a wakeup, resume address will be automatically set by PMU.
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_self_suspend(uint32_t nid,
+				   unsigned int latency,
+				   unsigned int state,
+				   uintptr_t address)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+	unsigned int cpuid = plat_my_core_pos();
+	const struct pm_proc *proc = pm_get_proc(cpuid);
+
+	if (!proc) {
+		WARN("Failed to get proc %d\n", cpuid);
+		return PM_RET_ERROR_INTERNAL;
+	}
+
+	/*
+	 * Do client specific suspend operations
+	 * (e.g. set powerdown request bit)
+	 */
+	pm_client_suspend(proc, state);
+
+	/* Send request to the PLM */
+	PM_PACK_PAYLOAD6(payload, PM_SELF_SUSPEND, proc->node_id, latency,
+			 state, address, (address >> 32));
+	return pm_ipi_send_sync(proc, payload, NULL, 0);
+}
+
+/**
+ * pm_abort_suspend() - PM call to announce that a prior suspend request
+ *			is to be aborted.
+ * @reason	Reason for the abort
+ *
+ * Calling PU expects the PMU to abort the initiated suspend procedure.
+ * This is a non-blocking call without any acknowledge.
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_abort_suspend(enum pm_abort_reason reason)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/*
+	 * Do client specific abort suspend operations
+	 * (e.g. enable interrupts and clear powerdown request bit)
+	 */
+	pm_client_abort_suspend();
+
+	/* Send request to the PLM */
+	PM_PACK_PAYLOAD3(payload, PM_ABORT_SUSPEND, reason,
+			 primary_proc->node_id);
+	return pm_ipi_send(primary_proc, payload);
+}
+
+/**
+ * pm_req_suspend() - PM call to request for another PU or subsystem to
+ *		      be suspended gracefully.
+ * @target	Node id of the targeted PU or subsystem
+ * @ack		Flag to specify whether acknowledge is requested
+ * @latency	Requested wakeup latency (not supported)
+ * @state	Requested state (not supported)
+ *
+ * @return	Returns status, either success or error+reason
+ */
+enum pm_ret_status pm_req_suspend(uint32_t target, uint8_t ack,
+				  unsigned int latency, unsigned int state)
+{
+	uint32_t payload[PAYLOAD_ARG_CNT];
+
+	/* Send request to the PMU */
+	PM_PACK_PAYLOAD4(payload, PM_REQ_SUSPEND, target, latency, state);
+	if (ack == IPI_BLOCKING)
+		return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
+	else
+		return pm_ipi_send(primary_proc, payload);
 }

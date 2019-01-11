@@ -351,4 +351,4 @@
 /* RSA-CORE Module Base Address*/
 #define RSA_CORE_BASE		0xFFCE0000
 
-#endif /* __ZYNQMP_DEF_H__ */
+#endif /* ZYNQMP_DEF_H */

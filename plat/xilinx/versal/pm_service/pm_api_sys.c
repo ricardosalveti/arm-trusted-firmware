@@ -160,19 +160,19 @@ enum pm_ret_status pm_req_suspend(uint32_t target, uint8_t ack,
  * pm_request_device() - Request a device
  * @device_id		Device ID
  * @capabilities	Requested capabilities for the device
- * @latency		Requested maximum latency
  * @qos			Required Quality of Service
+ * @ack			Flag to specify whether acknowledge requested
  *
  * @return	Returns status, either success or error+reason
  */
 enum pm_ret_status pm_request_device(uint32_t device_id, uint32_t capabilities,
-				     uint32_t latency, uint32_t qos)
+				     uint32_t qos, uint32_t ack)
 {
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD6(payload, PM_REQUEST_DEVICE, XPM_SUBSYSID_APU,
-			 device_id, capabilities, latency, qos);
+	PM_PACK_PAYLOAD5(payload, PM_REQUEST_DEVICE, device_id, capabilities,
+			 qos, ack);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }

@@ -25,7 +25,7 @@ enum pm_ret_status pm_req_suspend(uint32_t target,
 				  unsigned int latency,
 				  unsigned int state);
 enum pm_ret_status pm_request_device(uint32_t device_id, uint32_t capabilities,
-				     uint32_t latency, uint32_t qos);
+				     uint32_t qos, uint32_t ack);
 enum pm_ret_status pm_release_device(uint32_t device_id);
 enum pm_ret_status pm_set_requirement(uint32_t device_id, uint32_t capabilities,
 				      uint32_t latency, uint32_t qos);

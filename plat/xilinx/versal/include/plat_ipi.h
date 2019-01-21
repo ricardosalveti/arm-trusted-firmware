@@ -17,6 +17,11 @@
  ********************************************************************/
 #define IPI_ID_PMC	1U
 #define IPI_ID_APU	2U
+#define IPI_ID_RPU0	3U
+#define IPI_ID_RPU1	4U
+#define IPI_ID_3	5U
+#define IPI_ID_4	6U
+#define IPI_ID_5	7U
 
 /*********************************************************************
  * IPI message buffers

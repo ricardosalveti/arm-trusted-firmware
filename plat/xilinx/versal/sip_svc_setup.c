@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2018-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -41,9 +41,6 @@ DEFINE_SVC_UUID2(versal_sip_uuid,
  */
 static int32_t sip_svc_setup(void)
 {
-	/* Configure IPI data for versal */
-	versal_ipi_config_table_init();
-
 	/* PM implementation as SiP Service */
 	pm_setup();
 

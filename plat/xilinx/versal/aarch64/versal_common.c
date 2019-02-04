@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2018-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,6 +7,7 @@
 #include <debug.h>
 #include <generic_delay_timer.h>
 #include <mmio.h>
+#include <plat_ipi.h>
 #include <plat_private.h>
 #include <platform.h>
 #include <versal_def.h>
@@ -37,6 +38,9 @@ static void versal_print_platform_name(void)
 void versal_config_setup(void)
 {
 	uint32_t val;
+
+	/*·Configure·IPI·data·for·versal·*/ 
+	versal_ipi_config_table_init();
 
 	versal_print_platform_name();
 

@@ -661,10 +661,21 @@ enum pm_ret_status pm_api_ioctl(uint32_t device_id, uint32_t ioctl_id,
 {
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
-	/* Send request to the PMC */
-	PM_PACK_PAYLOAD5(payload, PM_IOCTL, device_id, ioctl_id, arg1, arg2);
-
-	return pm_ipi_send_sync(primary_proc, payload, value, 1);
+	switch (ioctl_id) {
+	case IOCTL_SET_PLL_FRAC_MODE:
+		return pm_pll_set_mode(arg1, arg2);
+	case IOCTL_GET_PLL_FRAC_MODE:
+		return pm_pll_get_mode(arg1, value);
+	case IOCTL_SET_PLL_FRAC_DATA:
+		return pm_pll_set_param(arg1, PM_PLL_PARAM_DATA, arg2);
+	case IOCTL_GET_PLL_FRAC_DATA:
+		return pm_pll_get_param(arg1, PM_PLL_PARAM_DATA, value);
+	default:
+		/* Send request to the PMC */
+		PM_PACK_PAYLOAD5(payload, PM_IOCTL, device_id, ioctl_id, arg1,
+				 arg2);
+		return pm_ipi_send_sync(primary_proc, payload, value, 1);
+	}
 }
 
 /**

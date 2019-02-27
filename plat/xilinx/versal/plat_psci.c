@@ -17,49 +17,23 @@
 
 static uintptr_t versal_sec_entry;
 
-static int versal_nopmc_pwr_domain_on(u_register_t mpidr)
+static int versal_pwr_domain_on(u_register_t mpidr)
 {
-	uint32_t r;
 	unsigned int cpu_id = plat_core_pos_by_mpidr(mpidr);
+	const struct pm_proc *proc;
 
 	VERBOSE("%s: mpidr: 0x%lx\n", __func__, mpidr);
 
 	if (cpu_id == -1)
 		return PSCI_E_INTERN_FAIL;
 
-	/*
-	 * program RVBAR
-	 */
-	mmio_write_32(FPD_APU_RVBAR_L_0 + (cpu_id << 3), versal_sec_entry);
-	mmio_write_32(FPD_APU_RVBAR_H_0 + (cpu_id << 3), versal_sec_entry >> 32);
+	proc = pm_get_proc(cpu_id);
+	/* Clear power down request */
+	pm_client_wakeup(proc);
 
-	/*
-	 * clear VINITHI
-	 */
-	r = mmio_read_32(FPD_APU_CONFIG_0);
-	r &= ~(1 << FPD_APU_CONFIG_0_VINITHI_SHIFT << cpu_id);
-	mmio_write_32(FPD_APU_CONFIG_0, r);
-
-	/*
-	 * FIXME: Add power up sequence, By default it works
-	 * now without the need of it as it was powered up by
-	 * default.
-	 */
-
-	/*
-	 * clear power down request
-	 */
-	r = mmio_read_32(FPD_APU_PWRCTL);
-	r &= ~(1 << cpu_id);
-	mmio_write_32(FPD_APU_PWRCTL, r);
-
-	/*
-	 * release core reset
-	 */
-	r = mmio_read_32(CRF_RST_APU);
-	r &= ~((CRF_RST_APU_ACPU_PWRON_RESET |
-			CRF_RST_APU_ACPU_RESET) << cpu_id);
-	mmio_write_32(CRF_RST_APU, r);
+	/* Send request to PMC to wake up selected ACPU core */
+	pm_req_wakeup(proc->node_id, (versal_sec_entry & 0xFFFFFFFF) | 0x1,
+		      versal_sec_entry >> 32, 0);
 
 	return PSCI_E_SUCCESS;
 }
@@ -195,7 +169,7 @@ static void versal_get_sys_suspend_power_state(psci_power_state_t *req_state)
 
 static const struct plat_psci_ops versal_nopmc_psci_ops = {
 	.pwr_domain_off			= versal_pwr_domain_off,
-	.pwr_domain_on			= versal_nopmc_pwr_domain_on,
+	.pwr_domain_on			= versal_pwr_domain_on,
 	.pwr_domain_on_finish		= versal_pwr_domain_on_finish,
 	.pwr_domain_suspend		= versal_pwr_domain_suspend,
 	.pwr_domain_suspend_finish	= versal_pwr_domain_suspend_finish,

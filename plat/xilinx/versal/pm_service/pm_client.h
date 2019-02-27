@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Xilinx, Inc. All rights reserved.
+ * Copyright (c) 2018 - 2019, Xilinx, Inc. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -17,6 +17,7 @@
 
 /* Functions to be implemented by each PU */
 void pm_client_suspend(const struct pm_proc *proc, unsigned int state);
+void pm_client_wakeup(const struct pm_proc *proc);
 void pm_client_abort_suspend(void);
 
 /* Global variables to be set in pm_client.c */

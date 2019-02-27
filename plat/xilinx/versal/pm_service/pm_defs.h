@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Xilinx, Inc. All rights reserved.
+ * Copyright (c) 2018 - 2019, Xilinx, Inc. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -14,6 +14,13 @@
 /*********************************************************************
  * Macro definitions
  ********************************************************************/
+
+/* State arguments of the self suspend */
+#define PM_STATE_CPU_IDLE	0x0U
+#define PM_STATE_SUSPEND_TO_RAM	0xFU
+
+#define MAX_LATENCY		(~0U)
+#define MAX_QOS			100U
 
 /* Processor core device IDs */
 #define APU_DEVID(IDX)	NODEID(XPM_NODECLASS_DEVICE, XPM_NODESUBCL_DEV_CORE, \

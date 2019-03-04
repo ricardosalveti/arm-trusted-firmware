@@ -120,6 +120,7 @@ enum pm_ret_status pm_secure_rsaaes(uint32_t address_high,
 				    uint32_t size,
 				    uint32_t flags);
 unsigned int pm_get_shutdown_scope(void);
+void pm_get_callbackdata(uint32_t *data, size_t count);
 enum pm_ret_status pm_pinctrl_request(unsigned int pin);
 enum pm_ret_status pm_pinctrl_release(unsigned int pin);
 enum pm_ret_status pm_pinctrl_get_function(unsigned int pin,

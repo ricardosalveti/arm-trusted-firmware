@@ -772,6 +772,23 @@ enum pm_ret_status pm_ioctl(enum pm_node_id nid,
 }
 
 /**
+ * pm_clock_get_max_divisor - PM call to get max divisor
+ * @clock_id	Clock ID
+ * @div_type	Divisor ID (TYPE_DIV1 or TYPE_DIV2)
+ * @max_div	Maximum supported divisor
+ *
+ * This function is used by master to get maximum supported value.
+ *
+ * Return: Returns status, either success or error+reason.
+ */
+static enum pm_ret_status pm_clock_get_max_divisor(unsigned int clock_id,
+						   uint8_t div_type,
+						   uint32_t *max_div)
+{
+	return pm_api_clock_get_max_divisor(clock_id, div_type, max_div);
+}
+
+/**
  * pm_clock_get_num_clocks - PM call to request number of clocks
  * @nclockss: Number of clocks
  *
@@ -1338,6 +1355,10 @@ void pm_query_data(enum pm_query_id qid, unsigned int arg1, unsigned int arg2,
 		break;
 	case PM_QID_CLOCK_GET_NUM_CLOCKS:
 		data[0] = pm_clock_get_num_clocks(&data[1]);
+		break;
+
+	case PM_QID_CLOCK_GET_MAX_DIVISOR:
+		data[0] = pm_clock_get_max_divisor(arg1, arg2, &data[1]);
 		break;
 	default:
 		data[0] = PM_RET_ERROR_ARGS;

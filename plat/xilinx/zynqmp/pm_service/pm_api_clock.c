@@ -2635,6 +2635,37 @@ enum pm_ret_status pm_api_clock_get_attributes(unsigned int clock_id,
 }
 
 /**
+ * pm_api_clock_get_max_divisor - PM call to get max divisor
+ * @clock_id	Clock ID
+ * @div_type	Divisor Type (TYPE_DIV1 or TYPE_DIV2)
+ * @max_div	Maximum supported divisor
+ *
+ * This function is used by master to get maximum supported value.
+ *
+ * Return: Returns status, either success or error+reason.
+ */
+enum pm_ret_status pm_api_clock_get_max_divisor(enum clock_id clock_id,
+						uint8_t div_type,
+						uint32_t *max_div)
+{
+	uint32_t i;
+	struct pm_clock_node *nodes;
+
+	if (clock_id >= CLK_MAX_OUTPUT_CLK)
+		return PM_RET_ERROR_ARGS;
+
+	nodes = *clocks[clock_id].nodes;
+	for (i = 0; i < clocks[clock_id].num_nodes; i++) {
+		if (nodes[i].type == div_type) {
+			*max_div = (1 << nodes[i].width) - 1;
+			return PM_RET_SUCCESS;
+		}
+	}
+
+	return PM_RET_ERROR_ARGS;
+}
+
+/**
  * struct pm_pll - PLL related data required to map IOCTL-based PLL control
  * implemented by linux to system-level EEMI APIs
  * @nid:	PLL node ID

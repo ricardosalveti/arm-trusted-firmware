@@ -18,7 +18,8 @@
 /*********************************************************************
  * Target module IDs macros
  ********************************************************************/
-#define PLM_MODULE_ID	0x2
+#define LIBPM_MODULE_ID		0x2
+#define LOADER_MODULE_ID	0x7
 
 /* default shutdown/reboot scope is system(2) */
 static unsigned int pm_shutdown_scope = XPM_SHUTDOWN_SUBTYPE_RST_SYSTEM;
@@ -36,33 +37,33 @@ unsigned int pm_get_shutdown_scope(void)
 /**
  * Assigning of argument values into array elements.
  */
-#define PM_PACK_PAYLOAD1(pl, arg0) {	\
-	pl[0] = (uint32_t)((uint32_t)((arg0) & 0xFF) | (PLM_MODULE_ID << 8)); \
+#define PM_PACK_PAYLOAD1(pl, mid, arg0) {	\
+	pl[0] = (uint32_t)((uint32_t)((arg0) & 0xFF) | (mid << 8)); \
 }
 
-#define PM_PACK_PAYLOAD2(pl, arg0, arg1) {	\
+#define PM_PACK_PAYLOAD2(pl, mid, arg0, arg1) {	\
 	pl[1] = (uint32_t)(arg1);		\
-	PM_PACK_PAYLOAD1(pl, arg0);		\
+	PM_PACK_PAYLOAD1(pl, mid, arg0);		\
 }
 
-#define PM_PACK_PAYLOAD3(pl, arg0, arg1, arg2) {	\
+#define PM_PACK_PAYLOAD3(pl, mid, arg0, arg1, arg2) {	\
 	pl[2] = (uint32_t)(arg2);			\
-	PM_PACK_PAYLOAD2(pl, arg0, arg1);		\
+	PM_PACK_PAYLOAD2(pl, mid, arg0, arg1);		\
 }
 
-#define PM_PACK_PAYLOAD4(pl, arg0, arg1, arg2, arg3) {	\
+#define PM_PACK_PAYLOAD4(pl, mid, arg0, arg1, arg2, arg3) {	\
 	pl[3] = (uint32_t)(arg3);			\
-	PM_PACK_PAYLOAD3(pl, arg0, arg1, arg2);		\
+	PM_PACK_PAYLOAD3(pl, mid, arg0, arg1, arg2);		\
 }
 
-#define PM_PACK_PAYLOAD5(pl, arg0, arg1, arg2, arg3, arg4) {	\
+#define PM_PACK_PAYLOAD5(pl, mid, arg0, arg1, arg2, arg3, arg4) {	\
 	pl[4] = (uint32_t)(arg4);				\
-	PM_PACK_PAYLOAD4(pl, arg0, arg1, arg2, arg3);		\
+	PM_PACK_PAYLOAD4(pl, mid, arg0, arg1, arg2, arg3);		\
 }
 
-#define PM_PACK_PAYLOAD6(pl, arg0, arg1, arg2, arg3, arg4, arg5) {	\
+#define PM_PACK_PAYLOAD6(pl, mid, arg0, arg1, arg2, arg3, arg4, arg5) {	\
 	pl[5] = (uint32_t)(arg5);					\
-	PM_PACK_PAYLOAD5(pl, arg0, arg1, arg2, arg3, arg4);		\
+	PM_PACK_PAYLOAD5(pl, mid, arg0, arg1, arg2, arg3, arg4);	\
 }
 
 /* PM API functions */
@@ -78,7 +79,7 @@ enum pm_ret_status pm_get_api_version(unsigned int *version)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD1(payload, PM_GET_API_VERSION);
+	PM_PACK_PAYLOAD1(payload, LIBPM_MODULE_ID, PM_GET_API_VERSION);
 	return pm_ipi_send_sync(primary_proc, payload, version, 1);
 }
 
@@ -115,8 +116,9 @@ enum pm_ret_status pm_self_suspend(uint32_t nid,
 	pm_client_suspend(proc, state);
 
 	/* Send request to the PLM */
-	PM_PACK_PAYLOAD6(payload, PM_SELF_SUSPEND, proc->node_id, latency,
-			 state, address, (address >> 32));
+	PM_PACK_PAYLOAD6(payload, LIBPM_MODULE_ID, PM_SELF_SUSPEND,
+			 proc->node_id, latency, state, address,
+			 (address >> 32));
 	return pm_ipi_send_sync(proc, payload, NULL, 0);
 }
 
@@ -141,7 +143,7 @@ enum pm_ret_status pm_abort_suspend(enum pm_abort_reason reason)
 	pm_client_abort_suspend();
 
 	/* Send request to the PLM */
-	PM_PACK_PAYLOAD3(payload, PM_ABORT_SUSPEND, reason,
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_ABORT_SUSPEND, reason,
 			 primary_proc->node_id);
 	return pm_ipi_send(primary_proc, payload);
 }
@@ -162,7 +164,8 @@ enum pm_ret_status pm_req_suspend(uint32_t target, uint8_t ack,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMU */
-	PM_PACK_PAYLOAD4(payload, PM_REQ_SUSPEND, target, latency, state);
+	PM_PACK_PAYLOAD4(payload, LIBPM_MODULE_ID, PM_REQ_SUSPEND, target,
+			 latency, state);
 	if (ack == IPI_BLOCKING)
 		return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 	else
@@ -191,8 +194,8 @@ enum pm_ret_status pm_req_wakeup(uint32_t target, uint32_t set_address,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC to perform the wake of the PU */
-	PM_PACK_PAYLOAD5(payload, PM_REQ_WAKEUP, target, set_address,
-			 address, ack);
+	PM_PACK_PAYLOAD5(payload, LIBPM_MODULE_ID, PM_REQ_WAKEUP, target,
+			 set_address, address, ack);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -212,8 +215,8 @@ enum pm_ret_status pm_request_device(uint32_t device_id, uint32_t capabilities,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD5(payload, PM_REQUEST_DEVICE, device_id, capabilities,
-			 qos, ack);
+	PM_PACK_PAYLOAD5(payload, LIBPM_MODULE_ID, PM_REQUEST_DEVICE,
+			 device_id, capabilities, qos, ack);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -229,7 +232,8 @@ enum pm_ret_status pm_release_device(uint32_t device_id)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_RELEASE_DEVICE, device_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_RELEASE_DEVICE,
+			 device_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -249,8 +253,8 @@ enum pm_ret_status pm_set_requirement(uint32_t device_id, uint32_t capabilities,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD5(payload, PM_SET_REQUIREMENT, device_id, capabilities,
-			 latency, qos);
+	PM_PACK_PAYLOAD5(payload, LIBPM_MODULE_ID, PM_SET_REQUIREMENT,
+			 device_id, capabilities, latency, qos);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -267,7 +271,8 @@ enum pm_ret_status pm_get_device_status(uint32_t device_id, uint32_t *response)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_GET_DEVICE_STATUS, device_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_GET_DEVICE_STATUS,
+			 device_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, response, 3);
 }
@@ -284,7 +289,8 @@ enum pm_ret_status pm_reset_assert(uint32_t reset, bool assert)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_RESET_ASSERT, reset, assert);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_RESET_ASSERT, reset,
+			 assert);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -301,7 +307,7 @@ enum pm_ret_status pm_reset_get_status(uint32_t reset, uint32_t *status)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_RESET_ASSERT, reset);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_RESET_ASSERT, reset);
 
 	return pm_ipi_send_sync(primary_proc, payload, status, 1);
 }
@@ -333,7 +339,7 @@ enum pm_ret_status pm_pinctrl_request(uint32_t pin)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_PINCTRL_REQUEST, pin);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_PINCTRL_REQUEST, pin);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -349,7 +355,7 @@ enum pm_ret_status pm_pinctrl_release(uint32_t pin)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_PINCTRL_RELEASE, pin);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_PINCTRL_RELEASE, pin);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -366,7 +372,8 @@ enum pm_ret_status pm_pinctrl_set_function(uint32_t pin, uint32_t function)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_PINCTRL_SET_FUNCTION, pin, function);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_PINCTRL_SET_FUNCTION,
+			 pin, function);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -383,7 +390,8 @@ enum pm_ret_status pm_pinctrl_get_function(uint32_t pin, uint32_t *function)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_PINCTRL_SET_FUNCTION, pin);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_PINCTRL_SET_FUNCTION,
+			 pin);
 
 	return pm_ipi_send_sync(primary_proc, payload, function, 1);
 }
@@ -402,7 +410,7 @@ enum pm_ret_status pm_pinctrl_set_pin_param(uint32_t pin, uint32_t param,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD4(payload, PM_PINCTRL_CONFIG_PARAM_SET,
+	PM_PACK_PAYLOAD4(payload, LIBPM_MODULE_ID, PM_PINCTRL_CONFIG_PARAM_SET,
 			 pin, param, value);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
@@ -422,7 +430,8 @@ enum pm_ret_status pm_pinctrl_get_pin_param(uint32_t pin, uint32_t param,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_PINCTRL_CONFIG_PARAM_GET, pin, param);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_PINCTRL_CONFIG_PARAM_GET,
+			 pin, param);
 
 	return pm_ipi_send_sync(primary_proc, payload, value, 1);
 }
@@ -438,7 +447,7 @@ enum pm_ret_status pm_clock_enable(uint32_t clk_id)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_CLOCK_ENABLE, clk_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_CLOCK_ENABLE, clk_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -454,7 +463,7 @@ enum pm_ret_status pm_clock_disable(uint32_t clk_id)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_CLOCK_DISABLE, clk_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_CLOCK_DISABLE, clk_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -471,7 +480,7 @@ enum pm_ret_status pm_clock_get_state(uint32_t clk_id, uint32_t *state)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_CLOCK_GETSTATE, clk_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_CLOCK_GETSTATE, clk_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, state, 1);
 }
@@ -488,7 +497,8 @@ enum pm_ret_status pm_clock_set_divider(uint32_t clk_id, uint32_t divider)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_CLOCK_SETDIVIDER, clk_id, divider);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_CLOCK_SETDIVIDER,
+			 clk_id, divider);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -505,7 +515,7 @@ enum pm_ret_status pm_clock_get_divider(uint32_t clk_id, uint32_t *divider)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_CLOCK_GETDIVIDER, clk_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_CLOCK_GETDIVIDER, clk_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, divider, 1);
 }
@@ -522,7 +532,8 @@ enum pm_ret_status pm_clock_set_parent(uint32_t clk_id, uint32_t parent)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_CLOCK_SETPARENT, clk_id, parent);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_CLOCK_SETPARENT,
+			 clk_id, parent);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -539,7 +550,7 @@ enum pm_ret_status pm_clock_get_parent(uint32_t clk_id, uint32_t *parent)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_CLOCK_GETPARENT, clk_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_CLOCK_GETPARENT, clk_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, parent, 1);
 }
@@ -558,7 +569,8 @@ enum pm_ret_status pm_pll_set_param(uint32_t clk_id, uint32_t param,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD4(payload, PM_PLL_SET_PARAMETER, clk_id, param, value);
+	PM_PACK_PAYLOAD4(payload, LIBPM_MODULE_ID, PM_PLL_SET_PARAMETER,
+			 clk_id, param, value);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -577,7 +589,8 @@ enum pm_ret_status pm_pll_get_param(uint32_t clk_id, uint32_t param,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_PLL_GET_PARAMETER, clk_id, param);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_PLL_GET_PARAMETER,
+			 clk_id, param);
 
 	return pm_ipi_send_sync(primary_proc, payload, value, 1);
 }
@@ -594,7 +607,8 @@ enum pm_ret_status pm_pll_set_mode(uint32_t clk_id, uint32_t mode)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_PLL_SET_MODE, clk_id, mode);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_PLL_SET_MODE, clk_id,
+			 mode);
 
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }
@@ -611,7 +625,7 @@ enum pm_ret_status pm_pll_get_mode(uint32_t clk_id, uint32_t *mode)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD2(payload, PM_PLL_GET_MODE, clk_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_PLL_GET_MODE, clk_id);
 
 	return pm_ipi_send_sync(primary_proc, payload, mode, 1);
 }
@@ -629,7 +643,8 @@ enum pm_ret_status pm_force_powerdown(uint32_t target, uint8_t ack)
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_FORCE_POWERDOWN, target, ack);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_FORCE_POWERDOWN, target,
+			 ack);
 
 	if (ack == IPI_BLOCKING)
 		return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
@@ -655,7 +670,8 @@ enum pm_ret_status pm_system_shutdown(uint32_t type, uint32_t subtype)
 	}
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD3(payload, PM_SYSTEM_SHUTDOWN, type, subtype);
+	PM_PACK_PAYLOAD3(payload, LIBPM_MODULE_ID, PM_SYSTEM_SHUTDOWN, type,
+			 subtype);
 
 	return pm_ipi_send_non_blocking(primary_proc, payload);
 }
@@ -676,7 +692,8 @@ enum pm_ret_status pm_query_data(uint32_t qid, uint32_t arg1, uint32_t arg2,
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
 	/* Send request to the PMC */
-	PM_PACK_PAYLOAD5(payload, PM_QUERY_DATA, qid, arg1, arg2, arg3);
+	PM_PACK_PAYLOAD5(payload, LIBPM_MODULE_ID, PM_QUERY_DATA, qid, arg1,
+			 arg2, arg3);
 	return pm_ipi_send_sync(primary_proc, payload, data, 4);
 }
 /**
@@ -707,8 +724,8 @@ enum pm_ret_status pm_api_ioctl(uint32_t device_id, uint32_t ioctl_id,
 		return pm_pll_get_param(arg1, PM_PLL_PARAM_DATA, value);
 	default:
 		/* Send request to the PMC */
-		PM_PACK_PAYLOAD5(payload, PM_IOCTL, device_id, ioctl_id, arg1,
-				 arg2);
+		PM_PACK_PAYLOAD5(payload, LIBPM_MODULE_ID, PM_IOCTL, device_id,
+				 ioctl_id, arg1, arg2);
 		return pm_ipi_send_sync(primary_proc, payload, value, 1);
 	}
 }
@@ -726,8 +743,8 @@ enum pm_ret_status pm_set_wakeup_source(uint32_t target, uint32_t wkup_device,
 {
 	uint32_t payload[PAYLOAD_ARG_CNT];
 
-	PM_PACK_PAYLOAD4(payload, PM_SET_WAKEUP_SOURCE, target, wkup_device,
-			 enable);
+	PM_PACK_PAYLOAD4(payload, LIBPM_MODULE_ID, PM_SET_WAKEUP_SOURCE,
+			 target, wkup_device, enable);
 	return pm_ipi_send(primary_proc, payload);
 }
 
@@ -790,7 +807,7 @@ enum pm_ret_status pm_feature_check(uint32_t api_id, unsigned int *version)
 		return PM_RET_ERROR_NOFEATURE;
 	}
 
-	PM_PACK_PAYLOAD2(payload, PM_FEATURE_CHECK, api_id);
+	PM_PACK_PAYLOAD2(payload, LIBPM_MODULE_ID, PM_FEATURE_CHECK, api_id);
 
 	status = pm_ipi_send_sync(primary_proc, payload, &fw_api_version, 1);
 	if (status != PM_RET_SUCCESS)

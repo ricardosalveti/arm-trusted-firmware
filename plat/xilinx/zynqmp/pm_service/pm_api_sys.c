@@ -1403,7 +1403,7 @@ enum pm_ret_status pm_secure_image(uint32_t address_low,
 	/* Send request to the PMU */
 	PM_PACK_PAYLOAD5(payload, PM_SECURE_IMAGE, address_high, address_low,
 			 key_hi, key_lo);
-	return pm_ipi_send_sync(primary_proc, payload, value, 3);
+	return pm_ipi_send_sync(primary_proc, payload, value, 2);
 }
 
 /**

@@ -37,7 +37,8 @@ $(eval $(call add_define_val,VERSAL_PLATFORM,VERSAL_PLATFORM_ID_${VERSAL_PLATFOR
 VERSAL_CONSOLE	?=	pl011
 $(eval $(call add_define_val,VERSAL_CONSOLE,VERSAL_CONSOLE_ID_${VERSAL_CONSOLE}))
 
-PLAT_INCLUDES		:=	-Iplat/xilinx/common/include/			\
+PLAT_INCLUDES		:=	-Iinclude/plat/arm/common/			\
+				-Iplat/xilinx/common/include/			\
 				-Iplat/xilinx/common/ipi_mailbox_service/	\
 				-Iplat/xilinx/versal/include/			\
 				-Iplat/xilinx/versal/pm_service/
@@ -51,11 +52,13 @@ PLAT_BL_COMMON_SOURCES	:=	lib/xlat_tables/xlat_tables_common.c		\
 				drivers/arm/gic/v3/gicv3_helpers.c		\
 				drivers/arm/pl011/aarch64/pl011_console.S	\
 				plat/common/aarch64/crash_console_helpers.S	\
+				plat/arm/common/arm_cci.c			\
 				plat/common/plat_gicv3.c			\
 				plat/xilinx/versal/aarch64/versal_helpers.S	\
 				plat/xilinx/versal/aarch64/versal_common.c
 
-BL31_SOURCES		+=	lib/cpus/aarch64/cortex_a53.S			\
+BL31_SOURCES		+=	drivers/arm/cci/cci.c				\
+				lib/cpus/aarch64/cortex_a53.S			\
 				lib/cpus/aarch64/cortex_a72.S			\
 				plat/common/plat_psci_common.c			\
 				plat/xilinx/common/ipi.c			\

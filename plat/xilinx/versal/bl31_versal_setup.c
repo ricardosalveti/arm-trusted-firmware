@@ -6,7 +6,8 @@
 
 #include <assert.h>
 #include <errno.h>
-
+#include <plat_arm.h>
+#include <plat_private.h>
 #include <bl31/bl31.h>
 #include <common/bl_common.h>
 #include <common/debug.h>
@@ -15,7 +16,6 @@
 #include <lib/xlat_tables/xlat_tables.h>
 #include <plat/common/platform.h>
 
-#include <plat_private.h>
 
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;
@@ -104,6 +104,9 @@ void bl31_plat_runtime_setup(void)
  */
 void bl31_plat_arch_setup(void)
 {
+	plat_arm_interconnect_init();
+	plat_arm_interconnect_enter_coherency();
+
 	const mmap_region_t bl_regions[] = {
 		MAP_REGION_FLAT(BL31_BASE, BL31_END - BL31_BASE,
 			MT_MEMORY | MT_RW | MT_SECURE),

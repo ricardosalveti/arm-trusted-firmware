@@ -8,6 +8,7 @@
 #include <debug.h>
 #include <gicv3.h>
 #include <mmio.h>
+#include <plat_arm.h>
 #include <plat_private.h>
 #include <platform.h>
 #include <psci.h>
@@ -58,6 +59,12 @@ static void versal_pwr_domain_suspend(const psci_power_state_t *target_state)
 
 	/* Send request to PMC to suspend this core */
 	pm_self_suspend(proc->node_id, MAX_LATENCY, state, versal_sec_entry);
+
+	/* APU is to be turned off */
+	if (target_state->pwr_domain_state[1] > PLAT_MAX_RET_STATE) {
+		/* disable coherency */
+		plat_arm_interconnect_exit_coherency();
+	}
 }
 
 /**
@@ -77,6 +84,9 @@ static void versal_pwr_domain_suspend_finish(const psci_power_state_t *target_st
 
 	/* Clear the APU power control register for this cpu */
 	pm_client_wakeup(proc);
+
+	/* enable coherency */
+	plat_arm_interconnect_enter_coherency();
 
 	/* APU was turned off */
 	if (target_state->pwr_domain_state[1] > PLAT_MAX_RET_STATE) {

@@ -839,6 +839,6 @@ enum pm_ret_status pm_load_pdi(uint32_t src,
 
 	/* Send request to the PMU */
 	PM_PACK_PAYLOAD4(payload, LOADER_MODULE_ID, PM_LOAD_PDI, src,
-			 address_low, address_high);
+			 address_high, address_low);
 	return pm_ipi_send_sync(primary_proc, payload, NULL, 0);
 }

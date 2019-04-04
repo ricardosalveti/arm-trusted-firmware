@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2018-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -18,6 +18,8 @@ void plat_versal_gic_init(void);
 void plat_versal_gic_cpuif_enable(void);
 void plat_versal_gic_cpuif_disable(void);
 void plat_versal_gic_pcpu_init(void);
+void plat_versal_gic_save(void);
+void plat_versal_gic_resume(void);
 
 unsigned int versal_calc_core_pos(u_register_t mpidr);
 

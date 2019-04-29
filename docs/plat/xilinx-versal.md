@@ -31,3 +31,4 @@ make RESET_TO_BL31=1 CROSS_COMPILE=aarch64-none-elf- PLAT=versal VERSAL_PLATFORM
 
 *   `VERSAL_PLATFORM`: Select the platform. Options:
     -   `versal_virt`	: Versal Virtual platform
+    -   `spp_itr6`	: SPP ITR6

@@ -68,4 +68,7 @@ unsigned int pm_get_shutdown_scope(void);
 enum pm_ret_status pm_feature_check(uint32_t api_id, unsigned int *version);
 enum pm_ret_status pm_load_pdi(uint32_t src, uint32_t address_low,
 			       uint32_t address_high);
+enum pm_ret_status pm_get_op_characteristic(uint32_t device_id,
+					    enum pm_opchar_type type,
+					    uint32_t *result);
 #endif /* PM_API_SYS_H */

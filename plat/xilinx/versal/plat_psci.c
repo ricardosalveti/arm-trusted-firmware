@@ -29,12 +29,13 @@ static int versal_pwr_domain_on(u_register_t mpidr)
 		return PSCI_E_INTERN_FAIL;
 
 	proc = pm_get_proc(cpu_id);
-	/* Clear power down request */
-	pm_client_wakeup(proc);
 
 	/* Send request to PMC to wake up selected ACPU core */
 	pm_req_wakeup(proc->node_id, (versal_sec_entry & 0xFFFFFFFF) | 0x1,
 		      versal_sec_entry >> 32, 0);
+
+	/* Clear power down request */
+	pm_client_wakeup(proc);
 
 	return PSCI_E_SUCCESS;
 }

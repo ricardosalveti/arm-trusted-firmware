@@ -23,7 +23,7 @@
 #include "pm_client.h"
 
 #define UNDEFINED_CPUID		(~0)
-#define IRQ_MAX		74
+#define IRQ_MAX		142
 #define NUM_GICD_ISENABLER	((IRQ_MAX >> 5) + 1)
 
 DEFINE_BAKERY_LOCK(pm_client_secure_lock);
@@ -82,7 +82,20 @@ static enum pm_device_node_idx irq_node_map[IRQ_MAX + 1] = {
 	[57] = XPM_NODEIDX_DEV_GEM_0,
 	[58] = XPM_NODEIDX_DEV_GEM_1,
 	[59] = XPM_NODEIDX_DEV_GEM_1,
+	[60] = XPM_NODEIDX_DEV_ADMA_0,
+	[61] = XPM_NODEIDX_DEV_ADMA_1,
+	[62] = XPM_NODEIDX_DEV_ADMA_2,
+	[63] = XPM_NODEIDX_DEV_ADMA_3,
+	[64] = XPM_NODEIDX_DEV_ADMA_4,
+	[65] = XPM_NODEIDX_DEV_ADMA_5,
+	[66] = XPM_NODEIDX_DEV_ADMA_6,
+	[67] = XPM_NODEIDX_DEV_ADMA_7,
 	[74] = XPM_NODEIDX_DEV_USB_0,
+	[126] = XPM_NODEIDX_DEV_SDIO_0,
+	[127] = XPM_NODEIDX_DEV_SDIO_0,
+	[128] = XPM_NODEIDX_DEV_SDIO_1,
+	[129] = XPM_NODEIDX_DEV_SDIO_1,
+	[142] = XPM_NODEIDX_DEV_RTC,
 };
 
 /**

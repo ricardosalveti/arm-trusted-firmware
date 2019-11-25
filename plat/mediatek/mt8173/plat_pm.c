@@ -4,22 +4,24 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <bakery_lock.h>
-#include <cci.h>
-#include <console.h>
-#include <debug.h>
 #include <errno.h>
-#include <gicv2.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/arm/cci.h>
+#include <drivers/arm/gicv2.h>
+#include <drivers/ti/uart/uart_16550.h>
+#include <lib/bakery_lock.h>
+#include <lib/mmio.h>
+#include <lib/psci/psci.h>
+#include <plat/arm/common/plat_arm.h>
+
 #include <mcucfg.h>
-#include <mmio.h>
 #include <mt8173_def.h>
 #include <mt_cpuxgpt.h> /* generic_timer_backup() */
-#include <plat_arm.h>
 #include <plat_private.h>
 #include <power_tracer.h>
-#include <psci.h>
 #include <rtc.h>
 #include <scu.h>
 #include <spm_hotplug.h>
@@ -541,12 +543,14 @@ int plat_validate_power_state(unsigned int power_state,
 
 void mtk_system_pwr_domain_resume(void)
 {
-	console_init(MT8173_UART0_BASE, MT8173_UART_CLOCK, MT8173_BAUDRATE);
+	console_switch_state(CONSOLE_FLAG_BOOT);
 
 	/* Assert system power domain is available on the platform */
 	assert(PLAT_MAX_PWR_LVL >= MTK_PWR_LVL2);
 
 	plat_arm_gic_init();
+
+	console_switch_state(CONSOLE_FLAG_RUNTIME);
 }
 
 static const plat_psci_ops_t plat_plat_pm_ops = {

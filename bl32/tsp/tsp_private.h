@@ -20,14 +20,15 @@
 #define TSP_ARGS_END		0x40
 
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
-#include <cassert.h>
-#include <platform_def.h> /* For CACHE_WRITEBACK_GRANULE */
-#include <spinlock.h>
 #include <stdint.h>
-#include <tsp.h>
 
+#include <platform_def.h> /* For CACHE_WRITEBACK_GRANULE */
+
+#include <bl32/tsp/tsp.h>
+#include <lib/cassert.h>
+#include <lib/spinlock.h>
 
 typedef struct work_statistics {
 	/* Number of s-el1 interrupts on this cpu */
@@ -147,6 +148,6 @@ tsp_args_t *tsp_system_off_main(uint64_t arg0,
 				uint64_t arg7);
 
 uint64_t tsp_main(void);
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* TSP_PRIVATE_H */

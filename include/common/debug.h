@@ -7,7 +7,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#include <utils_def.h>
+#include <lib/utils_def.h>
 
 /*
  * The log output macros print output to the console. These macros produce
@@ -27,12 +27,14 @@
 #define LOG_LEVEL_INFO			U(40)
 #define LOG_LEVEL_VERBOSE		U(50)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
+
 #include <cdefs.h>
-#include <console.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+#include <drivers/console.h>
 
 /*
  * Define Log Markers corresponding to each log level which will
@@ -108,5 +110,5 @@ void __dead2 __stack_chk_fail(void);
 void tf_log(const char *fmt, ...) __printflike(1, 2);
 void tf_log_set_max_level(unsigned int log_level);
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 #endif /* DEBUG_H */

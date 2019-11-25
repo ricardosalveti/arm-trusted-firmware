@@ -8,11 +8,9 @@
 #define CSS_PM_H
 
 #include <cdefs.h>
-#include <psci.h>
 #include <stdint.h>
 
-/* System power domain at level 2, as currently implemented by CSS platforms */
-#define CSS_SYSTEM_PWR_DMN_LVL		ARM_PWR_LVL2
+#include <lib/psci/psci.h>
 
 /* Macros to read the CSS power domain state */
 #define CSS_CORE_PWR_STATE(state)	(state)->pwr_domain_state[ARM_PWR_LVL0]
@@ -29,6 +27,7 @@ static inline unsigned int css_system_pwr_state(const psci_power_state_t *state)
 
 int css_pwr_domain_on(u_register_t mpidr);
 void css_pwr_domain_on_finish(const psci_power_state_t *target_state);
+void css_pwr_domain_on_finish_late(const psci_power_state_t *target_state);
 void css_pwr_domain_off(const psci_power_state_t *target_state);
 void css_pwr_domain_suspend(const psci_power_state_t *target_state);
 void css_pwr_domain_suspend_finish(

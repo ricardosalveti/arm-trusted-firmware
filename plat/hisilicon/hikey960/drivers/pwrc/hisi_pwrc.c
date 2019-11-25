@@ -4,15 +4,16 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <../hikey960_def.h>
-#include <arch_helpers.h>
 #include <assert.h>
-#include <hisi_ipc.h>
-#include <mmio.h>
-#include <platform.h>
+
 #include <platform_def.h>
 
+#include <arch_helpers.h>
+#include <lib/mmio.h>
+#include <plat/common/platform.h>
 
+#include <../hikey960_def.h>
+#include <hisi_ipc.h>
 #include "hisi_pwrc.h"
 
 
@@ -22,7 +23,7 @@
 #define RES2_LOCK_BASE		(SOC_PCTRL_RESOURCE2_LOCK_ADDR(PCTRL_BASE))
 
 #define LOCK_BIT			(0x1 << 28)
-#define LOCK_ID_MASK			(0x7 << 29)
+#define LOCK_ID_MASK			(0x7u << 29)
 #define CPUIDLE_LOCK_ID(core)		(0x6 - (core))
 #define LOCK_UNLOCK_OFFSET		0x4
 #define LOCK_STAT_OFFSET		0x8
@@ -146,13 +147,19 @@ void hisi_clear_cpuidle_flag(unsigned int cluster, unsigned int core)
 
 }
 
-int hisi_test_ap_suspend_flag(unsigned int cluster)
+int hisi_test_ap_suspend_flag(void)
 {
-	unsigned int val;
+	unsigned int val1;
+	unsigned int val2;
 
-	val = mmio_read_32(CPUIDLE_FLAG_REG(cluster));
-	val &= AP_SUSPEND_FLAG;
-	return !!val;
+	val1 = mmio_read_32(CPUIDLE_FLAG_REG(0));
+	val1 &= AP_SUSPEND_FLAG;
+
+	val2 = mmio_read_32(CPUIDLE_FLAG_REG(1));
+	val2 &= AP_SUSPEND_FLAG;
+
+	val1 |= val2;
+	return (val1 != 0);
 }
 
 void hisi_set_cluster_pwdn_flag(unsigned int cluster,
@@ -163,7 +170,8 @@ void hisi_set_cluster_pwdn_flag(unsigned int cluster,
 	hisi_cpuhotplug_lock(cluster, core);
 
 	val = mmio_read_32(REG_SCBAKDATA3_OFFSET);
-	val = (value << (cluster << 1)) | (val & 0xFFFFFFF);
+	val &= ~(0x3U << ((2 * cluster) + 28));
+	val |= (value << (2 * cluster));
 	mmio_write_32(REG_SCBAKDATA3_OFFSET, val);
 
 	hisi_cpuhotplug_unlock(cluster, core);
@@ -257,6 +265,17 @@ static unsigned int hisi_get_pdc_stat(unsigned int cluster)
 	return val;
 }
 
+static int check_hotplug(unsigned int cluster, unsigned int boot_flag)
+{
+	unsigned int mask = 0xF;
+
+	if (hisi_test_ap_suspend_flag() ||
+	    ((boot_flag & mask) == mask))
+		return 0;
+
+	return 1;
+}
+
 int hisi_test_pwrdn_allcores(unsigned int cluster, unsigned int core)
 {
 	unsigned int mask = 0xf << (core * 4);
@@ -267,7 +286,8 @@ int hisi_test_pwrdn_allcores(unsigned int cluster, unsigned int core)
 	mask = (PDC_COREPWRSTAT_MASK & (~mask));
 	pdc_stat &= mask;
 
-	if ((boot_flag ^ cpuidle_flag) || pdc_stat)
+	if ((boot_flag ^ cpuidle_flag) || pdc_stat ||
+	    check_hotplug(cluster, boot_flag))
 		return 0;
 	else
 		return 1;

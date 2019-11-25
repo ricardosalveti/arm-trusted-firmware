@@ -5,7 +5,8 @@
  */
 
 #include <platform_def.h>
-#include <xlat_tables_defs.h>
+
+#include <lib/xlat_tables/xlat_tables_defs.h>
 
 OUTPUT_FORMAT(PLATFORM_LINKER_FORMAT)
 OUTPUT_ARCH(PLATFORM_LINKER_ARCH)
@@ -20,6 +21,9 @@ MEMORY {
 #endif
 }
 
+#if !BL2_IN_XIP_MEM
+#define ROM RAM
+#endif
 
 SECTIONS
 {
@@ -44,11 +48,7 @@ SECTIONS
         *(.vectors)
         . = ALIGN(PAGE_SIZE);
         __TEXT_END__ = .;
-#if BL2_IN_XIP_MEM
      } >ROM
-#else
-     } >RAM
-#endif
 
     .rodata . : {
         __RODATA_START__ = .;
@@ -71,11 +71,7 @@ SECTIONS
 
         . = ALIGN(PAGE_SIZE);
         __RODATA_END__ = .;
-#if BL2_IN_XIP_MEM
     } >ROM
-#else
-    } >RAM
-#endif
 
     ASSERT(__TEXT_RESIDENT_END__ - __TEXT_RESIDENT_START__ <= PAGE_SIZE,
           "Resident part of BL2 has exceeded its limit.")
@@ -114,11 +110,7 @@ SECTIONS
         . = ALIGN(PAGE_SIZE);
 
         __RO_END__ = .;
-#if BL2_IN_XIP_MEM
     } >ROM
-#else
-    } >RAM
-#endif
 #endif
 
     ASSERT(__CPU_OPS_END__ > __CPU_OPS_START__,
@@ -145,11 +137,7 @@ SECTIONS
         __DATA_RAM_START__ = .;
         *(.data*)
         __DATA_RAM_END__ = .;
-#if BL2_IN_XIP_MEM
     } >RAM AT>ROM
-#else
-    } >RAM
-#endif
 
     stacks (NOLOAD) : {
         __STACKS_START__ = .;

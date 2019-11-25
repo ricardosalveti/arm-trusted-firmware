@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2015-2019, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -14,10 +14,9 @@ ifeq (${MBEDTLS_DIR},)
 endif
 
 MBEDTLS_INC		=	-I${MBEDTLS_DIR}/include
-INCLUDES		+=     -Iinclude/drivers/auth/mbedtls
 
 # Specify mbed TLS configuration file
-MBEDTLS_CONFIG_FILE	:=	"<mbedtls_config.h>"
+MBEDTLS_CONFIG_FILE	:=	"<drivers/auth/mbedtls/mbedtls_config.h>"
 $(eval $(call add_define,MBEDTLS_CONFIG_FILE))
 
 MBEDTLS_SOURCES	+=		drivers/auth/mbedtls/mbedtls_common.c
@@ -49,14 +48,24 @@ LIBMBEDTLS_SRCS		:= $(addprefix ${MBEDTLS_DIR}/library/,	\
 					)
 
 # The platform may define the variable 'TF_MBEDTLS_KEY_ALG' to select the key
-# algorithm to use. If the variable is not defined, select it based on algorithm
-# used for key generation `KEY_ALG`. If `KEY_ALG` is not defined or is
-# defined to `rsa`/`rsa_1_5`, then set the variable to `rsa`.
+# algorithm to use. If the variable is not defined, select it based on
+# algorithm used for key generation `KEY_ALG`. If `KEY_ALG` is not defined,
+# then it is set to `rsa`.
 ifeq (${TF_MBEDTLS_KEY_ALG},)
     ifeq (${KEY_ALG}, ecdsa)
         TF_MBEDTLS_KEY_ALG		:=	ecdsa
     else
         TF_MBEDTLS_KEY_ALG		:=	rsa
+    endif
+endif
+
+ifeq (${TF_MBEDTLS_KEY_SIZE},)
+    ifneq ($(findstring rsa,${TF_MBEDTLS_KEY_ALG}),)
+	ifeq (${KEY_SIZE},)
+            TF_MBEDTLS_KEY_SIZE		:=	2048
+	else
+            TF_MBEDTLS_KEY_SIZE		:=	${KEY_SIZE}
+	endif
     endif
 endif
 
@@ -80,6 +89,7 @@ endif
 
 # Needs to be set to drive mbed TLS configuration correctly
 $(eval $(call add_define,TF_MBEDTLS_KEY_ALG_ID))
+$(eval $(call add_define,TF_MBEDTLS_KEY_SIZE))
 $(eval $(call add_define,TF_MBEDTLS_HASH_ALG_ID))
 
 

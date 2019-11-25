@@ -4,17 +4,19 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
-#include <delay_timer.h>
 #include <endian.h>
 #include <errno.h>
-#include <mmio.h>
-#include <platform_def.h>
 #include <stdint.h>
 #include <string.h>
-#include <ufs.h>
+
+#include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/delay_timer.h>
+#include <drivers/ufs.h>
+#include <lib/mmio.h>
 
 #define CDB_ADDR_MASK			127
 #define ALIGN_CDB(x)			(((x) + CDB_ADDR_MASK) & ~CDB_ADDR_MASK)
@@ -589,7 +591,7 @@ void ufs_write_desc(int idn, int index, uintptr_t buf, size_t size)
 	ufs_query(QUERY_WRITE_DESC, idn, index, 0, buf, size);
 }
 
-void ufs_read_capacity(int lun, unsigned int *num, unsigned int *size)
+static void ufs_read_capacity(int lun, unsigned int *num, unsigned int *size)
 {
 	utp_utrd_t utrd;
 	resp_upiu_t *resp;
@@ -702,7 +704,7 @@ static void ufs_enum(void)
 	ufs_verify_ready();
 
 	ufs_set_flag(FLAG_DEVICE_INIT);
-	mdelay(100);
+	mdelay(200);
 	/* dump available LUNs */
 	for (i = 0; i < UFS_MAX_LUNS; i++) {
 		ufs_read_capacity(i, &blk_num, &blk_size);

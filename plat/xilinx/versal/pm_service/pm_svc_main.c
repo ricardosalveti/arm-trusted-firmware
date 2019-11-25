@@ -11,7 +11,7 @@
 
 #include <errno.h>
 #include <plat_private.h>
-#include <runtime_svc.h>
+#include <common/runtime_svc.h>
 #include <stdbool.h>
 #include "pm_api_sys.h"
 #include "pm_client.h"

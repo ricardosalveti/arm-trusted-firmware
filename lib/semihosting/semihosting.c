@@ -1,13 +1,14 @@
 /*
- * Copyright (c) 2013-2014, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <assert.h>
 #include <errno.h>
-#include <semihosting.h>
 #include <string.h>
+
+#include <lib/semihosting.h>
 
 #ifndef SEMIHOSTING_SUPPORTED
 #define SEMIHOSTING_SUPPORTED  1
@@ -159,7 +160,7 @@ long semihosting_system(char *command_line)
 long semihosting_get_flen(const char *file_name)
 {
 	long file_handle;
-	size_t length;
+	long length;
 
 	assert(semihosting_connection_supported());
 

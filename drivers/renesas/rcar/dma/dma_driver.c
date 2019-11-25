@@ -5,16 +5,22 @@
  */
 
 #include <stdint.h>
-#include <arch_helpers.h>
 #include <string.h>
-#include <mmio.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <lib/mmio.h>
+
 #include "rcar_def.h"
 #include "cpg_registers.h"
-#include "debug.h"
 #include "rcar_private.h"
 
 /* DMA CHANNEL setting (0/16/32) */
+#if RCAR_LSI == RCAR_V3M
+#define	DMA_CH		16
+#else
 #define	DMA_CH		0
+#endif
 
 #if (DMA_CH == 0)
 #define SYS_DMAC_BIT	((uint32_t)1U << 19U)

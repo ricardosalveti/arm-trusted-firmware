@@ -7,8 +7,8 @@
 #ifndef TZC_DMC500_H
 #define TZC_DMC500_H
 
-#include <tzc_common.h>
-#include <utils_def.h>
+#include <drivers/arm/tzc_common.h>
+#include <lib/utils_def.h>
 
 #define SI_STATUS_OFFSET				U(0x000)
 #define SI_STATE_CTRL_OFFSET				U(0x030)
@@ -121,7 +121,7 @@
 /* Length of registers for configuring each region */
 #define TZC_DMC500_REGION_SIZE				U(0x018)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 #include <stdint.h>
 
@@ -147,5 +147,5 @@ void tzc_dmc500_config_complete(void);
 int tzc_dmc500_verify_complete(void);
 
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 #endif /* TZC_DMC500_H */

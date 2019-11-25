@@ -1,16 +1,17 @@
 /*
  * Copyright (c) 2013-2014, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2015-2018, Renesas Electronics Corporation. All rights reserved.
+ * Copyright (c) 2015-2019, Renesas Electronics Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch.h>
 #include <asm_macros.S>
-#include <bl_common.h>
+#include <common/bl_common.h>
+#include <common/runtime_svc.h>
 #include <cortex_a57.h>
 #include <platform_def.h>
-#include <runtime_svc.h>
+
 #include "rcar_def.h"
 
 	.globl	plat_get_my_entrypoint
@@ -19,13 +20,17 @@
 
 	.globl	plat_crash_console_init
 	.globl	plat_crash_console_putc
-       .globl	plat_crash_console_flush
+	.globl	plat_crash_console_flush
 	.globl	plat_invalidate_icache
 	.globl	plat_report_exception
 	.globl	plat_secondary_reset
 	.globl	plat_reset_handler
 	.globl	plat_my_core_pos
 	.extern	rcar_log_init
+
+	.extern console_rcar_init
+	.extern console_rcar_putc
+	.extern console_rcar_flush
 
 #if IMAGE_BL2
 	#define	INT_ID_MASK	(0x3ff)
@@ -216,6 +221,8 @@ endfunc platform_mem_init
 	 * ---------------------------------------------
 	 */
 func plat_report_exception
+	/* Switch to SP_EL0 */
+	msr	spsel, #0
 #if IMAGE_BL2
 	mov	w1, #FIQ_SP_EL0
 	cmp	w0, w1
@@ -255,7 +262,7 @@ func plat_crash_console_init
 	mov	sp, x2
 	str	x1, [sp, #-16]!
 	str	x30, [sp, #-16]!
-	bl	console_core_init
+	bl	console_rcar_init
 	ldr	x30, [sp], #16
 	ldr	x1, [sp], #16
 	mov	sp, x1
@@ -277,7 +284,7 @@ func plat_crash_console_putc
 	str	x3, [sp, #-16]!
 	str	x4, [sp, #-16]!
 	str	x5, [sp, #-16]!
-	bl	console_core_putc
+	bl	console_rcar_putc
 	ldr	x5, [sp], #16
 	ldr	x4, [sp], #16
 	ldr	x3, [sp], #16
@@ -289,11 +296,10 @@ endfunc plat_crash_console_putc
 
 	/* ---------------------------------------------
 	 * int plat_crash_console_flush()
-	 *
 	 * ---------------------------------------------
 	 */
 func plat_crash_console_flush
-	b	console_flush
+	b	console_rcar_flush
 endfunc plat_crash_console_flush
 
 	/* --------------------------------------------------------------------
@@ -325,11 +331,11 @@ func plat_reset_handler
 	ubfx	w0, w0, 8, 8
 	/* H3? */
 	cmp	w0, #0x4F
-	b.eq	H3
+	b.eq	RCARH3
 	/* set R-Car M3/M3N */
 	mov	x2, #1
 	b	CHK_A5x
-H3:
+RCARH3:
 	/* set R-Car H3 */
 	mov	x2, #0
 	/* --------------------------------------------------------------------

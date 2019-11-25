@@ -4,22 +4,25 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
-#include <delay_timer.h>
-#include <gicv2.h>
-#include <mmio.h>
-#include <platform.h>
+
 #include <platform_def.h>
-#include <psci.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/arm/gicv2.h>
+#include <drivers/delay_timer.h>
+#include <lib/mmio.h>
+#include <lib/psci/psci.h>
+#include <plat/common/platform.h>
+
 #include <sunxi_cpucfg.h>
 #include <sunxi_mmap.h>
 #include <sunxi_private.h>
 
-#define SUNXI_WDOG0_CTRL_REG		(SUNXI_WDOG_BASE + 0x0010)
-#define SUNXI_WDOG0_CFG_REG		(SUNXI_WDOG_BASE + 0x0014)
-#define SUNXI_WDOG0_MODE_REG		(SUNXI_WDOG_BASE + 0x0018)
+#define SUNXI_WDOG0_CTRL_REG		(SUNXI_R_WDOG_BASE + 0x0010)
+#define SUNXI_WDOG0_CFG_REG		(SUNXI_R_WDOG_BASE + 0x0014)
+#define SUNXI_WDOG0_MODE_REG		(SUNXI_R_WDOG_BASE + 0x0018)
 
 #define mpidr_is_valid(mpidr) ( \
 	MPIDR_AFFLVL3_VAL(mpidr) == 0 && \
@@ -32,7 +35,7 @@ static int sunxi_pwr_domain_on(u_register_t mpidr)
 	if (mpidr_is_valid(mpidr) == 0)
 		return PSCI_E_INTERN_FAIL;
 
-	sunxi_cpu_on(MPIDR_AFFLVL1_VAL(mpidr), MPIDR_AFFLVL0_VAL(mpidr));
+	sunxi_cpu_on(mpidr);
 
 	return PSCI_E_SUCCESS;
 }
@@ -44,9 +47,7 @@ static void sunxi_pwr_domain_off(const psci_power_state_t *target_state)
 
 static void __dead2 sunxi_pwr_down_wfi(const psci_power_state_t *target_state)
 {
-	u_register_t mpidr = read_mpidr();
-
-	sunxi_cpu_off(MPIDR_AFFLVL1_VAL(mpidr), MPIDR_AFFLVL0_VAL(mpidr));
+	sunxi_cpu_off(read_mpidr());
 
 	while (1)
 		wfi();
@@ -61,7 +62,7 @@ static void sunxi_pwr_domain_on_finish(const psci_power_state_t *target_state)
 static void __dead2 sunxi_system_off(void)
 {
 	/* Turn off all secondary CPUs */
-	sunxi_disable_secondary_cpus(plat_my_core_pos());
+	sunxi_disable_secondary_cpus(read_mpidr());
 
 	sunxi_power_down();
 }

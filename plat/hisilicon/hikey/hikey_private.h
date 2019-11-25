@@ -7,7 +7,7 @@
 #ifndef HIKEY_PRIVATE_H
 #define HIKEY_PRIVATE_H
 
-#include <bl_common.h>
+#include <common/bl_common.h>
 
 #define RANDOM_MAX		0x7fffffffffffffff
 #define RANDOM_MAGIC		0x9a4dbeaf
@@ -71,5 +71,7 @@ int hikey_read_serialno(struct random_serial_num *serialno);
 int hikey_write_serialno(struct random_serial_num *serialno);
 
 void init_acpu_dvfs(void);
+
+int hikey_set_fip_addr(unsigned int image_id, const char *name);
 
 #endif /* HIKEY_PRIVATE_H */

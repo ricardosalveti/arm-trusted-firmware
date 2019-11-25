@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, STMicroelectronics - All Rights Reserved
+ * Copyright (c) 2017-2019, STMicroelectronics - All Rights Reserved
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,8 +7,9 @@
 #ifndef STM32_SDMMC2_H
 #define STM32_SDMMC2_H
 
-#include <mmc.h>
 #include <stdbool.h>
+
+#include <drivers/mmc.h>
 
 struct stm32_sdmmc2_params {
 	uintptr_t		reg_base;
@@ -21,6 +22,7 @@ struct stm32_sdmmc2_params {
 	unsigned int		dirpol;
 	unsigned int		clock_id;
 	unsigned int		reset_id;
+	unsigned int		max_freq;
 	bool			use_dma;
 };
 

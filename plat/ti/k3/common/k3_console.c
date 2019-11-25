@@ -4,16 +4,18 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <console.h>
-#include <k3_console.h>
 #include <platform_def.h>
-#include <uart_16550.h>
+
+#include <drivers/console.h>
+#include <drivers/ti/uart/uart_16550.h>
+
+#include <k3_console.h>
 
 void bl31_console_setup(void)
 {
 	static console_16550_t console;
 
 	/* Initialize the console to provide early debug support */
-	console_16550_register(K3_USART_BASE_ADDRESS, K3_USART_CLK_SPEED,
+	console_16550_register(K3_USART_BASE, K3_USART_CLK_SPEED,
 			       K3_USART_BAUD, &console);
 }

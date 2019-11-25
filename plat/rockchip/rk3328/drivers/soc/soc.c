@@ -4,19 +4,25 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <console.h>
-#include <ddr_parameter.h>
-#include <debug.h>
-#include <delay_timer.h>
-#include <mmio.h>
-#include <plat_private.h>
 #include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/console.h>
+#include <drivers/delay_timer.h>
+#include <lib/mmio.h>
+
+#include <ddr_parameter.h>
+#include <plat_private.h>
 #include <rk3328_def.h>
 #include <soc.h>
 
 /* Table of regions to map using the MMU. */
 const mmap_region_t plat_rk_mmap[] = {
+	MAP_REGION_FLAT(UART0_BASE, UART0_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(UART1_BASE, UART1_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(UART2_BASE, UART2_SIZE,
 			MT_DEVICE | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(PMU_BASE, PMU_SIZE,

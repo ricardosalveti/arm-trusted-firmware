@@ -4,17 +4,17 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <arm_def.h>
 #include <assert.h>
 #include <errno.h>
-#include <plat_arm.h>
-#include <platform.h>
+
 #include <platform_def.h>
-#include <psci.h>
+
+#include <arch_helpers.h>
+#include <lib/psci/psci.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
 
 /* Allow ARM Standard platforms to override these functions */
-#pragma weak plat_arm_psci_override_pm_ops
 #pragma weak plat_arm_program_trusted_mailbox
 
 #if !ARM_RECOM_STATE_ID_ENC
@@ -116,7 +116,7 @@ int arm_validate_ns_entrypoint(uintptr_t entrypoint)
 			(ARM_NS_DRAM1_BASE + ARM_NS_DRAM1_SIZE))) {
 		return 0;
 	}
-#ifndef AARCH32
+#ifdef __aarch64__
 	if ((entrypoint >= ARM_DRAM2_BASE) && (entrypoint <
 			(ARM_DRAM2_BASE + ARM_DRAM2_SIZE))) {
 		return 0;
@@ -130,14 +130,6 @@ int arm_validate_psci_entrypoint(uintptr_t entrypoint)
 {
 	return (arm_validate_ns_entrypoint(entrypoint) == 0) ? PSCI_E_SUCCESS :
 		PSCI_E_INVALID_ADDRESS;
-}
-
-/******************************************************************************
- * Default definition on ARM standard platforms to override the plat_psci_ops.
- *****************************************************************************/
-const plat_psci_ops_t *plat_arm_psci_override_pm_ops(plat_psci_ops_t *ops)
-{
-	return ops;
 }
 
 /******************************************************************************

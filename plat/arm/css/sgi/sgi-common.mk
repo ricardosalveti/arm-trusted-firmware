@@ -33,7 +33,8 @@ ENT_GIC_SOURCES		:=	drivers/arm/gic/common/gic_common.c	\
 PLAT_BL_COMMON_SOURCES	+=	${CSS_ENT_BASE}/sgi_plat.c	\
 				${CSS_ENT_BASE}/aarch64/sgi_helper.S
 
-BL1_SOURCES		+=	${INTERCONNECT_SOURCES}
+BL1_SOURCES		+=	${INTERCONNECT_SOURCES}			\
+				drivers/arm/sbsa/sbsa.c
 
 BL2_SOURCES		+=	${CSS_ENT_BASE}/sgi_image_load.c
 
@@ -47,7 +48,7 @@ BL31_SOURCES		+=	${CSS_ENT_BASE}/sgi_ras.c
 endif
 
 ifneq (${RESET_TO_BL31},0)
-  $(error "Using BL31 as the reset vector is not supported on ${PLATFORM} platform. \
+  $(error "Using BL31 as the reset vector is not supported on ${PLAT} platform. \
   Please set RESET_TO_BL31 to 0.")
 endif
 

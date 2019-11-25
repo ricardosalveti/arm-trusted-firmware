@@ -4,14 +4,15 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <console.h>
-#include <platform.h>
+
+#include <arch_helpers.h>
+#include <drivers/console.h>
 #if RAS_EXTENSION
-#include <ras.h>
+#include <lib/extensions/ras.h>
 #endif
-#include <xlat_mmu_helpers.h>
+#include <lib/xlat_tables/xlat_mmu_helpers.h>
+#include <plat/common/platform.h>
 
 /*
  * The following platform setup functions are weakly defined. They
@@ -29,11 +30,7 @@
 
 void bl31_plat_runtime_setup(void)
 {
-#if MULTI_CONSOLE_API
 	console_switch_state(CONSOLE_FLAG_RUNTIME);
-#else
-	console_uninit();
-#endif
 }
 
 /*

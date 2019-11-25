@@ -7,14 +7,14 @@
 #ifndef SGM_BASE_PLATFORM_DEF_H
 #define SGM_BASE_PLATFORM_DEF_H
 
-#include <arm_def.h>
-#include <board_css_def.h>
-#include <common_def.h>
-#include <css_def.h>
-#include <soc_css_def.h>
-#include <tzc400.h>
-#include <tzc_common.h>
-#include <v2m_def.h>
+#include <drivers/arm/tzc400.h>
+#include <drivers/arm/tzc_common.h>
+#include <plat/arm/board/common/board_css_def.h>
+#include <plat/arm/board/common/v2m_def.h>
+#include <plat/arm/common/arm_def.h>
+#include <plat/arm/css/common/css_def.h>
+#include <plat/arm/soc/common/soc_css_def.h>
+#include <plat/common/common_def.h>
 
 /* CPU topology */
 #define PLAT_ARM_CLUSTER_COUNT		1
@@ -51,7 +51,7 @@
 
 /* Platform ID address */
 #define SSC_VERSION                     (SSC_REG_BASE + SSC_VERSION_OFFSET)
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 /* SSC_VERSION related accessors */
 /* Returns the part number of the platform */
 #define GET_PLAT_PART_NUM                                       \
@@ -59,7 +59,7 @@
 /* Returns the configuration number of the platform */
 #define GET_PLAT_CONFIG_NUM                                     \
 		GET_SSC_VERSION_CONFIG(mmio_read_32(SSC_VERSION))
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 
 /*************************************************************************
@@ -86,6 +86,7 @@
 
 /* MHU related constants */
 #define PLAT_CSS_MHU_BASE		0x2b1f0000
+#define PLAT_MHUV2_BASE			PLAT_CSS_MHU_BASE
 
 #define PLAT_ARM_TRUSTED_ROM_BASE	0x00000000
 #define PLAT_ARM_TRUSTED_ROM_SIZE	0x00080000
@@ -131,11 +132,6 @@
 #define PLAT_CSS_PRIMARY_CPU_SHIFT		8
 #define PLAT_CSS_PRIMARY_CPU_BIT_WIDTH		4
 #endif
-
-/*
- * tspd support is conditional so enable this for CSS sgm platforms.
- */
-#define SPD_tspd
 
 /*
  * PLAT_CSS_MAX_SCP_BL2_SIZE is calculated using the current
@@ -239,4 +235,8 @@
  */
 #define PLAT_ARM_MEM_PROT_ADDR		(V2M_FLASH0_BASE + \
 					 V2M_FLASH0_SIZE - V2M_FLASH_BLOCK_SIZE)
+
+/* System power domain level */
+#define CSS_SYSTEM_PWR_DMN_LVL		ARM_PWR_LVL2
+
 #endif /* SGM_BASE_PLATFORM_DEF_H */

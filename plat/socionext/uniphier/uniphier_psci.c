@@ -1,22 +1,22 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch_helpers.h>
-#include <debug.h>
-#include <mmio.h>
-#include <psci.h>
+#include <common/debug.h>
+#include <lib/mmio.h>
+#include <lib/psci/psci.h>
 
 #include "uniphier.h"
 
 #define UNIPHIER_ROM_RSV0		0x59801200
 
 #define UNIPHIER_SLFRSTSEL		0x61843010
-#define   UNIPHIER_SLFRSTSEL_MASK		(0x3 << 0)
+#define   UNIPHIER_SLFRSTSEL_MASK		GENMASK(1, 0)
 #define UNIPHIER_SLFRSTCTL		0x61843014
-#define   UNIPHIER_SLFRSTCTL_RST		(1 << 0)
+#define   UNIPHIER_SLFRSTCTL_RST		BIT(0)
 
 #define MPIDR_AFFINITY_INVALID		((u_register_t)-1)
 
@@ -58,7 +58,7 @@ static void __dead2 uniphier_psci_pwr_domain_pwr_down_wfi(
 					const psci_power_state_t *target_state)
 {
 	/*
-	 * The Boot ROM cannot distinguish warn and cold resets.
+	 * The Boot ROM cannot distinguish warm and cold resets.
 	 * Instead of the CPU reset, fake it.
 	 */
 	uniphier_holding_pen_release = MPIDR_AFFINITY_INVALID;

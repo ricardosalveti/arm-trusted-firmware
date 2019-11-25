@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,8 +7,9 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include <psci.h>
 #include <stdint.h>
+
+#include <lib/psci/psci.h>
 
 /*******************************************************************************
  * Forward declarations
@@ -22,6 +23,7 @@ struct bl_load_info;
 struct bl_params;
 struct mmap_region;
 struct secure_partition_boot_info;
+struct sp_res_desc;
 
 /*******************************************************************************
  * plat_get_rotpk_info() flags
@@ -45,6 +47,7 @@ int plat_get_image_source(unsigned int image_id,
 uintptr_t plat_get_ns_image_entrypoint(void);
 unsigned int plat_my_core_pos(void);
 int plat_core_pos_by_mpidr(u_register_t mpidr);
+int plat_get_mbedtls_heap(void **heap_addr, size_t *heap_size);
 
 #if STACK_PROTECTOR_ENABLED
 /*
@@ -102,7 +105,6 @@ void plat_panic_handler(void) __dead2;
 const char *plat_log_get_prefix(unsigned int log_level);
 void bl2_plat_preload_setup(void);
 int plat_try_next_boot_source(void);
-int plat_get_mbedtls_heap(void **heap_addr, size_t *heap_size);
 
 /*******************************************************************************
  * Mandatory BL1 functions
@@ -260,6 +262,7 @@ int plat_get_nv_ctr(void *cookie, unsigned int *nv_ctr);
 int plat_set_nv_ctr(void *cookie, unsigned int nv_ctr);
 int plat_set_nv_ctr2(void *cookie, const struct auth_img_desc_s *img_desc,
 		unsigned int nv_ctr);
+int get_mbedtls_heap_helper(void **heap_addr, size_t *heap_size);
 
 /*******************************************************************************
  * Secure Partitions functions
@@ -267,6 +270,9 @@ int plat_set_nv_ctr2(void *cookie, const struct auth_img_desc_s *img_desc,
 const struct mmap_region *plat_get_secure_partition_mmap(void *cookie);
 const struct secure_partition_boot_info *plat_get_secure_partition_boot_info(
 		void *cookie);
+int plat_spm_sp_rd_load(struct sp_res_desc *rd, const void *ptr, size_t size);
+int plat_spm_sp_get_next_address(void **sp_base, size_t *sp_size,
+				 void **rd_base, size_t *rd_size);
 
 /*******************************************************************************
  * Mandatory BL image load functions(may be overridden).

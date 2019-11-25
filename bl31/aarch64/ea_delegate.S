@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2018-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,10 +8,11 @@
 #include <assert_macros.S>
 #include <asm_macros.S>
 #include <assert_macros.S>
+#include <bl31/ea_handle.h>
 #include <context.h>
-#include <ea_handle.h>
-#include <ras_arch.h>
-
+#include <lib/extensions/ras_arch.h>
+#include <cpu_macros.S>
+#include <context.h>
 
 	.globl	handle_lower_el_ea_esb
 	.globl	enter_lower_el_sync_ea
@@ -35,9 +36,9 @@ endfunc handle_lower_el_ea_esb
 
 /*
  * This function forms the tail end of Synchronous Exception entry from lower
- * EL, and expects to handle only Synchronous External Aborts from lower EL. If
- * any other kind of exception is detected, then this function reports unhandled
- * exception.
+ * EL, and expects to handle Synchronous External Aborts from lower EL and CPU
+ * Implementation Defined Exceptions. If any other kind of exception is detected,
+ * then this function reports unhandled exception.
  *
  * Since it's part of exception vector, this function doesn't expect any GP
  * registers to have been saved. It delegates the handling of the EA to platform
@@ -58,15 +59,45 @@ func enter_lower_el_sync_ea
 	b.eq	1f
 
 	cmp	x30, #EC_DABORT_LOWER_EL
-	b.ne	2f
+	b.eq	1f
+
+	/* Save GP registers */
+	stp	x0, x1, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X0]
+	stp	x2, x3, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X2]
+	stp	x4, x5, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X4]
+
+	/* Get the cpu_ops pointer */
+	bl	get_cpu_ops_ptr
+
+	/* Get the cpu_ops exception handler */
+	ldr	x0, [x0, #CPU_E_HANDLER_FUNC]
+
+	/*
+	 * If the reserved function pointer is NULL, this CPU does not have an
+	 * implementation defined exception handler function
+	 */
+	cbz	x0, 2f
+	mrs	x1, esr_el3
+	ubfx	x1, x1, #ESR_EC_SHIFT, #ESR_EC_LENGTH
+	blr	x0
+	b	2f
 
 1:
 	/* Test for EA bit in the instruction syndrome */
 	mrs	x30, esr_el3
-	tbz	x30, #ESR_ISS_EABORT_EA_BIT, 2f
+	tbz	x30, #ESR_ISS_EABORT_EA_BIT, 3f
 
-	/* Save GP registers */
-	bl	save_gp_registers
+	/*
+	 * Save general purpose and ARMv8.3-PAuth registers (if enabled).
+	 * If Secure Cycle Counter is not disabled in MDCR_EL3 when
+	 * ARMv8.5-PMU is implemented, save PMCR_EL0 and disable Cycle Counter.
+	 */
+	bl	save_gp_pmcr_pauth_regs
+
+#if ENABLE_PAUTH
+	/* Load and program APIAKey firmware key */
+	bl	pauth_load_bl31_apiakey
+#endif
 
 	/* Setup exception class and syndrome arguments for platform handler */
 	mov	x0, #ERROR_EA_SYNC
@@ -75,6 +106,11 @@ func enter_lower_el_sync_ea
 	b	delegate_sync_ea
 
 2:
+	ldp	x0, x1, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X0]
+	ldp	x2, x3, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X2]
+	ldp	x4, x5, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_X4]
+
+3:
 	/* Synchronous exceptions other than the above are assumed to be EA */
 	ldr	x30, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_LR]
 	no_ret	report_unhandled_exception
@@ -95,8 +131,17 @@ func enter_lower_el_async_ea
 	 */
 	str	x30, [sp, #CTX_GPREGS_OFFSET + CTX_GPREG_LR]
 
-	/* Save GP registers */
-	bl	save_gp_registers
+	/*
+	 * Save general purpose and ARMv8.3-PAuth registers (if enabled).
+	 * If Secure Cycle Counter is not disabled in MDCR_EL3 when
+	 * ARMv8.5-PMU is implemented, save PMCR_EL0 and disable Cycle Counter.
+	 */
+	bl	save_gp_pmcr_pauth_regs
+
+#if ENABLE_PAUTH
+	/* Load and program APIAKey firmware key */
+	bl	pauth_load_bl31_apiakey
+#endif
 
 	/* Setup exception class and syndrome arguments for platform handler */
 	mov	x0, #ERROR_EA_ASYNC
@@ -217,7 +262,7 @@ func ea_proceed
 
 	/* Switch to runtime stack */
 	ldr	x5, [sp, #CTX_EL3STATE_OFFSET + CTX_RUNTIME_SP]
-	msr	spsel, #0
+	msr	spsel, #MODE_SP_EL0
 	mov	sp, x5
 
 	mov	x29, x30
@@ -239,7 +284,7 @@ func ea_proceed
 #endif
 
 	/* Make SP point to context */
-	msr	spsel, #1
+	msr	spsel, #MODE_SP_ELX
 
 	/* Restore EL3 state and ESR */
 	ldp	x1, x2, [sp, #CTX_EL3STATE_OFFSET + CTX_SPSR_EL3]

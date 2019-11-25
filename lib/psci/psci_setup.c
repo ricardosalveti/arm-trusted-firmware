@@ -1,18 +1,20 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <assert.h>
+#include <stddef.h>
+
 #include <arch.h>
 #include <arch_helpers.h>
-#include <assert.h>
-#include <bl_common.h>
+#include <common/bl_common.h>
 #include <context.h>
-#include <context_mgmt.h>
-#include <errata_report.h>
-#include <platform.h>
-#include <stddef.h>
+#include <lib/el3_runtime/context_mgmt.h>
+#include <lib/cpus/errata_report.h>
+#include <plat/common/platform.h>
+
 #include "psci_private.h"
 
 /*******************************************************************************
@@ -278,6 +280,12 @@ void psci_arch_setup(void)
 
 	/* Having initialized cpu_ops, we can now print errata status */
 	print_errata_status();
+
+#if ENABLE_PAUTH
+	/* Store APIAKey_EL1 key */
+	set_cpu_data(apiakey[0], read_apiakeylo_el1());
+	set_cpu_data(apiakey[1], read_apiakeyhi_el1());
+#endif /* ENABLE_PAUTH */
 }
 
 /******************************************************************************

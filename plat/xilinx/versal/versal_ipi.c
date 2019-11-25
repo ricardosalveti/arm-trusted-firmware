@@ -8,14 +8,14 @@
  * Versal IPI agent registers access management
  */
 
-#include <bakery_lock.h>
-#include <debug.h>
+#include <lib/bakery_lock.h>
+#include <common/debug.h>
 #include <errno.h>
 #include <ipi.h>
-#include <mmio.h>
+#include <lib/mmio.h>
 #include <plat_ipi.h>
 #include <plat_private.h>
-#include <runtime_svc.h>
+#include <common/runtime_svc.h>
 #include <string.h>
 
 /* versal ipi configuration table */

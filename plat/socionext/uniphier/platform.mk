@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -27,8 +27,9 @@ PLAT_PATH		:=	plat/socionext/uniphier
 PLAT_INCLUDES		:=	-I$(PLAT_PATH)/include
 
 # common sources for BL2, BL31 (and BL32 if SPD=tspd)
-PLAT_BL_COMMON_SOURCES	+=	drivers/console/aarch64/console.S	\
+PLAT_BL_COMMON_SOURCES	+=	plat/common/aarch64/crash_console_helpers.S \
 				$(PLAT_PATH)/uniphier_console.S		\
+				$(PLAT_PATH)/uniphier_console_setup.c	\
 				$(PLAT_PATH)/uniphier_helpers.S		\
 				$(PLAT_PATH)/uniphier_soc_info.c	\
 				$(PLAT_PATH)/uniphier_xlat_setup.c	\
@@ -71,8 +72,6 @@ ifeq (${TRUSTED_BOARD_BOOT},1)
 
 include drivers/auth/mbedtls/mbedtls_crypto.mk
 include drivers/auth/mbedtls/mbedtls_x509.mk
-
-PLAT_INCLUDES		+=	-Iinclude/common/tbbr
 
 BL2_SOURCES		+=	drivers/auth/auth_mod.c			\
 				drivers/auth/crypto_mod.c		\

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,7 +8,8 @@
 #define SPM_SHIM_PRIVATE_H
 
 #include <stdint.h>
-#include <utils_def.h>
+
+#include <lib/utils_def.h>
 
 /* Assembly source */
 IMPORT_SYM(uintptr_t, spm_shim_exceptions_ptr,		SPM_SHIM_EXCEPTIONS_PTR);
@@ -21,5 +22,13 @@ IMPORT_SYM(uintptr_t, __SPM_SHIM_EXCEPTIONS_END__,	SPM_SHIM_EXCEPTIONS_END);
 
 #define SPM_SHIM_EXCEPTIONS_SIZE	\
 	(SPM_SHIM_EXCEPTIONS_END - SPM_SHIM_EXCEPTIONS_START)
+
+/*
+ * Use the smallest virtual address space size allowed in ARMv8.0 for
+ * compatibility.
+ */
+#define SPM_SHIM_XLAT_VIRT_ADDR_SPACE_SIZE	(1ULL << 25)
+#define SPM_SHIM_MMAP_REGIONS	1
+#define SPM_SHIM_XLAT_TABLES	1
 
 #endif /* SPM_SHIM_PRIVATE_H */

@@ -1,16 +1,17 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch.h>
-#include <arm_config.h>
-#include <cassert.h>
-#include <plat_arm.h>
-#include <platform.h>
 #include <platform_def.h>
-#include "drivers/pwrc/fvp_pwrc.h"
+
+#include <arch.h>
+#include <drivers/arm/fvp/fvp_pwrc.h>
+#include <lib/cassert.h>
+#include <plat/arm/common/arm_config.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
 
 /* The FVP power domain tree descriptor */
 static unsigned char fvp_power_domain_tree_desc[FVP_CLUSTER_COUNT + 2];
@@ -35,7 +36,8 @@ const unsigned char *plat_get_power_domain_tree_desc(void)
 	fvp_power_domain_tree_desc[1] = FVP_CLUSTER_COUNT;
 
 	for (i = 0; i < FVP_CLUSTER_COUNT; i++)
-		fvp_power_domain_tree_desc[i + 2] = FVP_MAX_CPUS_PER_CLUSTER;
+		fvp_power_domain_tree_desc[i + 2] =
+			FVP_MAX_CPUS_PER_CLUSTER * FVP_MAX_PE_PER_CPU;
 
 
 	return fvp_power_domain_tree_desc;

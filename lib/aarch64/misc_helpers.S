@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,52 +7,23 @@
 #include <arch.h>
 #include <asm_macros.S>
 #include <assert_macros.S>
-#include <xlat_tables_defs.h>
+#include <common/bl_common.h>
+#include <lib/xlat_tables/xlat_tables_defs.h>
 
-	.globl	get_afflvl_shift
-	.globl	mpidr_mask_lower_afflvls
-	.globl	eret
 	.globl	smc
 
 	.globl	zero_normalmem
 	.globl	zeromem
-	.globl	zeromem16
 	.globl	memcpy16
 
 	.globl	disable_mmu_el1
 	.globl	disable_mmu_el3
 	.globl	disable_mmu_icache_el1
 	.globl	disable_mmu_icache_el3
-
 	.globl	fixup_gdt_reloc
-
 #if SUPPORT_VFP
 	.globl	enable_vfp
 #endif
-
-func get_afflvl_shift
-	cmp	x0, #3
-	cinc	x0, x0, eq
-	mov	x1, #MPIDR_AFFLVL_SHIFT
-	lsl	x0, x0, x1
-	ret
-endfunc get_afflvl_shift
-
-func mpidr_mask_lower_afflvls
-	cmp	x1, #3
-	cinc	x1, x1, eq
-	mov	x2, #MPIDR_AFFLVL_SHIFT
-	lsl	x2, x1, x2
-	lsr	x0, x0, x2
-	lsl	x0, x0, x2
-	ret
-endfunc mpidr_mask_lower_afflvls
-
-
-func eret
-	eret
-endfunc eret
-
 
 func smc
 	smc	#0
@@ -530,8 +501,8 @@ func fixup_gdt_reloc
 #endif
 	/*
 	 * Calculate the offset based on return address in x30.
-	 * Assume that this funtion is called within a page of the start of
-	 * of fixup region.
+	 * Assume that this function is called within a page at the start of
+	 * fixup region.
 	 */
 	and	x2, x30, #~(PAGE_SIZE - 1)
 	sub	x0, x2, x6	/* Diff(S) = Current Address - Compiled Address */
@@ -579,13 +550,13 @@ func fixup_gdt_reloc
 	 *
 	 * r_offset is address of reference
 	 * r_info is symbol index and type of relocation (in this case
-	 * 0x403 which corresponds to R_AARCH64_RELATIV).
+	 * 0x403 which corresponds to R_AARCH64_RELATIVE).
 	 * r_addend is constant part of expression.
 	 *
 	 * Size of Elf64_Rela structure is 24 bytes.
 	 */
 1:
-	/* Assert that the relocation type is R_AARCH64_RELATIV */
+	/* Assert that the relocation type is R_AARCH64_RELATIVE */
 #if ENABLE_ASSERTIONS
 	ldr	x3, [x1, #8]
 	cmp	x3, #0x403

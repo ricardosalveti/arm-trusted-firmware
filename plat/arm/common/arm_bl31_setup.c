@@ -4,19 +4,20 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <assert.h>
+
 #include <arch.h>
 #include <arch_helpers.h>
-#include <arm_def.h>
-#include <assert.h>
-#include <bl_common.h>
-#include <console.h>
-#include <debug.h>
-#include <mmio.h>
-#include <plat_arm.h>
-#include <platform.h>
-#include <ras.h>
-#include <utils.h>
-#include <xlat_tables_compat.h>
+#include <common/bl_common.h>
+#include <common/debug.h>
+#include <drivers/console.h>
+#include <lib/extensions/ras.h>
+#include <lib/mmio.h>
+#include <lib/utils.h>
+#include <lib/xlat_tables/xlat_tables_compat.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
+#include <platform_def.h>
 
 /*
  * Placeholder variables for copying the arguments that have been passed to
@@ -239,11 +240,7 @@ void arm_bl31_platform_setup(void)
  ******************************************************************************/
 void arm_bl31_plat_runtime_setup(void)
 {
-#if MULTI_CONSOLE_API
 	console_switch_state(CONSOLE_FLAG_RUNTIME);
-#else
-	console_uninit();
-#endif
 
 	/* Initialize the runtime console */
 	arm_console_runtime_init();

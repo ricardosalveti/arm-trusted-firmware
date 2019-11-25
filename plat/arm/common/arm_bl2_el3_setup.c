@@ -3,11 +3,13 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#include <arm_def.h>
+
 #include <assert.h>
-#include <generic_delay_timer.h>
-#include <plat_arm.h>
-#include <platform.h>
+
+#include <drivers/generic_delay_timer.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
+#include <platform_def.h>
 
 #pragma weak bl2_el3_early_platform_setup
 #pragma weak bl2_el3_plat_arch_setup
@@ -81,10 +83,10 @@ void arm_bl2_el3_plat_arch_setup(void)
 
 	setup_page_tables(bl_regions, plat_arm_get_mmap());
 
-#ifdef AARCH32
-	enable_mmu_svc_mon(0);
-#else
+#ifdef __aarch64__
 	enable_mmu_el3(0);
+#else
+	enable_mmu_svc_mon(0);
 #endif
 }
 

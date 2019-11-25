@@ -7,11 +7,12 @@
 #ifndef TSPD_PRIVATE_H
 #define TSPD_PRIVATE_H
 
-#include <arch.h>
-#include <context.h>
-#include <interrupt_mgmt.h>
 #include <platform_def.h>
-#include <psci.h>
+
+#include <arch.h>
+#include <bl31/interrupt_mgmt.h>
+#include <context.h>
+#include <lib/psci/psci.h>
 
 /*******************************************************************************
  * Secure Payload PM state information e.g. SP is suspended, uninitialised etc
@@ -125,10 +126,11 @@
 #define TSPD_SP_CTX_SIZE	0x90
 #define TSPD_SP_CTX_ENTRIES		(TSPD_SP_CTX_SIZE >> DWORD_SHIFT)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
-#include <cassert.h>
 #include <stdint.h>
+
+#include <lib/cassert.h>
 
 /*
  * The number of arguments to save during a SMC call for TSP.
@@ -225,6 +227,6 @@ uint64_t tspd_handle_sp_preemption(void *handle);
 
 extern tsp_context_t tspd_sp_context[TSPD_CORE_COUNT];
 extern tsp_vectors_t *tsp_vectors;
-#endif /*__ASSEMBLY__*/
+#endif /*__ASSEMBLER__*/
 
 #endif /* TSPD_PRIVATE_H */

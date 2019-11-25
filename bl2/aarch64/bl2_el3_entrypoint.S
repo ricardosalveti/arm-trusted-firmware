@@ -1,16 +1,15 @@
 /*
- * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <arch.h>
 #include <asm_macros.S>
-#include <bl_common.h>
+#include <common/bl_common.h>
 #include <el3_common_macros.S>
 
 	.globl	bl2_entrypoint
-	.globl	bl2_vector_table
 	.globl	bl2_el3_run_image
 	.globl	bl2_run_next_image
 
@@ -29,16 +28,28 @@ func bl2_entrypoint
 		_init_c_runtime=1                               \
 		_exception_vectors=bl2_el3_exceptions
 
-	/*
+	/* ---------------------------------------------
 	 * Restore parameters of boot rom
+	 * ---------------------------------------------
 	 */
 	mov	x0, x20
 	mov	x1, x21
 	mov	x2, x22
 	mov	x3, x23
 
-	bl	bl2_el3_early_platform_setup
-	bl	bl2_el3_plat_arch_setup
+	/* ---------------------------------------------
+	 * Perform BL2 setup
+	 * ---------------------------------------------
+	 */
+	bl	bl2_el3_setup
+
+#if ENABLE_PAUTH
+	/* ---------------------------------------------
+	 * Program APIAKey_EL1 and enable pointer authentication.
+	 * ---------------------------------------------
+	 */
+	bl	pauth_init_enable_el3
+#endif /* ENABLE_PAUTH */
 
 	/* ---------------------------------------------
 	 * Jump to main function.
@@ -55,15 +66,25 @@ endfunc bl2_entrypoint
 
 func bl2_run_next_image
 	mov	x20,x0
-        /*
-         * MMU needs to be disabled because both BL2 and BL31 execute
-         * in EL3, and therefore share the same address space.
-         * BL31 will initialize the address space according to its
-         * own requirement.
-         */
+	/* ---------------------------------------------
+	 * MMU needs to be disabled because both BL2 and BL31 execute
+	 * in EL3, and therefore share the same address space.
+	 * BL31 will initialize the address space according to its
+	 * own requirement.
+	 * ---------------------------------------------
+	 */
 	bl	disable_mmu_icache_el3
 	tlbi	alle3
 	bl	bl2_el3_plat_prepare_exit
+
+#if ENABLE_PAUTH
+	/* ---------------------------------------------
+	 * Disable pointer authentication before jumping
+	 * to next boot image.
+	 * ---------------------------------------------
+	 */
+	bl	pauth_disable_el3
+#endif /* ENABLE_PAUTH */
 
 	ldp	x0, x1, [x20, #ENTRY_POINT_INFO_PC_OFFSET]
 	msr	elr_el3, x0

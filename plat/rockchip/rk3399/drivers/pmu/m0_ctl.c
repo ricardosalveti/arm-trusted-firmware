@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
-#include <delay_timer.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/delay_timer.h>
+#include <lib/mmio.h>
+
 #include <m0_ctl.h>
-#include <mmio.h>
 #include <plat_private.h>
 #include <rk3399_def.h>
 #include <secure.h>
@@ -43,10 +45,10 @@ void m0_configure_execute_addr(uintptr_t addr)
 	/* set the execute address for M0 */
 	mmio_write_32(SGRF_BASE + SGRF_PMU_CON(3),
 		      BITS_WITH_WMASK((addr >> 12) & 0xffff,
-				      0xffff, 0));
+				      0xffffu, 0));
 	mmio_write_32(SGRF_BASE + SGRF_PMU_CON(7),
 		      BITS_WITH_WMASK((addr >> 28) & 0xf,
-				      0xf, 0));
+				      0xfu, 0));
 }
 
 void m0_start(void)

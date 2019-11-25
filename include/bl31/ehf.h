@@ -7,11 +7,12 @@
 #ifndef EHF_H
 #define EHF_H
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 #include <cdefs.h>
 #include <stdint.h>
-#include <utils_def.h>
+
+#include <lib/utils_def.h>
 
 /* Valid priorities set bit 0 of the priority handler. */
 #define EHF_PRI_VALID_	BIT(0)
@@ -86,6 +87,6 @@ void ehf_register_priority_handler(unsigned int pri, ehf_handler_t handler);
 void ehf_allow_ns_preemption(uint64_t preempt_ret_code);
 unsigned int ehf_is_ns_preemption_allowed(void);
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* EHF_H */

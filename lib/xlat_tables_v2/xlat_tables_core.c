@@ -1,25 +1,28 @@
 /*
- * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
 #include <errno.h>
-#include <platform_def.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <utils_def.h>
-#include <xlat_tables_defs.h>
-#include <xlat_tables_v2.h>
+
+#include <platform_def.h>
+
+#include <arch_features.h>
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <lib/utils_def.h>
+#include <lib/xlat_tables/xlat_tables_defs.h>
+#include <lib/xlat_tables/xlat_tables_v2.h>
 
 #include "xlat_tables_private.h"
 
 /* Helper function that cleans the data cache only if it is enabled. */
-static inline void xlat_clean_dcache_range(uintptr_t addr, size_t size)
+static inline __attribute__((unused)) void xlat_clean_dcache_range(uintptr_t addr, size_t size)
 {
 	if (is_dcache_enabled())
 		clean_dcache_range(addr, size);
@@ -193,6 +196,18 @@ uint64_t xlat_desc(const xlat_ctx_t *ctx, uint32_t attr,
 
 		if (mem_type == MT_MEMORY) {
 			desc |= LOWER_ATTRS(ATTR_IWBWA_OWBWA_NTR_INDEX | ISH);
+
+			/* Check if Branch Target Identification is enabled */
+#if ENABLE_BTI
+			/* Set GP bit for block and page code entries
+			 * if BTI mechanism is implemented.
+			 */
+			if (is_armv8_5_bti_present() &&
+			   ((attr & (MT_TYPE_MASK | MT_RW |
+				MT_EXECUTE_NEVER)) == MT_CODE)) {
+				desc |= GP;
+			}
+#endif
 		} else {
 			assert(mem_type == MT_NON_CACHEABLE);
 			desc |= LOWER_ATTRS(ATTR_NON_CACHEABLE_INDEX | OSH);
@@ -229,8 +244,100 @@ typedef enum {
 
 } action_t;
 
+/*
+ * Function that returns the first VA of the table affected by the specified
+ * mmap region.
+ */
+static uintptr_t xlat_tables_find_start_va(mmap_region_t *mm,
+				   const uintptr_t table_base_va,
+				   const unsigned int level)
+{
+	uintptr_t table_idx_va;
+
+	if (mm->base_va > table_base_va) {
+		/* Find the first index of the table affected by the region. */
+		table_idx_va = mm->base_va & ~XLAT_BLOCK_MASK(level);
+	} else {
+		/* Start from the beginning of the table. */
+		table_idx_va = table_base_va;
+	}
+
+	return table_idx_va;
+}
+
+/*
+ * Function that returns table index for the given VA and level arguments.
+ */
+static inline unsigned int  xlat_tables_va_to_index(const uintptr_t table_base_va,
+						const uintptr_t va,
+						const unsigned int level)
+{
+	return (unsigned int)((va - table_base_va) >> XLAT_ADDR_SHIFT(level));
+}
+
 #if PLAT_XLAT_TABLES_DYNAMIC
 
+/*
+ * From the given arguments, it decides which action to take when unmapping the
+ * specified region.
+ */
+static action_t xlat_tables_unmap_region_action(const mmap_region_t *mm,
+		const uintptr_t table_idx_va, const uintptr_t table_idx_end_va,
+		const unsigned int level, const uint64_t desc_type)
+{
+	action_t action;
+	uintptr_t region_end_va = mm->base_va + mm->size - 1U;
+
+	if ((mm->base_va <= table_idx_va) &&
+	    (region_end_va >= table_idx_end_va)) {
+		/* Region covers all block */
+
+		if (level == 3U) {
+			/*
+			 * Last level, only page descriptors allowed,
+			 * erase it.
+			 */
+			assert(desc_type == PAGE_DESC);
+
+			action = ACTION_WRITE_BLOCK_ENTRY;
+		} else {
+			/*
+			 * Other levels can have table descriptors. If
+			 * so, recurse into it and erase descriptors
+			 * inside it as needed. If there is a block
+			 * descriptor, just erase it. If an invalid
+			 * descriptor is found, this table isn't
+			 * actually mapped, which shouldn't happen.
+			 */
+			if (desc_type == TABLE_DESC) {
+				action = ACTION_RECURSE_INTO_TABLE;
+			} else {
+				assert(desc_type == BLOCK_DESC);
+				action = ACTION_WRITE_BLOCK_ENTRY;
+			}
+		}
+
+	} else if ((mm->base_va <= table_idx_end_va) ||
+		   (region_end_va >= table_idx_va)) {
+		/*
+		 * Region partially covers block.
+		 *
+		 * It can't happen in level 3.
+		 *
+		 * There must be a table descriptor here, if not there
+		 * was a problem when mapping the region.
+		 */
+		assert(level < 3U);
+		assert(desc_type == TABLE_DESC);
+
+		action = ACTION_RECURSE_INTO_TABLE;
+	} else {
+		/* The region doesn't cover the block at all */
+		action = ACTION_NONE;
+	}
+
+	return action;
+}
 /*
  * Recursive function that writes to the translation tables and unmaps the
  * specified region.
@@ -253,19 +360,8 @@ static void xlat_tables_unmap_region(xlat_ctx_t *ctx, mmap_region_t *mm,
 
 	unsigned int table_idx;
 
-	if (mm->base_va > table_base_va) {
-		/* Find the first index of the table affected by the region. */
-		table_idx_va = mm->base_va & ~XLAT_BLOCK_MASK(level);
-
-		table_idx = (unsigned int)((table_idx_va - table_base_va) >>
-			    XLAT_ADDR_SHIFT(level));
-
-		assert(table_idx < table_entries);
-	} else {
-		/* Start from the beginning of the table. */
-		table_idx_va = table_base_va;
-		table_idx = 0;
-	}
+	table_idx_va = xlat_tables_find_start_va(mm, table_base_va, level);
+	table_idx = xlat_tables_va_to_index(table_base_va, table_idx_va, level);
 
 	while (table_idx < table_entries) {
 
@@ -274,55 +370,9 @@ static void xlat_tables_unmap_region(xlat_ctx_t *ctx, mmap_region_t *mm,
 		desc = table_base[table_idx];
 		uint64_t desc_type = desc & DESC_MASK;
 
-		action_t action;
-
-		if ((mm->base_va <= table_idx_va) &&
-		    (region_end_va >= table_idx_end_va)) {
-			/* Region covers all block */
-
-			if (level == 3U) {
-				/*
-				 * Last level, only page descriptors allowed,
-				 * erase it.
-				 */
-				assert(desc_type == PAGE_DESC);
-
-				action = ACTION_WRITE_BLOCK_ENTRY;
-			} else {
-				/*
-				 * Other levels can have table descriptors. If
-				 * so, recurse into it and erase descriptors
-				 * inside it as needed. If there is a block
-				 * descriptor, just erase it. If an invalid
-				 * descriptor is found, this table isn't
-				 * actually mapped, which shouldn't happen.
-				 */
-				if (desc_type == TABLE_DESC) {
-					action = ACTION_RECURSE_INTO_TABLE;
-				} else {
-					assert(desc_type == BLOCK_DESC);
-					action = ACTION_WRITE_BLOCK_ENTRY;
-				}
-			}
-
-		} else if ((mm->base_va <= table_idx_end_va) ||
-			   (region_end_va >= table_idx_va)) {
-			/*
-			 * Region partially covers block.
-			 *
-			 * It can't happen in level 3.
-			 *
-			 * There must be a table descriptor here, if not there
-			 * was a problem when mapping the region.
-			 */
-			assert(level < 3U);
-			assert(desc_type == TABLE_DESC);
-
-			action = ACTION_RECURSE_INTO_TABLE;
-		} else {
-			/* The region doesn't cover the block at all */
-			action = ACTION_NONE;
-		}
+		action_t action = xlat_tables_unmap_region_action(mm,
+				table_idx_va, table_idx_end_va, level,
+				desc_type);
 
 		if (action == ACTION_WRITE_BLOCK_ENTRY) {
 
@@ -523,19 +573,8 @@ static uintptr_t xlat_tables_map_region(xlat_ctx_t *ctx, mmap_region_t *mm,
 
 	unsigned int table_idx;
 
-	if (mm->base_va > table_base_va) {
-		/* Find the first index of the table affected by the region. */
-		table_idx_va = mm->base_va & ~XLAT_BLOCK_MASK(level);
-
-		table_idx = (unsigned int)((table_idx_va - table_base_va) >>
-			    XLAT_ADDR_SHIFT(level));
-
-		assert(table_idx < table_entries);
-	} else {
-		/* Start from the beginning of the table. */
-		table_idx_va = table_base_va;
-		table_idx = 0U;
-	}
+	table_idx_va = xlat_tables_find_start_va(mm, table_base_va, level);
+	table_idx = xlat_tables_va_to_index(table_base_va, table_idx_va, level);
 
 #if PLAT_XLAT_TABLES_DYNAMIC
 	if (level > ctx->base_level)
@@ -568,7 +607,8 @@ static uintptr_t xlat_tables_map_region(xlat_ctx_t *ctx, mmap_region_t *mm,
 			}
 
 			/* Point to new subtable from this one. */
-			table_base[table_idx] = TABLE_DESC | (unsigned long)subtable;
+			table_base[table_idx] =
+				TABLE_DESC | (uintptr_t)subtable;
 
 			/* Recurse to write into subtable */
 			end_va = xlat_tables_map_region(ctx, mm, table_idx_va,
@@ -1101,6 +1141,36 @@ int mmap_remove_dynamic_region_ctx(xlat_ctx_t *ctx, uintptr_t base_va,
 	return 0;
 }
 
+void xlat_setup_dynamic_ctx(xlat_ctx_t *ctx, unsigned long long pa_max,
+			    uintptr_t va_max, struct mmap_region *mmap,
+			    unsigned int mmap_num, uint64_t **tables,
+			    unsigned int tables_num, uint64_t *base_table,
+			    int xlat_regime, int *mapped_regions)
+{
+	ctx->xlat_regime = xlat_regime;
+
+	ctx->pa_max_address = pa_max;
+	ctx->va_max_address = va_max;
+
+	ctx->mmap = mmap;
+	ctx->mmap_num = mmap_num;
+	memset(ctx->mmap, 0, sizeof(struct mmap_region) * mmap_num);
+
+	ctx->tables = (void *) tables;
+	ctx->tables_num = tables_num;
+
+	uintptr_t va_space_size = va_max + 1;
+	ctx->base_level = GET_XLAT_TABLE_LEVEL_BASE(va_space_size);
+	ctx->base_table = base_table;
+	ctx->base_table_entries = GET_NUM_BASE_LEVEL_ENTRIES(va_space_size);
+
+	ctx->tables_mapped_regions = mapped_regions;
+
+	ctx->max_pa = 0;
+	ctx->max_va = 0;
+	ctx->initialized = 0;
+}
+
 #endif /* PLAT_XLAT_TABLES_DYNAMIC */
 
 void __init init_xlat_tables_ctx(xlat_ctx_t *ctx)
@@ -1113,6 +1183,11 @@ void __init init_xlat_tables_ctx(xlat_ctx_t *ctx)
 	assert(!is_mmu_enabled_ctx(ctx));
 
 	mmap_region_t *mm = ctx->mmap;
+
+	assert(ctx->va_max_address >=
+		(xlat_get_min_virt_addr_space_size() - 1U));
+	assert(ctx->va_max_address <= (MAX_VIRT_ADDR_SPACE_SIZE - 1U));
+	assert(IS_POWER_OF_TWO(ctx->va_max_address + 1U));
 
 	xlat_mmap_print(mm);
 

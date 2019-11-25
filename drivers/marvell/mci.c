@@ -7,10 +7,11 @@
 
 /* MCI bus driver for Marvell ARMADA 8K and 8K+ SoCs */
 
-#include <debug.h>
-#include <delay_timer.h>
-#include <mmio.h>
-#include <mci.h>
+#include <common/debug.h>
+#include <drivers/delay_timer.h>
+#include <drivers/marvell/mci.h>
+#include <lib/mmio.h>
+
 #include <mvebu.h>
 #include <mvebu_def.h>
 #include <plat_marvell.h>
@@ -244,7 +245,7 @@
 				MCI_PHY_CTRL_PHY_ADDR_MSB_OFFSET)
 #define MCI_PHY_CTRL_PIDI_MODE_OFFSET			31
 #define MCI_PHY_CTRL_PIDI_MODE				\
-				(1 << MCI_PHY_CTRL_PIDI_MODE_OFFSET)
+				(1U << MCI_PHY_CTRL_PIDI_MODE_OFFSET)
 
 /* Number of times to wait for the MCI link ready after MCI configurations
  * Normally takes 34-35 successive reads

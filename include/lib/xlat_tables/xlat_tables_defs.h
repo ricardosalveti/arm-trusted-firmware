@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -8,8 +8,8 @@
 #define XLAT_TABLES_DEFS_H
 
 #include <arch.h>
-#include <utils_def.h>
-#include <xlat_mmu_helpers.h>
+#include <lib/utils_def.h>
+#include <lib/xlat_tables/xlat_mmu_helpers.h>
 
 /* Miscellaneous MMU related constants */
 #define NUM_2MB_IN_GB		(U(1) << 9)
@@ -62,6 +62,11 @@
 #define OSH			(U(0x2) << 6)
 #define ISH			(U(0x3) << 6)
 
+#ifdef __aarch64__
+/* Guarded Page bit */
+#define GP			(ULL(1) << 50)
+#endif
+
 #define TABLE_ADDR_MASK		ULL(0x0000FFFFFFFFF000)
 
 /*
@@ -73,7 +78,11 @@
 #define PAGE_SIZE_MASK		(PAGE_SIZE - U(1))
 #define IS_PAGE_ALIGNED(addr)	(((addr) & PAGE_SIZE_MASK) == U(0))
 
-#define XLAT_ENTRY_SIZE_SHIFT	U(3) /* Each MMU table entry is 8 bytes (1 << 3) */
+#if (ARM_ARCH_MAJOR == 7) && !ARMV7_SUPPORTS_LARGE_PAGE_ADDRESSING
+#define XLAT_ENTRY_SIZE_SHIFT	U(2)	/* Each MMU table entry is 4 bytes */
+#else
+#define XLAT_ENTRY_SIZE_SHIFT	U(3)	/* Each MMU table entry is 8 bytes */
+#endif
 #define XLAT_ENTRY_SIZE		(U(1) << XLAT_ENTRY_SIZE_SHIFT)
 
 #define XLAT_TABLE_SIZE_SHIFT	PAGE_SIZE_SHIFT /* Size of one complete table */

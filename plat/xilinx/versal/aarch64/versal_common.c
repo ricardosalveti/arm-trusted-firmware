@@ -4,14 +4,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <debug.h>
-#include <generic_delay_timer.h>
-#include <mmio.h>
 #include <plat_ipi.h>
 #include <plat_private.h>
-#include <platform.h>
+#include <common/debug.h>
 #include <versal_def.h>
-#include <xlat_tables.h>
+#include <drivers/generic_delay_timer.h>
+#include <lib/mmio.h>
+#include <lib/xlat_tables/xlat_tables.h>
+#include <plat/common/platform.h>
 
 /*
  * Table of regions to map using the MMU.

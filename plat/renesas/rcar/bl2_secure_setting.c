@@ -4,11 +4,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <lib/mmio.h>
+#include <lib/utils_def.h>
+
 #include "axi_registers.h"
 #include "lifec_registers.h"
 #include "micro_delay.h"
-#include "mmio.h"
-#include "utils_def.h"
 
 static void lifec_security_setting(void);
 static void axi_security_setting(void);
@@ -51,7 +52,7 @@ static const struct {
 	    /*        1: Reserved[R-Car E3]                                 */
 	    /* Bit10: SCEG Secure Core slave ports                          */
 	    /*        0: registers accessed from secure resource only       */
-#if RCAR_LSI == RCAR_E3
+#if (RCAR_LSI == RCAR_E3) || (RCAR_LSI == RCAR_D3)
 	{
 	SEC_SEL6, 0xFFFFFBFFU},
 #else

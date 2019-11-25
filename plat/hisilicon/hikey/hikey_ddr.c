@@ -4,16 +4,17 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
 #include <errno.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/arm/sp804_delay_timer.h>
+#include <lib/mmio.h>
+
 #include <hi6220.h>
 #include <hi6553.h>
 #include <hisi_sram_map.h>
-#include <mmio.h>
-#include <sp804_delay_timer.h>
-
 #include "hikey_private.h"
 
 static void init_pll(void)
@@ -137,7 +138,7 @@ static void init_freq(void)
 	mmio_write_32((0xf6504000 + 0x06c), data);
 
 	data = mmio_read_32((0xf6504000 + 0x06c));
-	data &= ~(0xffffff << 8);
+	data &= ~(0xffffffu << 8);
 	data |= 0xc7a << 8;
 	mmio_write_32((0xf6504000 + 0x06c), data);
 

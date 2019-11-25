@@ -18,7 +18,7 @@
 #define GWD_IIDR2_REV_ID_OFFSET		12
 #define GWD_IIDR2_REV_ID_MASK		0xF
 #define GWD_IIDR2_CHIP_ID_OFFSET	20
-#define GWD_IIDR2_CHIP_ID_MASK		(0xFFF << GWD_IIDR2_CHIP_ID_OFFSET)
+#define GWD_IIDR2_CHIP_ID_MASK		(0xFFFu << GWD_IIDR2_CHIP_ID_OFFSET)
 
 #define CHIP_ID_AP806			0x806
 #define CHIP_ID_AP807			0x807
@@ -53,12 +53,12 @@
 						0x440000 + ((n / 8) << 2))
 #define MVEBU_CP_GPIO_DATA_OUT(cp_index, n) \
 					(MVEBU_CP_REGS_BASE(cp_index) + \
-					0x440100 + ((n > 32) ? 0x40 : 0x00))
+					0x440100 + ((n > 31) ? 0x40 : 0x00))
 #define MVEBU_CP_GPIO_DATA_OUT_EN(cp_index, n) \
 					(MVEBU_CP_REGS_BASE(cp_index) + \
-					0x440104 + ((n > 32) ? 0x40 : 0x00))
+					0x440104 + ((n > 31) ? 0x40 : 0x00))
 #define MVEBU_CP_GPIO_DATA_IN(cp_index, n) (MVEBU_CP_REGS_BASE(cp_index) + \
-					0x440110 + ((n > 32) ? 0x40 : 0x00))
+					0x440110 + ((n > 31) ? 0x40 : 0x00))
 #define MVEBU_AP_MPP_REGS(n)		(MVEBU_RFU_BASE + 0x4000 + ((n) << 2))
 #define MVEBU_AP_GPIO_REGS		(MVEBU_RFU_BASE + 0x5040)
 #define MVEBU_AP_GPIO_DATA_IN		(MVEBU_AP_GPIO_REGS + 0x10)

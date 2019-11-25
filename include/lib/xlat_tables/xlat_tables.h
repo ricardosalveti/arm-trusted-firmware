@@ -7,12 +7,13 @@
 #ifndef XLAT_TABLES_H
 #define XLAT_TABLES_H
 
-#include <xlat_tables_defs.h>
+#include <lib/xlat_tables/xlat_tables_defs.h>
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 #include <stddef.h>
 #include <stdint.h>
-#include <xlat_mmu_helpers.h>
+
+#include <lib/xlat_tables/xlat_mmu_helpers.h>
 
 /* Helper macro to define entries for mmap_region_t. It creates
  * identity mappings for each region.
@@ -87,5 +88,5 @@ void mmap_add_region(unsigned long long base_pa, uintptr_t base_va,
 		     size_t size, unsigned int attr);
 void mmap_add(const mmap_region_t *mm);
 
-#endif /*__ASSEMBLY__*/
+#endif /*__ASSEMBLER__*/
 #endif /* XLAT_TABLES_H */

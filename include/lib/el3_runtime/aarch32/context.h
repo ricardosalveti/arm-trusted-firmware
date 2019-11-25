@@ -7,7 +7,7 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
-#include <utils_def.h>
+#include <lib/utils_def.h>
 
 /*******************************************************************************
  * Constants that allow assembler code to access members of and the 'regs'
@@ -24,10 +24,11 @@
 #define CTX_NS_SCTLR		U(0x1C)
 #define CTX_REGS_END		U(0x20)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
-#include <cassert.h>
 #include <stdint.h>
+
+#include <lib/cassert.h>
 
 /*
  * Common constants to help define the 'cpu_context' structure and its
@@ -64,6 +65,6 @@ typedef struct cpu_context {
 CASSERT(CTX_REGS_OFFSET == __builtin_offsetof(cpu_context_t, regs_ctx), \
 	assert_core_context_regs_offset_mismatch);
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* CONTEXT_H */

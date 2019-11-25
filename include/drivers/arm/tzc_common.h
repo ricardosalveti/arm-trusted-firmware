@@ -7,7 +7,7 @@
 #ifndef TZC_COMMON_H
 #define TZC_COMMON_H
 
-#include <utils_def.h>
+#include <lib/utils_def.h>
 
 /*
  * Offset of core registers from the start of the base of configuration
@@ -86,12 +86,4 @@
 #define TZC_REGION_OFFSET(region_size, region_no)	\
 				((region_size) * (region_no))
 
-#ifndef __ASSEMBLY__
-
-#if !ERROR_DEPRECATED
-typedef unsigned int tzc_action_t;
-typedef unsigned int tzc_region_attributes_t;
-#endif
-
-#endif /* __ASSEMBLY__ */
 #endif /* TZC_COMMON_H */

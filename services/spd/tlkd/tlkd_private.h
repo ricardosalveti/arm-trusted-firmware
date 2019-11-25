@@ -7,11 +7,12 @@
 #ifndef TLKD_PRIVATE_H
 #define TLKD_PRIVATE_H
 
-#include <arch.h>
-#include <context.h>
-#include <interrupt_mgmt.h>
 #include <platform_def.h>
-#include <psci.h>
+
+#include <arch.h>
+#include <bl31/interrupt_mgmt.h>
+#include <context.h>
+#include <lib/psci/psci.h>
 
 /*
  * This flag is used by the TLKD to determine if the SP is servicing a yielding
@@ -70,10 +71,11 @@
 #define TLKD_C_RT_CTX_SIZE		0x60
 #define TLKD_C_RT_CTX_ENTRIES		(TLKD_C_RT_CTX_SIZE >> DWORD_SHIFT)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
-#include <cassert.h>
 #include <stdint.h>
+
+#include <lib/cassert.h>
 
 /* AArch64 callee saved general purpose register context structure. */
 DEFINE_REG_STRUCT(c_rt_regs, TLKD_C_RT_CTX_ENTRIES);
@@ -117,6 +119,6 @@ void tlkd_init_tlk_ep_state(struct entry_point_info *tlk_entry_point,
 				uint64_t pc,
 				tlk_context_t *tlk_ctx);
 
-#endif /*__ASSEMBLY__*/
+#endif /*__ASSEMBLER__*/
 
 #endif /* TLKD_PRIVATE_H */

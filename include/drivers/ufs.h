@@ -7,7 +7,7 @@
 #ifndef UFS_H
 #define UFS_H
 
-#include <utils_def.h>
+#include <lib/utils_def.h>
 
 /* register map of UFSHCI */
 /* Controller Capabilities */
@@ -82,7 +82,7 @@
 #define UECDME				0x48
 /* UTP Transfer Request Interrupt Aggregation Control Register */
 #define UTRIACR				0x4C
-#define UTRIACR_IAEN			(1 << 31)
+#define UTRIACR_IAEN			(1U << 31)
 #define UTRIACR_IAPWEN			(1 << 24)
 #define UTRIACR_IASB			(1 << 20)
 #define UTRIACR_CTR			(1 << 16)

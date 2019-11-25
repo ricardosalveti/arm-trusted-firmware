@@ -1,19 +1,20 @@
 /*
- * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 #ifndef PLAT_ARM_H
 #define PLAT_ARM_H
 
-#include <bakery_lock.h>
-#include <cassert.h>
-#include <cpu_data.h>
 #include <stdint.h>
-#include <spinlock.h>
-#include <tzc_common.h>
-#include <utils_def.h>
-#include <xlat_tables_compat.h>
+
+#include <drivers/arm/tzc_common.h>
+#include <lib/bakery_lock.h>
+#include <lib/cassert.h>
+#include <lib/el3_runtime/cpu_data.h>
+#include <lib/spinlock.h>
+#include <lib/utils_def.h>
+#include <lib/xlat_tables/xlat_tables_compat.h>
 
 /*******************************************************************************
  * Forward declarations
@@ -37,7 +38,7 @@ typedef struct arm_tzc_regions_info {
  *   - Region 1 with secure access only;
  *   - the remaining DRAM regions access from the given Non-Secure masters.
  ******************************************************************************/
-#if ENABLE_SPM
+#if ENABLE_SPM && SPM_MM
 #define ARM_TZC_REGIONS_DEF						\
 	{ARM_AP_TZC_DRAM1_BASE, ARM_EL3_TZC_DRAM1_END,			\
 		TZC_REGION_S_RDWR, 0},					\
@@ -45,8 +46,8 @@ typedef struct arm_tzc_regions_info {
 		PLAT_ARM_TZC_NS_DEV_ACCESS}, 				\
 	{ARM_DRAM2_BASE, ARM_DRAM2_END, ARM_TZC_NS_DRAM_S_ACCESS,	\
 		PLAT_ARM_TZC_NS_DEV_ACCESS},				\
-	{ARM_SP_IMAGE_NS_BUF_BASE, (ARM_SP_IMAGE_NS_BUF_BASE +		\
-		ARM_SP_IMAGE_NS_BUF_SIZE) - 1, TZC_REGION_S_NONE,	\
+	{PLAT_SP_IMAGE_NS_BUF_BASE, (PLAT_SP_IMAGE_NS_BUF_BASE +	\
+		PLAT_SP_IMAGE_NS_BUF_SIZE) - 1, TZC_REGION_S_NONE,	\
 		PLAT_ARM_TZC_NS_DEV_ACCESS}
 
 #else
@@ -68,7 +69,7 @@ typedef struct arm_tzc_regions_info {
 
 void arm_setup_romlib(void);
 
-#if defined(IMAGE_BL31) || (defined(AARCH32) && defined(IMAGE_BL32))
+#if defined(IMAGE_BL31) || (!defined(__aarch64__) && defined(IMAGE_BL32))
 /*
  * Use this macro to instantiate lock before it is used in below
  * arm_lock_xxx() macros
@@ -101,7 +102,7 @@ void arm_setup_romlib(void);
 #define arm_lock_get()
 #define arm_lock_release()
 
-#endif /* defined(IMAGE_BL31) || (defined(AARCH32) && defined(IMAGE_BL32)) */
+#endif /* defined(IMAGE_BL31) || (!defined(__aarch64__) && defined(IMAGE_BL32)) */
 
 #if ARM_RECOM_STATE_ID_ENC
 /*
@@ -186,7 +187,9 @@ void arm_bl2_platform_setup(void);
 void arm_bl2_plat_arch_setup(void);
 uint32_t arm_get_spsr_for_bl32_entry(void);
 uint32_t arm_get_spsr_for_bl33_entry(void);
+int arm_bl2_plat_handle_post_image_load(unsigned int image_id);
 int arm_bl2_handle_post_image_load(unsigned int image_id);
+struct bl_params *arm_get_next_bl_params(void);
 
 /* BL2 at EL3 functions */
 void arm_bl2_el3_early_platform_setup(void);
@@ -249,7 +252,12 @@ void plat_arm_interconnect_enter_coherency(void);
 void plat_arm_interconnect_exit_coherency(void);
 void plat_arm_program_trusted_mailbox(uintptr_t address);
 int plat_arm_bl1_fwu_needed(void);
-void plat_arm_error_handler(int err);
+__dead2 void plat_arm_error_handler(int err);
+
+/*
+ * Optional function in ARM standard platforms
+ */
+void plat_arm_override_gicr_frames(const uintptr_t *plat_gicr_frames);
 
 #if ARM_PLAT_MT
 unsigned int plat_arm_get_cpu_pe_count(u_register_t mpidr);
@@ -291,5 +299,9 @@ void plat_arm_sp_min_early_platform_setup(u_register_t arg0, u_register_t arg1,
 extern plat_psci_ops_t plat_arm_psci_pm_ops;
 extern const mmap_region_t plat_arm_mmap[];
 extern const unsigned int arm_pm_idle_states[];
+
+/* secure watchdog */
+void plat_arm_secure_wdt_start(void);
+void plat_arm_secure_wdt_stop(void);
 
 #endif /* PLAT_ARM_H */

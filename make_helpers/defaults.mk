@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016-2018, ARM Limited and Contributors. All rights reserved.
+# Copyright (c) 2016-2019, ARM Limited and Contributors. All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -33,6 +33,12 @@ BL2_AT_EL3			:= 0
 # when BL2_AT_EL3 is 1.
 BL2_IN_XIP_MEM			:= 0
 
+# Do dcache invalidate upon BL2 entry at EL3
+BL2_INV_DCACHE			:= 1
+
+# Select the branch protection features to use.
+BRANCH_PROTECTION		:= 0
+
 # By default, consider that the platform may release several CPUs out of reset.
 # The platform Makefile is free to override this value.
 COLD_BOOT_SINGLE_CPU		:= 0
@@ -51,11 +57,19 @@ CTX_INCLUDE_AARCH32_REGS	:= 1
 # Include FP registers in cpu context
 CTX_INCLUDE_FPREGS		:= 0
 
+# Include pointer authentication (ARMv8.3-PAuth) registers in cpu context. This
+# must be set to 1 if the platform wants to use this feature in the Secure
+# world. It is not needed to use it in the Non-secure world.
+CTX_INCLUDE_PAUTH_REGS		:= 0
+
 # Debug build
 DEBUG				:= 0
 
 # Build platform
 DEFAULT_PLAT			:= fvp
+
+# Disable the generation of the binary image (ELF only).
+DISABLE_BIN_GENERATION		:= 0
 
 # Enable capability to disable authentication dynamically. Only meant for
 # development platforms.
@@ -81,6 +95,16 @@ ENABLE_STACK_PROTECTOR		:= 0
 
 # Flag to enable exception handling in EL3
 EL3_EXCEPTION_HANDLING		:= 0
+
+# Flag to enable Branch Target Identification.
+# Internal flag not meant for direct setting.
+# Use BRANCH_PROTECTION to enable BTI.
+ENABLE_BTI			:= 0
+
+# Flag to enable Pointer Authentication.
+# Internal flag not meant for direct setting.
+# Use BRANCH_PROTECTION to enable PAUTH.
+ENABLE_PAUTH			:= 0
 
 # Build flag to treat usage of deprecated platform and framework APIs as error.
 ERROR_DEPRECATED		:= 0
@@ -115,12 +139,11 @@ HW_ASSISTED_COHERENCY		:= 0
 # Set the default algorithm for the generation of Trusted Board Boot keys
 KEY_ALG				:= rsa
 
-# Enable use of the console API allowing multiple consoles to be registered
-# at the same time.
-MULTI_CONSOLE_API		:= 0
-
 # NS timer register save and restore
 NS_TIMER_SWITCH			:= 0
+
+# Include lib/libc in the final image
+OVERRIDE_LIBC			:= 0
 
 # Build PL011 UART driver in minimal generic UART mode
 PL011_GENERIC_UART		:= 0
@@ -129,8 +152,7 @@ PL011_GENERIC_UART		:= 0
 # The platform Makefile is free to override this value.
 PROGRAMMABLE_RESET_ADDRESS	:= 0
 
-# Flag used to choose the power state format viz Extended State-ID or the
-# Original format.
+# Flag used to choose the power state format: Extended State-ID or Original
 PSCI_EXTENDED_STATE_ID		:= 0
 
 # Enable RAS support
@@ -153,14 +175,14 @@ SEPARATE_CODE_AND_RODATA	:= 0
 # cores stack
 RECLAIM_INIT_CODE		:= 0
 
-# Default to SMCCC Version 1.X
-SMCCC_MAJOR_VERSION		:= 1
-
 # SPD choice
 SPD				:= none
 
 # For including the Secure Partition Manager
 ENABLE_SPM			:= 0
+
+# Use the SPM based on MM
+SPM_MM				:= 1
 
 # Flag to introduce an infinite loop in BL1 just before it exits into the next
 # image. This is meant to help debugging the post-BL2 phase.
@@ -195,6 +217,11 @@ ifeq (${ARCH},aarch32)
     override ENABLE_SPE_FOR_LOWER_ELS := 0
 endif
 
+# Include Memory Tagging Extension registers in cpu context. This must be set
+# to 1 if the platform wants to use this feature in the Secure world and MTE is
+# enabled at ELX.
+CTX_INCLUDE_MTE_REGS := 0
+
 ENABLE_AMU			:= 0
 
 # By default, enable Scalable Vector Extension if implemented for Non-secure
@@ -205,3 +232,10 @@ ifneq (${ARCH},aarch32)
 else
     override ENABLE_SVE_FOR_NS	:= 0
 endif
+
+SANITIZE_UB := off
+
+# For ARMv8.1 (AArch64) platforms, enabling this option selects the spinlock
+# implementation variant using the ARMv8.1-LSE compare-and-swap instruction.
+# Default: disabled
+USE_SPINLOCK_CAS := 0

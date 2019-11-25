@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
-#include <desc_image_load.h>
 #include <errno.h>
-#include <optee_utils.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <common/desc_image_load.h>
+#include <lib/optee_utils.h>
 
 /*
  * load_addr_hi and load_addr_lo: image load address.
@@ -175,7 +176,7 @@ int parse_optee_header(entry_point_info_t *header_ep,
 	 */
 	if (!tee_validate_header(header)) {
 		INFO("Invalid OPTEE header, set legacy mode.\n");
-#ifdef AARCH64
+#ifdef __aarch64__
 		header_ep->args.arg0 = MODE_RW_64;
 #else
 		header_ep->args.arg0 = MODE_RW_32;
@@ -221,7 +222,7 @@ int parse_optee_header(entry_point_info_t *header_ep,
 	if (header->arch == 0) {
 		header_ep->args.arg0 = MODE_RW_32;
 	} else {
-#ifdef AARCH64
+#ifdef __aarch64__
 		header_ep->args.arg0 = MODE_RW_64;
 #else
 		ERROR("Cannot boot an AArch64 OP-TEE\n");

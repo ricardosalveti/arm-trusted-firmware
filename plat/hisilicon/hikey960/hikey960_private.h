@@ -7,7 +7,7 @@
 #ifndef HIKEY960_PRIVATE_H
 #define HIKEY960_PRIVATE_H
 
-#include <bl_common.h>
+#include <common/bl_common.h>
 
 /*
  * Function and variable prototypes
@@ -26,6 +26,7 @@ void hikey960_init_mmu_el3(unsigned long total_base,
 			unsigned long coh_limit);
 void hikey960_io_setup(void);
 int hikey960_read_boardid(unsigned int *id);
+int hikey960_set_fip_addr(unsigned int image_id, const char *name);
 void hikey960_clk_init(void);
 void hikey960_pmu_init(void);
 void hikey960_regulator_enable(void);

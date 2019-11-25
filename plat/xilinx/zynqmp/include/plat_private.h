@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2014-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,9 +7,11 @@
 #ifndef PLAT_PRIVATE_H
 #define PLAT_PRIVATE_H
 
-#include <bl_common.h>
-#include <interrupt_mgmt.h>
 #include <stdint.h>
+
+#include <bl31/interrupt_mgmt.h>
+#include <common/bl_common.h>
+#include <drivers/cadence/cdns_uart.h>
 
 void zynqmp_config_setup(void);
 

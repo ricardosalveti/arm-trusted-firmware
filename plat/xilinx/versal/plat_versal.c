@@ -3,8 +3,9 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
+
 #include <plat_private.h>
-#include <platform.h>
+#include <plat/common/platform.h>
 
 int plat_core_pos_by_mpidr(u_register_t mpidr)
 {

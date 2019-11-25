@@ -6,20 +6,21 @@
 
 /* Runtime firmware routines to report errata status for the current CPU. */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <cpu_data.h>
-#include <debug.h>
-#include <errata_report.h>
-#include <spinlock.h>
 #include <stdbool.h>
-#include <utils.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <lib/cpus/errata_report.h>
+#include <lib/el3_runtime/cpu_data.h>
+#include <lib/spinlock.h>
+#include <lib/utils.h>
 
 #ifdef IMAGE_BL1
 # define BL_STRING	"BL1"
-#elif defined(AARCH64) && defined(IMAGE_BL31)
+#elif defined(__aarch64__) && defined(IMAGE_BL31)
 # define BL_STRING	"BL31"
-#elif defined(AARCH32) && defined(IMAGE_BL32)
+#elif !defined(__arch64__) && defined(IMAGE_BL32)
 # define BL_STRING	"BL32"
 #elif defined(IMAGE_BL2) && BL2_AT_EL3
 # define BL_STRING "BL2"

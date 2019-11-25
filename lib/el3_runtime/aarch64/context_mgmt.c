@@ -1,27 +1,30 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <amu.h>
-#include <arch.h>
-#include <arch_helpers.h>
 #include <assert.h>
-#include <bl_common.h>
-#include <context.h>
-#include <context_mgmt.h>
-#include <interrupt_mgmt.h>
-#include <mpam.h>
-#include <platform.h>
-#include <platform_def.h>
-#include <pubsub_events.h>
-#include <smccc_helpers.h>
-#include <spe.h>
 #include <stdbool.h>
 #include <string.h>
-#include <sve.h>
-#include <utils.h>
+
+#include <platform_def.h>
+
+#include <arch.h>
+#include <arch_helpers.h>
+#include <arch_features.h>
+#include <bl31/interrupt_mgmt.h>
+#include <common/bl_common.h>
+#include <context.h>
+#include <lib/el3_runtime/context_mgmt.h>
+#include <lib/el3_runtime/pubsub_events.h>
+#include <lib/extensions/amu.h>
+#include <lib/extensions/mpam.h>
+#include <lib/extensions/spe.h>
+#include <lib/extensions/sve.h>
+#include <lib/utils.h>
+#include <plat/common/platform.h>
+#include <smccc_helpers.h>
 
 
 /*******************************************************************************
@@ -53,7 +56,7 @@ void __init cm_init(void)
  * The security state to initialize is determined by the SECURE attribute
  * of the entry_point_info.
  *
- * The EE and ST attributes are used to configure the endianess and secure
+ * The EE and ST attributes are used to configure the endianness and secure
  * timer availability for the new execution context.
  *
  * To prepare the register state for entry call cm_prepare_el3_exit() and
@@ -63,10 +66,10 @@ void __init cm_init(void)
 void cm_setup_context(cpu_context_t *ctx, const entry_point_info_t *ep)
 {
 	unsigned int security_state;
-	uint32_t scr_el3, pmcr_el0;
+	uint32_t scr_el3;
 	el3_state_t *state;
 	gp_regs_t *gp_regs;
-	unsigned long sctlr_elx, actlr_elx;
+	u_register_t sctlr_elx, actlr_elx;
 
 	assert(ctx != NULL);
 
@@ -120,9 +123,48 @@ void cm_setup_context(cpu_context_t *ctx, const entry_point_info_t *ep)
 	scr_el3 |= SCR_FIEN_BIT;
 #endif
 
+#if !CTX_INCLUDE_PAUTH_REGS
+	/*
+	 * If the pointer authentication registers aren't saved during world
+	 * switches the value of the registers can be leaked from the Secure to
+	 * the Non-secure world. To prevent this, rather than enabling pointer
+	 * authentication everywhere, we only enable it in the Non-secure world.
+	 *
+	 * If the Secure world wants to use pointer authentication,
+	 * CTX_INCLUDE_PAUTH_REGS must be set to 1.
+	 */
+	if (security_state == NON_SECURE)
+		scr_el3 |= SCR_API_BIT | SCR_APK_BIT;
+#endif /* !CTX_INCLUDE_PAUTH_REGS */
+
+	/*
+	 * Enable MTE support. Support is enabled unilaterally for the normal
+	 * world, and only for the secure world when CTX_INCLUDE_MTE_REGS is
+	 * set.
+	 */
+#if CTX_INCLUDE_MTE_REGS
+	assert(get_armv8_5_mte_support() == MTE_IMPLEMENTED_ELX);
+	scr_el3 |= SCR_ATA_BIT;
+#else
+	unsigned int mte = get_armv8_5_mte_support();
+	if (mte == MTE_IMPLEMENTED_EL0) {
+		/*
+		 * Can enable MTE across both worlds as no MTE registers are
+		 * used
+		 */
+		scr_el3 |= SCR_ATA_BIT;
+	} else if (mte == MTE_IMPLEMENTED_ELX && security_state == NON_SECURE) {
+		/*
+		 * Can only enable MTE in Non-Secure world without register
+		 * saving
+		 */
+		scr_el3 |= SCR_ATA_BIT;
+	}
+#endif
+
 #ifdef IMAGE_BL31
 	/*
-	 * SCR_EL3.IRQ, SCR_EL3.FIQ: Enable the physical FIQ and IRQ rounting as
+	 * SCR_EL3.IRQ, SCR_EL3.FIQ: Enable the physical FIQ and IRQ routing as
 	 *  indicated by the interrupt routing model for BL31.
 	 */
 	scr_el3 |= get_scr_el3_from_routing_model(security_state);
@@ -171,9 +213,17 @@ void cm_setup_context(cpu_context_t *ctx, const entry_point_info_t *ep)
 					| SCTLR_NTWI_BIT | SCTLR_NTWE_BIT;
 	}
 
+#if ERRATA_A75_764081
+	/*
+	 * If workaround of errata 764081 for Cortex-A75 is used then set
+	 * SCTLR_EL1.IESB to enable Implicit Error Synchronization Barrier.
+	 */
+	sctlr_elx |= SCTLR_IESB_BIT;
+#endif
+
 	/*
 	 * Store the initialised SCTLR_EL1 value in the cpu_context - SCTLR_EL2
-	 * and other EL2 registers are set up by cm_preapre_ns_entry() as they
+	 * and other EL2 registers are set up by cm_prepare_ns_entry() as they
 	 * are not part of the stored cpu_context.
 	 */
 	write_ctx_reg(get_sysregs_ctx(ctx), CTX_SCTLR_EL1, sctlr_elx);
@@ -188,31 +238,10 @@ void cm_setup_context(cpu_context_t *ctx, const entry_point_info_t *ep)
 	actlr_elx = read_actlr_el1();
 	write_ctx_reg((get_sysregs_ctx(ctx)), (CTX_ACTLR_EL1), (actlr_elx));
 
-	if (security_state == SECURE) {
-		/*
-		 * Initialise PMCR_EL0 for secure context only, setting all
-		 * fields rather than relying on hw. Some fields are
-		 * architecturally UNKNOWN on reset.
-		 *
-		 * PMCR_EL0.LC: Set to one so that cycle counter overflow, that
-		 *  is recorded in PMOVSCLR_EL0[31], occurs on the increment
-		 *  that changes PMCCNTR_EL0[63] from 1 to 0.
-		 *
-		 * PMCR_EL0.DP: Set to one so that the cycle counter,
-		 *  PMCCNTR_EL0 does not count when event counting is prohibited.
-		 *
-		 * PMCR_EL0.X: Set to zero to disable export of events.
-		 *
-		 * PMCR_EL0.D: Set to zero so that, when enabled, PMCCNTR_EL0
-		 *  counts on every clock cycle.
-		 */
-		pmcr_el0 = ((PMCR_EL0_RESET_VAL | PMCR_EL0_LC_BIT
-				| PMCR_EL0_DP_BIT)
-				& ~(PMCR_EL0_X_BIT | PMCR_EL0_D_BIT));
-		write_ctx_reg(get_sysregs_ctx(ctx), CTX_PMCR_EL0, pmcr_el0);
-	}
-
-	/* Populate EL3 state so that we've the right context before doing ERET */
+	/*
+	 * Populate EL3 state so that we've the right context
+	 * before doing ERET
+	 */
 	state = get_el3state_ctx(ctx);
 	write_ctx_reg(state, CTX_SCR_EL3, scr_el3);
 	write_ctx_reg(state, CTX_ELR_EL3, ep->pc);
@@ -303,6 +332,14 @@ void cm_prepare_el3_exit(uint32_t security_state)
 							   CTX_SCTLR_EL1);
 			sctlr_elx &= SCTLR_EE_BIT;
 			sctlr_elx |= SCTLR_EL2_RES1;
+#if ERRATA_A75_764081
+			/*
+			 * If workaround of errata 764081 for Cortex-A75 is used
+			 * then set SCTLR_EL2.IESB to enable Implicit Error
+			 * Synchronization Barrier.
+			 */
+			sctlr_elx |= SCTLR_IESB_BIT;
+#endif
 			write_sctlr_el2(sctlr_elx);
 		} else if (el_implemented(2) != EL_IMPL_NONE) {
 			el2_unused = true;
@@ -348,7 +385,7 @@ void cm_prepare_el3_exit(uint32_t security_state)
 					| CPTR_EL2_TFP_BIT));
 
 			/*
-			 * Initiliase CNTHCTL_EL2. All fields are
+			 * Initialise CNTHCTL_EL2. All fields are
 			 * architecturally UNKNOWN on reset and are set to zero
 			 * except for field(s) listed below.
 			 *
@@ -396,6 +433,29 @@ void cm_prepare_el3_exit(uint32_t security_state)
 			 * relying on hw. Some fields are architecturally
 			 * UNKNOWN on reset.
 			 *
+			 * MDCR_EL2.HLP: Set to one so that event counter
+			 *  overflow, that is recorded in PMOVSCLR_EL0[0-30],
+			 *  occurs on the increment that changes
+			 *  PMEVCNTR<n>_EL0[63] from 1 to 0, when ARMv8.5-PMU is
+			 *  implemented. This bit is RES0 in versions of the
+			 *  architecture earlier than ARMv8.5, setting it to 1
+			 *  doesn't have any effect on them.
+			 *
+			 * MDCR_EL2.TTRF: Set to zero so that access to Trace
+			 *  Filter Control register TRFCR_EL1 at EL1 is not
+			 *  trapped to EL2. This bit is RES0 in versions of
+			 *  the architecture earlier than ARMv8.4.
+			 *
+			 * MDCR_EL2.HPMD: Set to one so that event counting is
+			 *  prohibited at EL2. This bit is RES0 in versions of
+			 *  the architecture earlier than ARMv8.1, setting it
+			 *  to 1 doesn't have any effect on them.
+			 *
+			 * MDCR_EL2.TPMS: Set to zero so that accesses to
+			 *  Statistical Profiling control registers from EL1
+			 *  do not trap to EL2. This bit is RES0 when SPE is
+			 *  not implemented.
+			 *
 			 * MDCR_EL2.TDRA: Set to zero so that Non-secure EL0 and
 			 *  EL1 System register accesses to the Debug ROM
 			 *  registers are not trapped to EL2.
@@ -424,13 +484,15 @@ void cm_prepare_el3_exit(uint32_t security_state)
 			 * MDCR_EL2.HPMN: Set to value of PMCR_EL0.N which is the
 			 *  architecturally-defined reset value.
 			 */
-			mdcr_el2 = ((MDCR_EL2_RESET_VAL |
-					((read_pmcr_el0() & PMCR_EL0_N_BITS)
-					>> PMCR_EL0_N_SHIFT)) &
-					~(MDCR_EL2_TDRA_BIT | MDCR_EL2_TDOSA_BIT
-					| MDCR_EL2_TDA_BIT | MDCR_EL2_TDE_BIT
-					| MDCR_EL2_HPME_BIT | MDCR_EL2_TPM_BIT
-					| MDCR_EL2_TPMCR_BIT));
+			mdcr_el2 = ((MDCR_EL2_RESET_VAL | MDCR_EL2_HLP |
+				     MDCR_EL2_HPMD) |
+				   ((read_pmcr_el0() & PMCR_EL0_N_BITS)
+				   >> PMCR_EL0_N_SHIFT)) &
+				   ~(MDCR_EL2_TTRF | MDCR_EL2_TPMS |
+				     MDCR_EL2_TDRA_BIT | MDCR_EL2_TDOSA_BIT |
+				     MDCR_EL2_TDA_BIT | MDCR_EL2_TDE_BIT |
+				     MDCR_EL2_HPME_BIT | MDCR_EL2_TPM_BIT |
+				     MDCR_EL2_TPMCR_BIT);
 
 			write_mdcr_el2(mdcr_el2);
 

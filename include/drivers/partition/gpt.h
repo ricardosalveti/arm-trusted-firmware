@@ -7,12 +7,12 @@
 #ifndef GPT_H
 #define GPT_H
 
-#include <partition.h>
+#include <drivers/partition/partition.h>
 
 #define PARTITION_TYPE_GPT		0xee
-#define GPT_HEADER_OFFSET		PARTITION_BLOCK_SIZE
+#define GPT_HEADER_OFFSET		PLAT_PARTITION_BLOCK_SIZE
 #define GPT_ENTRY_OFFSET		(GPT_HEADER_OFFSET +		\
-					 PARTITION_BLOCK_SIZE)
+					 PLAT_PARTITION_BLOCK_SIZE)
 #define GUID_LEN			16
 
 #define GPT_SIGNATURE			"EFI PART"

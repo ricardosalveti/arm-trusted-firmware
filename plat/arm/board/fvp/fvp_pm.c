@@ -1,25 +1,26 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <arm_config.h>
 #include <assert.h>
-#include <debug.h>
 #include <errno.h>
-#include <gicv3.h>
-#include <mmio.h>
-#include <plat_arm.h>
-#include <platform.h>
-#include <psci.h>
-#include <spe.h>
-#include <v2m_def.h>
-#include "../../../../drivers/arm/gic/v3/gicv3_private.h"
-#include "drivers/pwrc/fvp_pwrc.h"
-#include "fvp_def.h"
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/arm/gicv3.h>
+#include <drivers/arm/fvp/fvp_pwrc.h>
+#include <lib/extensions/spe.h>
+#include <lib/mmio.h>
+#include <lib/psci/psci.h>
+#include <plat/arm/common/arm_config.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
+#include <platform_def.h>
+
 #include "fvp_private.h"
+#include "../drivers/arm/gic/v3/gicv3_private.h"
 
 
 #if ARM_RECOM_STATE_ID_ENC
@@ -246,10 +247,19 @@ static void fvp_pwr_domain_on_finish(const psci_power_state_t *target_state)
 {
 	fvp_power_domain_on_finish_common(target_state);
 
-	/* Enable the gic cpu interface */
+}
+
+/*******************************************************************************
+ * FVP handler called when a power domain has just been powered on and the cpu
+ * and its cluster are fully participating in coherent transaction on the
+ * interconnect. Data cache must be enabled for CPU at this point.
+ ******************************************************************************/
+static void fvp_pwr_domain_on_finish_late(const psci_power_state_t *target_state)
+{
+	/* Program GIC per-cpu distributor or re-distributor interface */
 	plat_arm_gic_pcpu_init();
 
-	/* Program the gic per-cpu distributor or re-distributor interface */
+	/* Enable GIC CPU interface */
 	plat_arm_gic_cpuif_enable();
 }
 
@@ -271,7 +281,7 @@ static void fvp_pwr_domain_suspend_finish(const psci_power_state_t *target_state
 
 	fvp_power_domain_on_finish_common(target_state);
 
-	/* Enable the gic cpu interface */
+	/* Enable GIC CPU interface */
 	plat_arm_gic_cpuif_enable();
 }
 
@@ -396,6 +406,7 @@ plat_psci_ops_t plat_arm_psci_pm_ops = {
 	.pwr_domain_off = fvp_pwr_domain_off,
 	.pwr_domain_suspend = fvp_pwr_domain_suspend,
 	.pwr_domain_on_finish = fvp_pwr_domain_on_finish,
+	.pwr_domain_on_finish_late = fvp_pwr_domain_on_finish_late,
 	.pwr_domain_suspend_finish = fvp_pwr_domain_suspend_finish,
 	.system_off = fvp_system_off,
 	.system_reset = fvp_system_reset,
@@ -416,3 +427,8 @@ plat_psci_ops_t plat_arm_psci_pm_ops = {
 	.read_mem_protect	= arm_psci_read_mem_protect,
 	.write_mem_protect	= arm_nor_psci_write_mem_protect,
 };
+
+const plat_psci_ops_t *plat_arm_psci_override_pm_ops(plat_psci_ops_t *ops)
+{
+	return ops;
+}

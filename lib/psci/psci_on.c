@@ -1,18 +1,20 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <assert.h>
+#include <stddef.h>
+
 #include <arch.h>
 #include <arch_helpers.h>
-#include <assert.h>
-#include <bl_common.h>
-#include <context_mgmt.h>
-#include <debug.h>
-#include <platform.h>
-#include <pubsub_events.h>
-#include <stddef.h>
+#include <common/bl_common.h>
+#include <common/debug.h>
+#include <lib/el3_runtime/context_mgmt.h>
+#include <lib/el3_runtime/pubsub_events.h>
+#include <plat/common/platform.h>
+
 #include "psci_private.h"
 
 /*
@@ -178,6 +180,14 @@ void psci_cpu_on_finish(int cpu_idx, const psci_power_state_t *state_info)
 	 */
 	psci_do_pwrup_cache_maintenance();
 #endif
+
+	/*
+	 * Plat. management: Perform any platform specific actions which
+	 * can only be done with the cpu and the cluster guaranteed to
+	 * be coherent.
+	 */
+	if (psci_plat_pm_ops->pwr_domain_on_finish_late != NULL)
+		psci_plat_pm_ops->pwr_domain_on_finish_late(state_info);
 
 	/*
 	 * All the platform specific actions for turning this cpu

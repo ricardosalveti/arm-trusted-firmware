@@ -7,8 +7,8 @@
 #ifndef TZC400_H
 #define TZC400_H
 
-#include <tzc_common.h>
-#include <utils_def.h>
+#include <drivers/arm/tzc_common.h>
+#include <lib/utils_def.h>
 
 #define BUILD_CONFIG_OFF			U(0x000)
 #define GATE_KEEPER_OFF				U(0x008)
@@ -93,7 +93,7 @@
 #define TZC_400_REGION_SIZE			U(0x20)
 #define TZC_400_ACTION_OFF			U(0x4)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 #include <cdefs.h>
 #include <stdint.h>
@@ -154,6 +154,6 @@ static inline void tzc_disable_filters(void)
 	tzc400_disable_filters();
 }
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* TZC400_H */

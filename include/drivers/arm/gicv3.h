@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -84,6 +84,7 @@
 #define GICR_PCPUBASE_SHIFT	0x11
 #define GICR_SGIBASE_OFFSET	U(65536)	/* 64 KB */
 #define GICR_CTLR		U(0x0)
+#define GICR_IIDR		U(0x04)
 #define GICR_TYPER		U(0x08)
 #define GICR_WAKER		U(0x14)
 #define GICR_PROPBASER		U(0x70)
@@ -207,14 +208,15 @@
 #define GITS_CTLR_QUIESCENT_SHIFT	31
 #define GITS_CTLR_QUIESCENT_BIT		BIT_32(GITS_CTLR_QUIESCENT_SHIFT)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
-#include <arch_helpers.h>
-#include <gic_common.h>
-#include <interrupt_props.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <utils_def.h>
+
+#include <arch_helpers.h>
+#include <common/interrupt_props.h>
+#include <drivers/arm/gic_common.h>
+#include <lib/utils_def.h>
 
 static inline bool gicv3_is_intr_id_special_identifier(unsigned int id)
 {
@@ -364,6 +366,7 @@ typedef struct gicv3_its_ctx {
  * GICv3 EL3 driver API
  ******************************************************************************/
 void gicv3_driver_init(const gicv3_driver_data_t *plat_driver_data);
+int gicv3_rdistif_probe(const uintptr_t gicr_frame);
 void gicv3_distif_init(void);
 void gicv3_rdistif_init(unsigned int proc_num);
 void gicv3_rdistif_on(unsigned int proc_num);
@@ -404,5 +407,5 @@ void gicv3_set_interrupt_pending(unsigned int id, unsigned int proc_num);
 void gicv3_clear_interrupt_pending(unsigned int id, unsigned int proc_num);
 unsigned int gicv3_set_pmr(unsigned int mask);
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 #endif /* GICV3_H */

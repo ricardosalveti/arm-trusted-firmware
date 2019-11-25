@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
+
+#include <arch_helpers.h>
 #include <context.h>
-#include <context_mgmt.h>
-#include <debug.h>
-#include <platform.h>
+#include <common/debug.h>
+#include <lib/el3_runtime/context_mgmt.h>
+#include <plat/common/platform.h>
+
 #include "../bl1_private.h"
 
 /*
@@ -40,7 +42,7 @@ void cm_set_context(void *context, uint32_t security_state)
  ******************************************************************************/
 void bl1_prepare_next_image(unsigned int image_id)
 {
-	unsigned int security_state;
+	unsigned int security_state, mode = MODE_EL1;
 	image_desc_t *image_desc;
 	entry_point_info_t *next_bl_ep;
 
@@ -71,19 +73,12 @@ void bl1_prepare_next_image(unsigned int image_id)
 		cm_set_context(&bl1_cpu_context[security_state], security_state);
 
 	/* Prepare the SPSR for the next BL image. */
-	if (security_state == SECURE) {
-		next_bl_ep->spsr = SPSR_64(MODE_EL1, MODE_SP_ELX,
-				   DISABLE_ALL_EXCEPTIONS);
-	} else {
-		/* Use EL2 if supported; else use EL1. */
-		if (el_implemented(2) != EL_IMPL_NONE) {
-			next_bl_ep->spsr = SPSR_64(MODE_EL2, MODE_SP_ELX,
-				DISABLE_ALL_EXCEPTIONS);
-		} else {
-			next_bl_ep->spsr = SPSR_64(MODE_EL1, MODE_SP_ELX,
-			   DISABLE_ALL_EXCEPTIONS);
-		}
+	if ((security_state != SECURE) && (el_implemented(2) != EL_IMPL_NONE)) {
+		mode = MODE_EL2;
 	}
+
+	next_bl_ep->spsr = SPSR_64(mode, MODE_SP_ELX,
+		DISABLE_ALL_EXCEPTIONS);
 
 	/* Allow platform to make change */
 	bl1_plat_set_ep_info(image_id, next_bl_ep);

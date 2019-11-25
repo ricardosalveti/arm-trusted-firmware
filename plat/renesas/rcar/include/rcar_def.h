@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, Renesas Electronics Corporation. All rights reserved.
+ * Copyright (c) 2015-2019, Renesas Electronics Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -7,8 +7,8 @@
 #ifndef RCAR_DEF_H
 #define RCAR_DEF_H
 
-#include <tbbr_img_def.h>
-#include <utils_def.h>
+#include <common/tbbr/tbbr_img_def.h>
+#include <lib/utils_def.h>
 
 #define RCAR_PRIMARY_CPU		0x0
 #define RCAR_TRUSTED_SRAM_BASE		0x44000000
@@ -24,7 +24,7 @@
 #define DEVICE_RCAR_SIZE		U(0x00300000)
 #define DEVICE_RCAR_BASE2		U(0xE6360000)
 #define DEVICE_RCAR_SIZE2		U(0x19CA0000)
-#define DEVICE_SRAM_BASE		U(0xE6310000)
+#define DEVICE_SRAM_BASE		U(0xE6300000)
 #define DEVICE_SRAM_SIZE		U(0x00002000)
 #define DEVICE_SRAM_STACK_BASE		(DEVICE_SRAM_BASE + DEVICE_SRAM_SIZE)
 #define DEVICE_SRAM_STACK_SIZE		U(0x00001000)
@@ -147,28 +147,34 @@
 #define	RCAR_SYSCISCR		U(0xE6180008)	/* Interrupt stat clear */
 /* Product register */
 #define	RCAR_PRR			U(0xFFF00044)
-#define RCAR_PRODUCT_MASK		U(0x00007F00)
-#define RCAR_CUT_MASK			U(0x000000FF)
-#define RCAR_PRODUCT_H3			U(0x00004F00)
-#define RCAR_PRODUCT_M3			U(0x00005200)
-#define RCAR_PRODUCT_M3N		U(0x00005500)
-#define RCAR_PRODUCT_E3			U(0x00005700)
-#define RCAR_CUT_VER10			U(0x00000000)
-#define RCAR_CUT_VER11			U(0x00000001)	/* H3/M3N Ver.1.1 */
 #define RCAR_M3_CUT_VER11		U(0x00000010)	/* M3 Ver.1.1/Ver.1.2 */
-#define RCAR_CUT_VER20			U(0x00000010)
-#define RCAR_CUT_VER30			U(0x00000020)
 #define RCAR_MAJOR_MASK			U(0x000000F0)
 #define RCAR_MINOR_MASK			U(0x0000000F)
-#define RCAR_PRODUCT_SHIFT		U(8)
+#define PRR_PRODUCT_SHIFT		U(8)
 #define RCAR_MAJOR_SHIFT		U(4)
 #define RCAR_MINOR_SHIFT		U(0)
 #define RCAR_MAJOR_OFFSET		U(1)
-#define RCAR_PRODUCT_H3_CUT10		(RCAR_PRODUCT_H3 | U(0x00))	/* 1.0 */
-#define RCAR_PRODUCT_H3_CUT11		(RCAR_PRODUCT_H3 | U(0x01))	/* 1.1 */
-#define RCAR_PRODUCT_H3_CUT20		(RCAR_PRODUCT_H3 | U(0x10))	/* 2.0 */
-#define RCAR_PRODUCT_M3_CUT10		(RCAR_PRODUCT_M3 | U(0x00))	/* 1.0 */
-#define RCAR_PRODUCT_M3_CUT11		(RCAR_PRODUCT_M3 | U(0x10))
+#define RCAR_M3_MINOR_OFFSET		U(2)
+#define PRR_PRODUCT_H3_CUT10		(PRR_PRODUCT_H3 | U(0x00))	/* 1.0 */
+#define PRR_PRODUCT_H3_CUT11		(PRR_PRODUCT_H3 | U(0x01))	/* 1.1 */
+#define PRR_PRODUCT_H3_CUT20		(PRR_PRODUCT_H3 | U(0x10))	/* 2.0 */
+#define PRR_PRODUCT_M3_CUT10		(PRR_PRODUCT_M3 | U(0x00))	/* 1.0 */
+#define PRR_PRODUCT_M3_CUT11		(PRR_PRODUCT_M3 | U(0x10))
+#define PRR				0xFFF00044U
+#define PRR_PRODUCT_MASK		0x00007F00U
+#define PRR_CUT_MASK			0x000000FFU
+#define PRR_PRODUCT_H3			0x00004F00U	/* R-Car H3 */
+#define PRR_PRODUCT_M3			0x00005200U	/* R-Car M3-W */
+#define PRR_PRODUCT_V3M			0x00005400U	/* R-Car V3M */
+#define PRR_PRODUCT_M3N			0x00005500U	/* R-Car M3-N */
+#define PRR_PRODUCT_V3H			0x00005600U	/* R-Car V3H */
+#define PRR_PRODUCT_E3			0x00005700U	/* R-Car E3 */
+#define PRR_PRODUCT_D3			0x00005800U	/* R-Car D3 */
+#define PRR_PRODUCT_10			0x00U		/* Ver.1.0 */
+#define PRR_PRODUCT_11			0x01U		/* Ver.1.1 */
+#define PRR_PRODUCT_20			0x10U		/* Ver.2.0 */
+#define PRR_PRODUCT_21			0x11U		/* Ver.2.1 */
+#define PRR_PRODUCT_30			0x20U		/* Ver.3.0 */
 #define RCAR_CPU_MASK_CA57		U(0x80000000)
 #define RCAR_CPU_MASK_CA53		U(0x04000000)
 #define RCAR_CPU_HAVE_CA57		U(0x00000000)
@@ -204,8 +210,7 @@
 #define	EXTAL_MD14_MD13_TYPE_3		U(16666600)	/* MD14=1 MD13=1 */
 #define	EXTAL_SALVATOR_XS		U(8320000)	/* Salvator-XS */
 #define EXTAL_EBISU			U(24000000)	/* Ebisu */
-/* CPU Auxiliary Control Register */
-#define RCAR_CA57_DIS_LOAD_PASS_STORE	(ULL(1) << 55)
+#define EXTAL_DRAAK			U(24000000)	/* Draak */
 /* CPG write protect registers 	*/
 #define	CPGWPR_PASSWORD			(0x5A5AFFFFU)
 #define	CPGWPCR_PASSWORD		(0xA5A50000U)
@@ -216,9 +221,11 @@
 #define	CPG_PLL0CR			(CPG_BASE + 0x00D8U)
 #define	CPG_PLL2CR			(CPG_BASE + 0x002CU)
 #define	CPG_PLL4CR			(CPG_BASE + 0x01F4U)
+#define CPG_CPGWPCR			(CPG_BASE + 0x0904U)
 /* RST Registers */
 #define	RST_BASE			(0xE6160000U)
 #define	RST_WDTRSTCR			(RST_BASE + 0x0054U)
+#define RST_MODEMR			(RST_BASE + 0x0060U)
 #define	WDTRSTCR_PASSWORD		(0xA55A0000U)
 #define	WDTRSTCR_RWDT_RSTMSK		((uint32_t)1U << 0U)
 /* MFIS Registers */
@@ -231,6 +238,8 @@
 #define IPMMUMM_IMSCTLR_ENABLE		(0xC0000000U)
 #define IPMMUMM_IMAUXCTLR_NMERGE40_BIT	(0x01000000U)
 #define IMSCTLR_DISCACHE		(0xE0000000U)
+#define IPMMU_VP0_BASE			(0xFE990000U)
+#define IPMMUVP0_IMSCTLR		(IPMMU_VP0_BASE + 0x0500U)
 #define IPMMU_VI0_BASE			(0xFEBD0000U)
 #define IPMMUVI0_IMSCTLR		(IPMMU_VI0_BASE + 0x0500U)
 #define IPMMU_VI1_BASE			(0xFEBE0000U)
@@ -260,11 +269,15 @@
 #define MIDR_CA57			(0x0D07U << MIDR_PN_SHIFT)
 #define MIDR_CA53			(0x0D03U << MIDR_PN_SHIFT)
 /* for SuspendToRAM */
-#define	GPIO_BASE			(0xE6050000U)
-#define	GPIO_INDT1			(GPIO_BASE + 0x100CU)
+#define GPIO_BASE			(0xE6050000U)
+#define GPIO_INDT1			(GPIO_BASE + 0x100CU)
+#define GPIO_INDT3			(GPIO_BASE + 0x300CU)
 #define GPIO_INDT6			(GPIO_BASE + 0x540CU)
-#define	RCAR_COLD_BOOT			(0x00U)
-#define	RCAR_WARM_BOOT			(0x01U)
+#define GPIO_OUTDT1			(GPIO_BASE + 0x1008U)
+#define GPIO_OUTDT3			(GPIO_BASE + 0x3008U)
+#define GPIO_OUTDT6			(GPIO_BASE + 0x5408U)
+#define RCAR_COLD_BOOT			(0x00U)
+#define RCAR_WARM_BOOT			(0x01U)
 #if PMIC_ROHM_BD9571 && RCAR_SYSTEM_RESET_KEEPON_DDR
 #define	KEEP10_MAGIC		(0x55U)
 #endif

@@ -8,7 +8,6 @@ A53_DISABLE_NON_TEMPORAL_HINT := 0
 SEPARATE_CODE_AND_RODATA := 1
 override RESET_TO_BL31 := 1
 PL011_GENERIC_UART := 1
-MULTI_CONSOLE_API := 1
 
 ifdef VERSAL_ATF_MEM_BASE
     $(eval $(call add_define,VERSAL_ATF_MEM_BASE))
@@ -51,6 +50,7 @@ PLAT_BL_COMMON_SOURCES	:=	lib/xlat_tables/xlat_tables_common.c		\
 				drivers/arm/gic/v3/gicv3_main.c			\
 				drivers/arm/gic/v3/gicv3_helpers.c		\
 				plat/arm/common/arm_cci.c			\
+				plat/common/aarch64/crash_console_helpers.S	\
 				plat/common/plat_gicv3.c			\
 				plat/xilinx/versal/aarch64/versal_helpers.S	\
 				plat/xilinx/versal/aarch64/versal_common.c

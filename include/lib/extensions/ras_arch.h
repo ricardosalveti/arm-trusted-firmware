@@ -178,13 +178,13 @@
 /* I/DFSC code for synchronous external abort */
 #define SYNC_EA_FSC		0x10
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 #include <arch.h>
 #include <arch_helpers.h>
 #include <assert.h>
 #include <context.h>
-#include <mmio.h>
+#include <lib/mmio.h>
 #include <stdint.h>
 
 /*
@@ -256,6 +256,6 @@ static inline void ser_sys_select_record(unsigned int idx)
 /* Library functions to probe Standard Error Record */
 int ser_probe_memmap(uintptr_t base, unsigned int size_num_k, int *probe_data);
 int ser_probe_sysreg(unsigned int idx_start, unsigned int num_idx, int *probe_data);
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 
 #endif /* RAS_ARCH_H */

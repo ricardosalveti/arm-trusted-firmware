@@ -1,27 +1,24 @@
 /*
- * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch.h>
-#include <arm_def.h>
 #include <assert.h>
-#include <bl1.h>
-#include <bl_common.h>
-#include <plat_arm.h>
-#include <platform.h>
-#include <platform_def.h>
-#include <sp805.h>
-#include <utils.h>
-#include <xlat_tables_compat.h>
 
-#include "../../../bl1/bl1_private.h"
+#include <platform_def.h>
+
+#include <arch.h>
+#include <bl1/bl1.h>
+#include <common/bl_common.h>
+#include <lib/utils.h>
+#include <lib/xlat_tables/xlat_tables_compat.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
 
 /* Weak definitions may be overridden in specific ARM standard platform */
 #pragma weak bl1_early_platform_setup
 #pragma weak bl1_plat_arch_setup
-#pragma weak bl1_platform_setup
 #pragma weak bl1_plat_sec_mem_layout
 #pragma weak bl1_plat_prepare_exit
 #pragma weak bl1_plat_get_next_image_id
@@ -68,7 +65,7 @@ void arm_bl1_early_platform_setup(void)
 
 #if !ARM_DISABLE_TRUSTED_WDOG
 	/* Enable watchdog */
-	sp805_start(ARM_SP805_TWDG_BASE, ARM_TWDG_LOAD_VAL);
+	plat_arm_secure_wdt_start();
 #endif
 
 	/* Initialize the console to provide early debug support */
@@ -124,11 +121,11 @@ void arm_bl1_plat_arch_setup(void)
 	};
 
 	setup_page_tables(bl_regions, plat_arm_get_mmap());
-#ifdef AARCH32
-	enable_mmu_svc_mon(0);
-#else
+#ifdef __aarch64__
 	enable_mmu_el3(0);
-#endif /* AARCH32 */
+#else
+	enable_mmu_svc_mon(0);
+#endif /* __aarch64__ */
 
 	arm_setup_romlib();
 }
@@ -156,20 +153,19 @@ void arm_bl1_platform_setup(void)
 	 * Allow access to the System counter timer module and program
 	 * counter frequency for non secure images during FWU
 	 */
+#ifdef ARM_SYS_TIMCTL_BASE
 	arm_configure_sys_timer();
+#endif
+#if (ARM_ARCH_MAJOR > 7) || defined(ARMV7_SUPPORTS_GENERIC_TIMER)
 	write_cntfrq_el0(plat_get_syscnt_freq2());
-}
-
-void bl1_platform_setup(void)
-{
-	arm_bl1_platform_setup();
+#endif
 }
 
 void bl1_plat_prepare_exit(entry_point_info_t *ep_info)
 {
 #if !ARM_DISABLE_TRUSTED_WDOG
 	/* Disable watchdog before leaving BL1 */
-	sp805_stop(ARM_SP805_TWDG_BASE);
+	plat_arm_secure_wdt_stop();
 #endif
 
 #ifdef EL3_PAYLOAD_BASE

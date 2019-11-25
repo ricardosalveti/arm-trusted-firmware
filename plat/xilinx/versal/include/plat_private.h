@@ -7,7 +7,7 @@
 #ifndef PLAT_PRIVATE_H
 #define PLAT_PRIVATE_H
 
-#include <xlat_tables.h>
+#include <lib/xlat_tables/xlat_tables.h>
 
 void versal_config_setup(void);
 

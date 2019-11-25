@@ -4,16 +4,17 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <arm_sip_svc.h>
-#include <context.h>
-#include <context_mgmt.h>
-#include <plat_arm.h>
-#include <psci.h>
-#include <smccc_helpers.h>
 #include <stdbool.h>
 #include <string.h>
-#include <utils.h>
+
+#include <arch_helpers.h>
+#include <context.h>
+#include <lib/el3_runtime/context_mgmt.h>
+#include <lib/psci/psci.h>
+#include <lib/utils.h>
+#include <plat/arm/common/arm_sip_svc.h>
+#include <plat/arm/common/plat_arm.h>
+#include <smccc_helpers.h>
 
 /*
  * Handle SMC from a lower exception level to switch its execution state
@@ -39,7 +40,7 @@ int arm_execution_state_switch(unsigned int smc_fid,
 		void *handle)
 {
 	/* Execution state can be switched only if EL3 is AArch64 */
-#ifdef AARCH64
+#ifdef __aarch64__
 	bool caller_64, thumb = false, from_el2;
 	unsigned int el, endianness;
 	u_register_t spsr, pc, scr, sctlr;
@@ -172,7 +173,7 @@ invalid_param:
 	SMC_RET1(handle, STATE_SW_E_PARAM);
 
 exec_denied:
-#endif
+#endif /* __aarch64__ */
 	/* State switch denied */
 	SMC_RET1(handle, STATE_SW_E_DENIED);
 }

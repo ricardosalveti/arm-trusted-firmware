@@ -1,20 +1,19 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #include <assert.h>
-#include <bl31.h>
-#include <bl_common.h>
-#include <console.h>
-#include <debug.h>
 #include <errno.h>
-#include <plat_arm.h>
-#include <plat_private.h>
-#include <platform.h>
+#include <bl31/bl31.h>
+#include <common/bl_common.h>
+#include <common/debug.h>
+#include <drivers/console.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
 
-#define BL31_END (unsigned long)(&__BL31_END__)
+#include <plat_private.h>
 
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;
@@ -57,9 +56,14 @@ static inline void bl31_set_default_config(void)
 void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 				u_register_t arg2, u_register_t arg3)
 {
-	/* Initialize the console to provide early debug support */
-	console_init(ZYNQMP_UART_BASE, zynqmp_get_uart_clk(),
-		     ZYNQMP_UART_BAUDRATE);
+	/* Register the console to provide early debug support */
+	static console_cdns_t bl31_boot_console;
+	(void)console_cdns_register(ZYNQMP_UART_BASE,
+				       zynqmp_get_uart_clk(),
+				       ZYNQMP_UART_BAUDRATE,
+				       &bl31_boot_console);
+	console_set_scope(&bl31_boot_console.console,
+			  CONSOLE_FLAG_RUNTIME | CONSOLE_FLAG_BOOT);
 
 	/* Initialize the platform config for future decision making */
 	zynqmp_config_setup();

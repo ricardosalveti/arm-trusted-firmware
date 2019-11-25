@@ -4,17 +4,19 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
 #include <assert.h>
-#include <debug.h>
-#include <delay_timer.h>
 #include <endian.h>
 #include <errno.h>
-#include <gicv2.h>
-#include <mmio.h>
-#include <platform.h>
-#include <psci.h>
-#include "platform_def.h"
+
+#include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/arm/gicv2.h>
+#include <drivers/delay_timer.h>
+#include <lib/mmio.h>
+#include <lib/psci/psci.h>
+#include <plat/common/platform.h>
 
 #define LS_SCFG_BASE			0x01570000
 /* register to store warm boot entry, big endian, higher 32bit */
@@ -64,12 +66,12 @@ static void ls1043_reset_core(int core_pos)
 	dsb();
 	/* enable core soft reset */
 	mmio_write_32(LS_SCFG_BASE + LS_SCFG_CORESRENCR_OFFSET,
-		      htobe32(1 << 31));
+		      htobe32(1U << 31));
 	dsb();
 	isb();
 	/* reset core */
 	mmio_write_32(LS_SCFG_BASE + LS_SCFG_CORE0_SFT_RST_OFFSET +
-			core_pos * 4, htobe32(1 << 31));
+			core_pos * 4, htobe32(1U << 31));
 	mdelay(10);
 }
 

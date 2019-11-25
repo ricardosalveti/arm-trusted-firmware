@@ -7,7 +7,7 @@
 #ifndef GICV2_H
 #define GICV2_H
 
-#include <gic_common.h>
+#include <drivers/arm/gic_common.h>
 
 /*******************************************************************************
  * GICv2 miscellaneous definitions
@@ -116,11 +116,12 @@
 /* Interrupt ID mask for HPPIR, AHPPIR, IAR and AIAR CPU Interface registers */
 #define INT_ID_MASK		U(0x3ff)
 
-#ifndef __ASSEMBLY__
+#ifndef __ASSEMBLER__
 
 #include <cdefs.h>
-#include <interrupt_props.h>
 #include <stdint.h>
+
+#include <common/interrupt_props.h>
 
 /*******************************************************************************
  * This structure describes some of the implementation defined attributes of
@@ -183,5 +184,5 @@ void gicv2_clear_interrupt_pending(unsigned int id);
 unsigned int gicv2_set_pmr(unsigned int mask);
 void gicv2_interrupt_set_cfg(unsigned int id, unsigned int cfg);
 
-#endif /* __ASSEMBLY__ */
+#endif /* __ASSEMBLER__ */
 #endif /* GICV2_H */

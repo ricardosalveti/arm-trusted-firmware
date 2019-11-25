@@ -3,13 +3,16 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
+
+#include <assert.h>
+
+#include <platform_def.h>
+
 #include <arch.h>
 #include <arch_helpers.h>
-#include <xlat_tables_v2.h>
-#include <assert.h>
-#include <debug.h>
-#include <mmio.h>
-#include "platform_def.h"
+#include <common/debug.h>
+#include <lib/mmio.h>
+#include <lib/xlat_tables/xlat_tables_v2.h>
 
 const mmap_region_t *plat_ls_get_mmap(void);
 
@@ -140,7 +143,7 @@ uint32_t ls_get_spsr_for_bl32_entry(void)
 /*******************************************************************************
  * Gets SPSR for BL33 entry
  ******************************************************************************/
-#ifndef AARCH32
+#ifdef __aarch64__
 uint32_t ls_get_spsr_for_bl33_entry(void)
 {
 	unsigned int mode;
@@ -178,7 +181,7 @@ uint32_t ls_get_spsr_for_bl33_entry(void)
 			SPSR_E_LITTLE, DISABLE_ALL_EXCEPTIONS);
 	return spsr;
 }
-#endif /* AARCH32 */
+#endif /* __aarch64__ */
 
 /*******************************************************************************
  * Returns Layerscape platform specific memory map regions.

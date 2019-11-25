@@ -1,19 +1,21 @@
 /*
- * Copyright (c) 2015-2017, Renesas Electronics Corporation. All rights reserved.
+ * Copyright (c) 2015-2019, Renesas Electronics Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <debug.h>
 #include <stdarg.h>
 #include <stdint.h>
 
-#include	<arch_helpers.h>
-#include	<platform_def.h>
-#include	<bakery_lock.h>
-#include	"rcar_def.h"
-#include	"rcar_private.h"
-#include	"rcar_printf.h"
+#include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <lib/bakery_lock.h>
+
+#include "rcar_def.h"
+#include "rcar_private.h"
+#include "rcar_printf.h"
 
 #define INDEX_TIMER_COUNT	(4U)
 
@@ -92,9 +94,6 @@ int32_t rcar_log_init(void)
 			     sizeof(t_log->header.head));
 		t_log->header.index = 0U;
 		t_log->header.size = 0U;
-#ifndef IMAGE_BL2
-		rcar_stack_generic_timer[INDEX_TIMER_COUNT] = 0U;
-#endif
 	}
 	rcar_lock_init();
 

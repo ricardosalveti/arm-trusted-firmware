@@ -4,11 +4,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <debug.h>
-#include <mmio.h>
-#include <plat_private.h>
 #include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <lib/mmio.h>
+
+#include <plat_private.h>
 #include <rk3368_def.h>
 #include <soc.h>
 
@@ -28,7 +30,15 @@ const mmap_region_t plat_rk_mmap[] = {
 			MT_MEMORY | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(PMU_BASE, PMU_SIZE,
 			MT_DEVICE | MT_RW | MT_SECURE),
-	MAP_REGION_FLAT(UART_DBG_BASE, UART_DBG_SIZE,
+	MAP_REGION_FLAT(UART0_BASE, UART0_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(UART1_BASE, UART1_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(UART2_BASE, UART2_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(UART3_BASE, UART3_SIZE,
+			MT_DEVICE | MT_RW | MT_SECURE),
+	MAP_REGION_FLAT(UART4_BASE, UART4_SIZE,
 			MT_DEVICE | MT_RW | MT_SECURE),
 	MAP_REGION_FLAT(CRU_BASE, CRU_SIZE,
 			MT_DEVICE | MT_RW | MT_SECURE),

@@ -23,13 +23,8 @@ LS1043_SECURITY_SOURCES 	:=	plat/layerscape/common/ls_tzc380.c	\
 
 PLAT_INCLUDES			:=	-Iplat/layerscape/board/ls1043/include   \
 					-Iplat/layerscape/common/include	\
-					-Iinclude/drivers/arm   \
-					-Iinclude/lib		\
-					-Iinclude/drivers/io
 
-
-PLAT_BL_COMMON_SOURCES		:=	drivers/console/aarch64/console.S	\
-					plat/layerscape/common/aarch64/ls_console.S
+PLAT_BL_COMMON_SOURCES		:=	plat/layerscape/common/aarch64/ls_console.S
 
 LS1043_CPU_LIBS			:=	lib/cpus/${ARCH}/aem_generic.S
 
@@ -60,9 +55,6 @@ BL31_SOURCES			+=	plat/layerscape/board/ls1043/ls1043_bl31_setup.c		\
 					${LS1043_GIC_SOURCES}				\
 					${LS1043_INTERCONNECT_SOURCES}			\
 					${LS1043_SECURITY_SOURCES}
-
-# Disable the PSCI platform compatibility layer
-MULTI_CONSOLE_API		:=	1
 
 # Enable workarounds for selected Cortex-A53 erratas.
 ERRATA_A53_855873		:=	1

@@ -4,21 +4,22 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <arm_def.h>
 #include <assert.h>
-#include <bl_common.h>
-#include <debug.h>
-#include <desc_image_load.h>
-#include <generic_delay_timer.h>
-#ifdef SPD_opteed
-#include <optee_utils.h>
-#endif
-#include <plat_arm.h>
-#include <platform.h>
-#include <platform_def.h>
 #include <string.h>
-#include <utils.h>
+
+#include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/bl_common.h>
+#include <common/debug.h>
+#include <common/desc_image_load.h>
+#include <drivers/generic_delay_timer.h>
+#ifdef SPD_opteed
+#include <lib/optee_utils.h>
+#endif
+#include <lib/utils.h>
+#include <plat/arm/common/plat_arm.h>
+#include <plat/common/platform.h>
 
 /* Data structure which holds the extents of the trusted SRAM for BL2 */
 static meminfo_t bl2_tzram_layout __aligned(CACHE_WRITEBACK_GRANULE);
@@ -127,10 +128,10 @@ void arm_bl2_plat_arch_setup(void)
 
 	setup_page_tables(bl_regions, plat_arm_get_mmap());
 
-#ifdef AARCH32
-	enable_mmu_svc_mon(0);
-#else
+#ifdef __aarch64__
 	enable_mmu_el1(0);
+#else
+	enable_mmu_svc_mon(0);
 #endif
 
 	arm_setup_romlib();
@@ -152,7 +153,7 @@ int arm_bl2_handle_post_image_load(unsigned int image_id)
 	assert(bl_mem_params);
 
 	switch (image_id) {
-#ifdef AARCH64
+#ifdef __aarch64__
 	case BL32_IMAGE_ID:
 #ifdef SPD_opteed
 		pager_mem_params = get_bl_mem_params_node(BL32_EXTRA1_IMAGE_ID);

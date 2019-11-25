@@ -10,18 +10,21 @@
  */
 
 #include <assert.h>
-#include <bakery_lock.h>
-#include <bl_common.h>
-#include <gic_common.h>
-#include <gicv2.h>
-#include <mmio.h>
-#include <plat_ipi.h>
 #include <string.h>
-#include <utils.h>
+
+#include <common/bl_common.h>
+#include <drivers/arm/gic_common.h>
+#include <drivers/arm/gicv2.h>
+#include <lib/bakery_lock.h>
+#include <lib/mmio.h>
+#include <lib/utils.h>
+#include <plat_ipi.h>
 #include <zynqmp_def.h>
+
 #include "pm_api_sys.h"
 #include "pm_client.h"
 #include "pm_ipi.h"
+
 
 #define IRQ_MAX		84
 #define NUM_GICD_ISENABLER	((IRQ_MAX >> 5) + 1)

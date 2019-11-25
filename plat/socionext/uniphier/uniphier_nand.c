@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2017-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2017-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch_helpers.h>
-#include <debug.h>
-#include <io/io_block.h>
-#include <mmio.h>
-#include <platform_def.h>
 #include <stdint.h>
-#include <utils_def.h>
+
+#include <platform_def.h>
+
+#include <arch_helpers.h>
+#include <common/debug.h>
+#include <drivers/io/io_block.h>
+#include <lib/mmio.h>
+#include <lib/utils_def.h>
 
 #include "uniphier.h"
-
-#define DIV_ROUND_UP(n, d)	(((n) + (d) - 1) / (d))
 
 #define NAND_CMD_READ0		0
 #define NAND_CMD_READSTART	0x30
@@ -164,7 +164,7 @@ static size_t __uniphier_nand_read(struct uniphier_nand *nand, int lba,
 	int pages_per_block = nand->pages_per_block;
 	int page_size = nand->page_size;
 	int blocks_to_skip = lba / pages_per_block;
-	int pages_to_read = DIV_ROUND_UP(size, page_size);
+	int pages_to_read = div_round_up(size, page_size);
 	int page = lba % pages_per_block;
 	int block = 0;
 	uintptr_t p = buf;

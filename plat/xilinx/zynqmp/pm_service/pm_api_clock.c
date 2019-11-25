@@ -8,11 +8,13 @@
  * ZynqMP system level PM-API functions for clock control.
  */
 
-#include <arch_helpers.h>
-#include <mmio.h>
-#include <platform.h>
 #include <stdbool.h>
 #include <string.h>
+
+#include <arch_helpers.h>
+#include <lib/mmio.h>
+#include <plat/common/platform.h>
+
 #include "pm_api_clock.h"
 #include "pm_api_sys.h"
 #include "pm_client.h"
@@ -2370,8 +2372,10 @@ static uint32_t pm_clk_invalid_list[] = {CLK_USB0, CLK_USB1, CLK_CSU_SPB,
 	CLK_DBG_TSTMP,
 	CLK_DDR_REF,
 	CLK_TOPSW_MAIN,
+	CLK_TOPSW_LSBUS,
 	CLK_GTGREF0_REF,
 	CLK_LPD_SWITCH,
+	CLK_LPD_LSBUS,
 	CLK_CPU_R5,
 	CLK_CPU_R5_CORE,
 	CLK_CSU_SPB,
@@ -2883,9 +2887,10 @@ enum pm_ret_status pm_clock_pll_set_parent(struct pm_pll *pll,
 }
 
 /**
- * pm_api_clock_getparent - Get the clock parent for given id
- * @clock_id	Id of the clock
- * @parent_idx	parent index
+ * pm_clock_pll_get_parent - Get mux select value of PLL-related clock parent
+ * @pll			Target PLL structure
+ * @clock_id		Id of the clock
+ * @parent_index	parent index (=mux select value)
  *
  * This function is used by master to get parent index for PLL-related clock.
  *

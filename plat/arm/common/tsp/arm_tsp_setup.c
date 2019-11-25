@@ -1,20 +1,19 @@
 /*
- * Copyright (c) 2015-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2015-2019, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arm_def.h>
 #include <assert.h>
-#include <bl_common.h>
-#include <console.h>
-#include <debug.h>
-#include <pl011.h>
-#include <plat_arm.h>
-#include <platform_def.h>
-#include <platform_tsp.h>
 
-#define BL32_END (unsigned long)(&__BL32_END__)
+#include <platform_def.h>
+
+#include <bl32/tsp/platform_tsp.h>
+#include <common/bl_common.h>
+#include <common/debug.h>
+#include <drivers/arm/pl011.h>
+#include <drivers/console.h>
+#include <plat/arm/common/plat_arm.h>
 
 /* Weak definitions may be overridden in specific ARM standard platform */
 #pragma weak tsp_early_platform_setup
@@ -29,13 +28,10 @@
 /*******************************************************************************
  * Initialize the UART
  ******************************************************************************/
-#if MULTI_CONSOLE_API
 static console_pl011_t arm_tsp_runtime_console;
-#endif
 
 void arm_tsp_early_platform_setup(void)
 {
-#if MULTI_CONSOLE_API
 	/*
 	 * Initialize a different console than already in use to display
 	 * messages from TSP
@@ -49,10 +45,6 @@ void arm_tsp_early_platform_setup(void)
 
 	console_set_scope(&arm_tsp_runtime_console.console,
 			  CONSOLE_FLAG_BOOT | CONSOLE_FLAG_RUNTIME);
-#else
-	console_init(PLAT_ARM_TSP_UART_BASE, PLAT_ARM_TSP_UART_CLK_IN_HZ,
-			ARM_CONSOLE_BAUDRATE);
-#endif /* MULTI_CONSOLE_API */
 }
 
 void tsp_early_platform_setup(void)
@@ -75,7 +67,7 @@ void tsp_platform_setup(void)
 void tsp_plat_arch_setup(void)
 {
 #if USE_COHERENT_MEM
-	/* Ensure ARM platforms dont use coherent memory in TSP */
+	/* Ensure ARM platforms don't use coherent memory in TSP */
 	assert((BL_COHERENT_RAM_END - BL_COHERENT_RAM_BASE) == 0U);
 #endif
 

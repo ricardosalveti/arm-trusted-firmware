@@ -4,10 +4,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch.h>
-#include <plat_private.h>
 #include <platform_def.h>
-#include <psci.h>
+
+#include <arch.h>
+#include <lib/psci/psci.h>
+
+#include <plat_private.h>
 
 /*******************************************************************************
  * This function returns the RockChip default topology tree information.
@@ -22,7 +24,11 @@ int plat_core_pos_by_mpidr(u_register_t mpidr)
 	unsigned int cluster_id, cpu_id;
 
 	cpu_id = mpidr & MPIDR_AFFLVL_MASK;
+#ifdef PLAT_RK_MPIDR_CLUSTER_MASK
+	cluster_id = mpidr & PLAT_RK_MPIDR_CLUSTER_MASK;
+#else
 	cluster_id = mpidr & MPIDR_CLUSTER_MASK;
+#endif
 
 	cpu_id += (cluster_id >> PLAT_RK_CLST_TO_CPUID_SHIFT);
 

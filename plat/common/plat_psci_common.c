@@ -4,11 +4,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <arch.h>
 #include <assert.h>
-#include <platform.h>
-#include <pmf.h>
-#include <psci.h>
+
+#include <arch.h>
+#include <lib/pmf/pmf.h>
+#include <lib/psci/psci.h>
+#include <plat/common/platform.h>
 
 #if ENABLE_PSCI_STAT && ENABLE_PMF
 #pragma weak plat_psci_stat_accounting_start
@@ -19,10 +20,10 @@
 #define MHZ_TICKS_PER_SEC 1000000U
 
 /* Maximum time-stamp value read from architectural counters */
-#ifdef AARCH32
-#define MAX_TS	UINT32_MAX
-#else
+#ifdef __aarch64__
 #define MAX_TS	UINT64_MAX
+#else
+#define MAX_TS	UINT32_MAX
 #endif
 
 /* Following are used as ID's to capture time-stamp */

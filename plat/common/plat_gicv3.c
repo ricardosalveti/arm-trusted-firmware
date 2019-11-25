@@ -3,15 +3,17 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#include <arch_helpers.h>
+
 #include <assert.h>
-#include <bl_common.h>
-#include <cassert.h>
-#include <gic_common.h>
-#include <gicv3.h>
-#include <interrupt_mgmt.h>
-#include <platform.h>
 #include <stdbool.h>
+
+#include <arch_helpers.h>
+#include <common/bl_common.h>
+#include <bl31/interrupt_mgmt.h>
+#include <drivers/arm/gic_common.h>
+#include <drivers/arm/gicv3.h>
+#include <lib/cassert.h>
+#include <plat/common/platform.h>
 
 #ifdef IMAGE_BL31
 
@@ -298,7 +300,7 @@ unsigned int plat_ic_get_interrupt_id(unsigned int raw)
 #pragma weak plat_ic_end_of_interrupt
 
 /* In AArch32, the secure group1 interrupts are targeted to Secure PL1 */
-#ifdef AARCH32
+#ifndef __aarch64__
 #define IS_IN_EL1()	IS_IN_SECURE()
 #endif
 

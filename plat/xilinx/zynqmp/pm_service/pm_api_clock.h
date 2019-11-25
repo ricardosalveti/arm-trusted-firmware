@@ -12,9 +12,8 @@
 #define PM_API_CLOCK_H
 
 #include "pm_common.h"
+#include <lib/utils_def.h>
 
-#include <utils_def.h>
-#include "pm_common.h"
 
 #define CLK_NAME_LEN		U(15)
 #define MAX_PARENTS		U(100)
@@ -291,8 +290,8 @@ enum {
 #define	TYPE_GATE 6U
 
 struct pm_pll;
-struct pm_pll* pm_clock_get_pll(enum clock_id clock_id);
-struct pm_pll* pm_clock_get_pll_by_related_clk(enum clock_id clock_id);
+struct pm_pll *pm_clock_get_pll(enum clock_id clock_id);
+struct pm_pll *pm_clock_get_pll_by_related_clk(enum clock_id clock_id);
 uint8_t pm_clock_has_div(unsigned int clock_id, enum pm_clock_div_id div_id);
 
 enum pm_ret_status pm_api_clock_get_num_clocks(unsigned int *nclocks);

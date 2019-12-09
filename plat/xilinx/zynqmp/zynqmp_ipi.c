@@ -8,7 +8,6 @@
  * Zynq UltraScale+ MPSoC IPI agent registers access management
  */
 
-
 #include <errno.h>
 #include <string.h>
 

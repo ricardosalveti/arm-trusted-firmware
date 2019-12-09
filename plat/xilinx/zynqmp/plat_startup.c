@@ -5,6 +5,7 @@
  */
 
 #include <assert.h>
+
 #include <arch_helpers.h>
 #include <common/debug.h>
 #include <lib/mmio.h>

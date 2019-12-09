@@ -3,8 +3,10 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
+
 #include <assert.h>
 #include <errno.h>
+
 #include <arch_helpers.h>
 #include <common/debug.h>
 #include <drivers/arm/gicv2.h>
@@ -12,8 +14,8 @@
 #include <lib/psci/psci.h>
 #include <plat/arm/common/plat_arm.h>
 #include <plat/common/platform.h>
-#include <plat_private.h>
 
+#include <plat_private.h>
 #include "pm_api_sys.h"
 #include "pm_client.h"
 

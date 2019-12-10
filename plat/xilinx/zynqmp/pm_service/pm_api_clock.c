@@ -2658,7 +2658,12 @@ enum pm_ret_status pm_api_clock_get_max_divisor(enum clock_id clock_id,
 	nodes = *clocks[clock_id].nodes;
 	for (i = 0; i < clocks[clock_id].num_nodes; i++) {
 		if (nodes[i].type == div_type) {
-			*max_div = (1 << nodes[i].width) - 1;
+			if (CLK_DIVIDER_POWER_OF_TWO &
+					nodes[i].typeflags) {
+				*max_div = (1 << (BIT(nodes[i].width) - 1));
+			} else {
+				*max_div = BIT(nodes[i].width) - 1;
+			}
 			return PM_RET_SUCCESS;
 		}
 	}

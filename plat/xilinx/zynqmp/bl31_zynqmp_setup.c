@@ -12,8 +12,11 @@
 #include <drivers/console.h>
 #include <plat/arm/common/plat_arm.h>
 #include <plat/common/platform.h>
+#include <lib/mmio.h>
 
+#include <plat_startup.h>
 #include <plat_private.h>
+#include <zynqmp_def.h>
 
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;
@@ -56,6 +59,7 @@ static inline void bl31_set_default_config(void)
 void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 				u_register_t arg2, u_register_t arg3)
 {
+	uint64_t atf_handoff_addr;
 	/* Register the console to provide early debug support */
 	static console_cdns_t bl31_boot_console;
 	(void)console_cdns_register(ZYNQMP_UART_BASE,
@@ -85,12 +89,15 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 	SET_PARAM_HEAD(&bl33_image_ep_info, PARAM_EP, VERSION_1, 0);
 	SET_SECURITY_STATE(bl33_image_ep_info.h.attr, NON_SECURE);
 
+	atf_handoff_addr = mmio_read_32(PMU_GLOBAL_GEN_STORAGE6);
+
 	if (zynqmp_get_bootmode() == ZYNQMP_BOOTMODE_JTAG) {
 		bl31_set_default_config();
 	} else {
 		/* use parameters from FSBL */
 		enum fsbl_handoff ret = fsbl_atf_handover(&bl32_image_ep_info,
-							  &bl33_image_ep_info);
+							  &bl33_image_ep_info,
+							  atf_handoff_addr);
 		if (ret == FSBL_HANDOFF_NO_STRUCT)
 			bl31_set_default_config();
 		else if (ret != FSBL_HANDOFF_SUCCESS)

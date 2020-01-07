@@ -66,11 +66,3 @@ unsigned int plat_get_syscnt_freq2(void)
 	return VERSAL_CPU_CLOCK;
 }
 
-uintptr_t plat_get_ns_image_entrypoint(void)
-{
-#ifdef PRELOADED_BL33_BASE
-	return PRELOADED_BL33_BASE;
-#else
-	return PLAT_VERSAL_NS_IMAGE_OFFSET;
-#endif
-}

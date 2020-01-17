@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018, ARM Limited and Contributors. All rights reserved.
+ * Copyright (c) 2013-2020, ARM Limited and Contributors. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -269,13 +269,12 @@ uint32_t calculate_crc(uint32_t *payload, uint32_t bufsize)
 	uint32_t i, j, c, bit, datain, crcmask, crchighbit;
 	uint32_t crc = crcinit;
 
-	crcmask = ((uint32_t)(((uint32_t)1 << (order - (uint32_t)1)) -
-				(uint32_t)1) << (uint32_t)1) | (uint32_t)1;
-	crchighbit = (uint32_t)((uint32_t)1 << (order - (uint32_t)1));
+	crcmask = ((uint32_t)((1U << (order - 1U)) - 1U) << 1U) | 1U;
+	crchighbit = (uint32_t)(1U << (order - 1U));
 
 	for (i = 0U; i < bufsize; i++) {
 		datain = mmio_read_8((unsigned long)payload + i);
-		c = (uint32_t)datain;
+		c = datain;
 		j = 0x80U;
 		while (j != 0U) {
 			bit = crc & crchighbit;

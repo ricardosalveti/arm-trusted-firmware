@@ -12,7 +12,7 @@
 #ifndef PLAT_PM_COMMON_H
 #define PLAT_PM_COMMON_H
 
-#include <debug.h>
+#include <common/debug.h>
 #include <stdint.h>
 #include "pm_defs.h"
 

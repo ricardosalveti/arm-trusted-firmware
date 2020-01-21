@@ -10,14 +10,14 @@
  */
 
 #include <assert.h>
-#include <bakery_lock.h>
-#include <gic_common.h>
-#include <gicv3.h>
-#include <mmio.h>
+#include <lib/bakery_lock.h>
+#include <drivers/arm/gic_common.h>
+#include <drivers/arm/gicv3.h>
+#include <lib/mmio.h>
 #include <plat_ipi.h>
-#include <platform.h>
+#include <plat/common/platform.h>
 #include <platform_def.h>
-#include <utils.h>
+#include <lib/utils.h>
 #include <versal_def.h>
 #include "pm_api_sys.h"
 #include "pm_client.h"

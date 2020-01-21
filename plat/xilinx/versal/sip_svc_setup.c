@@ -11,7 +11,6 @@
 #include <common/debug.h>
 #include <common/runtime_svc.h>
 #include <tools_share/uuid.h>
-#include <plat_ipi.h>
 
 /* SMC function IDs for SiP Service queries */
 #define VERSAL_SIP_SVC_CALL_COUNT	0x8200ff00

@@ -33,3 +33,11 @@ Xilinx Versal platform specific build options
 
 *   `VERSAL_PLATFORM`: Select the platform. Options:
     -   `versal_virt`	: Versal Virtual platform
+
+# PLM->ATF Parameter Passing
+------------------------------
+The PLM populates a data structure with image information for the ATF. The ATF
+uses that data to hand off to the loaded images. The address of the handoff
+data structure is passed in the ```PMC_GLOBAL_GLOB_GEN_STORAGE4``` register.
+The register is free to be used by other software once the ATF is bringing up
+further firmware images.

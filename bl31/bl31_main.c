@@ -95,10 +95,8 @@ void bl31_setup(u_register_t arg0, u_register_t arg1, u_register_t arg2,
  ******************************************************************************/
 void bl31_main(void)
 {
-	console_flush();
 	NOTICE("BL31: %s\n", version_string);
 	NOTICE("BL31: %s\n", build_message);
-	console_flush();
 
 	/* Perform platform setup in BL31 */
 	bl31_platform_setup();
@@ -107,8 +105,6 @@ void bl31_main(void)
 	bl31_lib_init();
 
 	console_flush();
-	NOTICE("GOING TO PANIC\n");
-	panic();
 
 #if EL3_EXCEPTION_HANDLING
 	NOTICE("BL31: Initialising Exception Handling Framework\n");

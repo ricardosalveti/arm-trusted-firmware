@@ -101,6 +101,8 @@ static int32_t opteed_setup(void)
 
 	linear_id = plat_my_core_pos();
 
+	NOTICE("opteed_setup\n");
+
 	/*
 	 * Get information about the Secure Payload (BL32) image. Its
 	 * absence is a critical failure.  TODO: Add support to

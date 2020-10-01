@@ -95,8 +95,10 @@ void bl31_setup(u_register_t arg0, u_register_t arg1, u_register_t arg2,
  ******************************************************************************/
 void bl31_main(void)
 {
+	console_flush();
 	NOTICE("BL31: %s\n", version_string);
 	NOTICE("BL31: %s\n", build_message);
+	console_flush();
 
 	/* Perform platform setup in BL31 */
 	bl31_platform_setup();
@@ -104,13 +106,17 @@ void bl31_main(void)
 	/* Initialise helper libraries */
 	bl31_lib_init();
 
+	console_flush();
+	NOTICE("GOING TO PANIC\n");
+	panic();
+
 #if EL3_EXCEPTION_HANDLING
-	INFO("BL31: Initialising Exception Handling Framework\n");
+	NOTICE("BL31: Initialising Exception Handling Framework\n");
 	ehf_init();
 #endif
 
 	/* Initialize the runtime services e.g. psci. */
-	INFO("BL31: Initializing runtime services\n");
+	NOTICE("BL31: Initializing runtime services\n");
 	runtime_svc_init();
 
 	/*
@@ -127,7 +133,7 @@ void bl31_main(void)
 	 * If SPD had registered an init hook, invoke it.
 	 */
 	if (bl32_init != NULL) {
-		INFO("BL31: Initializing BL32\n");
+		NOTICE("BL31: Initializing BL32\n");
 
 		int32_t rc = (*bl32_init)();
 

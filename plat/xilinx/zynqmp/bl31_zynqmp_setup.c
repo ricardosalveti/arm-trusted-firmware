@@ -65,6 +65,7 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 				u_register_t arg2, u_register_t arg3)
 {
 	uint64_t atf_handoff_addr;
+	NOTICE("ZYNQMP BEFORE CONSOLE IS UP\n");
 #if !ZYNQMP_CONSOLE_IS(dcc)
 	/* Register the console to provide early debug support */
 	static console_cdns_t bl31_boot_console;
@@ -81,6 +82,7 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 	if (!rc)
 		panic();
 #endif
+	NOTICE("ZYNQMP CONSOLE IS UP\n");
 	/* Initialize the platform config for future decision making */
 	zynqmp_config_setup();
 
@@ -116,9 +118,9 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 			panic();
 	}
 	if (bl32_image_ep_info.pc)
-		VERBOSE("BL31: Secure code at 0x%lx\n", bl32_image_ep_info.pc);
+		NOTICE("BL31: Secure code at 0x%lx\n", bl32_image_ep_info.pc);
 	if (bl33_image_ep_info.pc)
-		VERBOSE("BL31: Non secure code at 0x%lx\n", bl33_image_ep_info.pc);
+		NOTICE("BL31: Non secure code at 0x%lx\n", bl33_image_ep_info.pc);
 }
 
 /* Enable the test setup */

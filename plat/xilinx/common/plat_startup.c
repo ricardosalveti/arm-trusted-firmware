@@ -175,7 +175,7 @@ enum fsbl_handoff fsbl_atf_handover(entry_point_info_t *bl32,
 		return FSBL_HANDOFF_INVAL_STRUCT;
 	}
 
-	VERBOSE("BL31: ATF handoff params at:0x%llx, entries:%u\n",
+	NOTICE("BL31: ATF handoff params at:0x%llx, entries:%u\n",
 		atf_handoff_addr, ATFHandoffParams->num_entries);
 	if (ATFHandoffParams->num_entries > FSBL_MAX_PARTITIONS) {
 		ERROR("BL31: ATF handoff params: too many partitions (%u/%u)\n",
@@ -193,7 +193,7 @@ enum fsbl_handoff fsbl_atf_handover(entry_point_info_t *bl32,
 		int target_estate, target_secure;
 		int target_cpu, target_endianness, target_el;
 
-		VERBOSE("BL31: %zd: entry:0x%llx, flags:0x%llx\n", i,
+		NOTICE("BL31: %zd: entry:0x%llx, flags:0x%llx\n", i,
 			ATFHandoffParams->partition[i].entry_point,
 			ATFHandoffParams->partition[i].flags);
 
@@ -254,7 +254,7 @@ enum fsbl_handoff fsbl_atf_handover(entry_point_info_t *bl32,
 			}
 		}
 
-		VERBOSE("Setting up %s entry point to:%llx, el:%x\n",
+		NOTICE("Setting up %s entry point to:%llx, el:%x\n",
 			target_secure == FSBL_FLAGS_SECURE ? "BL32" : "BL33",
 			ATFHandoffParams->partition[i].entry_point,
 			target_el);

@@ -19,10 +19,6 @@
 #include <plat_private.h>
 #include <zynqmp_def.h>
 
-#if ZYNQMP_CONSOLE_IS(dcc)
-#include <drivers/arm/dcc.h>
-#endif
-
 static entry_point_info_t bl32_image_ep_info;
 static entry_point_info_t bl33_image_ep_info;
 
@@ -66,7 +62,6 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 {
 	uint64_t atf_handoff_addr;
 	NOTICE("ZYNQMP BEFORE CONSOLE IS UP\n");
-#if !ZYNQMP_CONSOLE_IS(dcc)
 	/* Register the console to provide early debug support */
 	static console_cdns_t bl31_boot_console;
 	(void)console_cdns_register(ZYNQMP_UART_BASE,
@@ -76,12 +71,6 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
 	console_set_scope(&bl31_boot_console.console,
 			  CONSOLE_FLAG_RUNTIME | CONSOLE_FLAG_BOOT);
 
-#else
-	/* Initialize the dcc console for debug */
-	int rc = console_dcc_register();
-	if (!rc)
-		panic();
-#endif
 	NOTICE("ZYNQMP CONSOLE IS UP\n");
 	/* Initialize the platform config for future decision making */
 	zynqmp_config_setup();
